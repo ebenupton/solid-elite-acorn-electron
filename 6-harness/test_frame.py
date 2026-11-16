@@ -899,7 +899,7 @@ def pmath_tests(quick=False):
                     zp[F['INWK'] + o + 1] = 0
             x = rnd.choice((9, 15, 21))
             y = 0 if i % 3 == 0 else rnd.choice([v for v in (9, 15, 21) if v != x])
-            f = 0 if not y else rnd.getrandbits(4)
+            f = 0 if not y else rnd.getrandbits(3)
             mem.main[STUB:STUB + 9] = bytes([0xA9, f, 0xA2, x, 0xA0, y, 0x20, m.S['loader']['T_TILT'] & 255, m.S['loader']['T_TILT'] >> 8])
             cy.append(m.gcall_at(STUB, 9))
             inwk = [zp[F['INWK'] + k] for k in range(36)]

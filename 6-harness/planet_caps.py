@@ -292,11 +292,11 @@ def truth(bx, by, r, axes, x, y):
 # ------------------------------------------------------------ the game's caps
 
 PFS_C = (247, 241, 232, 222)
-PFN = (10923, 9770, 10596, 7723)      # 2^24 / the nominal length (>> 3) of pf_tilt's sums
+PFN = (10923, 9770, 10596)            # 2^24 / the nominal length (>> 3) of pf_tilt's sums
 
 
 def pf_kn(y, f):
-    return PFN[0 if not y else 3 if f & 8 else 2 if f & 4 else 1]
+    return PFN[0 if not y else 2 if f & 4 else 1]
 
 
 def _tc(inwk, o):
@@ -308,15 +308,15 @@ def _tc(inwk, o):
 def pf_tilt(inwk, x, y, f):
     """pf_tilt: (+/- vector x) / 2 + (+/- vector y) / 2^(k+1), sign-magnitude
     words (x, y: INWK offsets; y = 0 none; f bit 0, 1 the signs, bit 2 k = 2,
-    else k = 1, bit 3 k = 0); each magnitude shifted before its sign is
-    applied (rounded towards zero)"""
+    else k = 1); each magnitude shifted before its sign is applied (rounded
+    towards zero)"""
     out = []
     for j in range(3):
         m, neg = smag(inwk[x + 2 * j], inwk[x + 2 * j + 1])
         r = -(m >> 1) if neg != bool(f & 1) else m >> 1
         if y:
             m, neg = smag(inwk[y + 2 * j], inwk[y + 2 * j + 1])
-            m >>= 1 if f & 8 else 3 if f & 4 else 2
+            m >>= 3 if f & 4 else 2
             r += -m if neg != bool(f & 2) else m
         m = -r if r < 0 else r
         out.append((m & 255, ((m >> 8) & 0x7F) | (0x80 if r < 0 else 0)))

@@ -188,10 +188,9 @@ INWK = PF_INWK          \ (bank 5's part, gfx-bank5.asm: pf_tilt, which reads
 
 \ pf_tilt: pcv = (+/- vector X) / 2 + (+/- vector Y) / 2^(k+1), as
 \ sign-magnitude words (X, Y = 9 nosev, 15 roofv, 21 sidev; Y = 0: none), A
-\ bits 0-3: bit 0 the first's sign, bit 1 the second's, bit 2 k = 2, else
-\ k = 1 (a tilt of 14 or 27 degrees), bit 3 k = 0 (an equal weight); each
-\ magnitude shifted before its sign is applied (so a vector alone is exactly
-\ halved). Halved, as the sums must fit 15 bits (a circle depends on its
+\ bits 0-2: bit 0 the first's sign, bit 1 the second's, bit 2 k = 2, else
+\ k = 1 (a tilt of 14 or 27 degrees); each magnitude shifted before its sign
+\ is applied (so a vector alone is exactly halved). Halved, as the sums must fit 15 bits (a circle depends on its
 \ axis' direction only); pcn = 2^24 / the sum's nominal length (>> 3)
 
 .pf_tilt
@@ -199,13 +198,10 @@ INWK = PF_INWK          \ (bank 5's part, gfx-bank5.asm: pf_tilt, which reads
  STX pft_x
  STY pft_y
  LDX #0                 \ pcn: 1536 (a vector halved), 1536 sqrt(1 + 1/4) or
- CPY #0                 \ sqrt(1 + 1/16) (k = 1, 2), 1536 sqrt(2) (k = 0)
+ CPY #0                 \ sqrt(1 + 1/16) (k = 1, 2)
  BEQ pft0
  INX
- AND #12
- BEQ pft0
- INX
- CMP #4
+ AND #4
  BEQ pft0
  INX
 .pft0
@@ -267,9 +263,9 @@ INWK = PF_INWK          \ (bank 5's part, gfx-bank5.asm: pf_tilt, which reads
  BPL pft1
  RTS
 
-.pfn_lo EQUB LO(10923), LO(9770), LO(10596), LO(7723)
-.pfn_hi EQUB HI(10923), HI(9770), HI(10596), HI(7723)
-.pfn_k  EQUB 0, 2, 3, 1
+.pfn_lo EQUB LO(10923), LO(9770), LO(10596)
+.pfn_hi EQUB HI(10923), HI(9770), HI(10596)
+.pfn_k  EQUB 0, 2, 3
 
 \ pft_add: pft_r += the INWK word at X + Y, its magnitude shifted right A
 \ times, negated if its sign EOR pft_n bit 0 is set (Y kept)

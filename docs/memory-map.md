@@ -438,7 +438,7 @@ what the frames can use, the docked code's are free only while docked.
 | bank 5 | `&9800-&A7FF` | `R_POLY`, `R_LINE` | 4049 | 47 |
 | bank 5 | `&A800-&ADFF` | the state: the dirty and written extents, `R_POLY`'s edge tables | 1536 | 0 |
 | bank 5 | `&AE00-&B132` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 819 | 0 |
-| bank 5 | `&B133-&B3FF` | the room below the per-x tables: `R_LINE`'s cold part, the private state, `R_RESETBUF`, `r_wq`, `pf_tilt` | 700 | 17 |
+| bank 5 | `&B133-&B3FF` | the room below the per-x tables: `R_LINE`'s cold part, the private state, `R_RESETBUF`, `r_wq`, `pf_tilt` | 692 | 25 |
 | bank 5 | `&B400-&BFD4` | the per-x tables, the row pages, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY`, `R_INIT` | 3029 | 0 |
 | bank 5 | `&BFD5-&BFFF` | `RJT`, the jump table | 42 | 1 |
 | bank 6 | `&8000-&ABEC` | the frame layer's code (bank 6 passes) | 11245 | 0 |
@@ -449,7 +449,7 @@ what the frames can use, the docked code's are free only while docked.
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 35, main RAM (flight) 5, main RAM (docked) 1248, bank 4 (flight) 51, bank 4 (docked) 3232, bank 7 (flight) 18, bank 7 0, bank 7 (docked) 4731, bank 5 1187, bank 6 65.
+Free, by place: main RAM 35, main RAM (flight) 5, main RAM (docked) 1248, bank 4 (flight) 51, bank 4 (docked) 3232, bank 7 (flight) 18, bank 7 0, bank 7 (docked) 4731, bank 5 1195, bank 6 65.
 
 **The build's check.** `2-build-files/mapcheck.py`, which `make` runs once
 every program and bank is assembled, fails the build if a place is out of
