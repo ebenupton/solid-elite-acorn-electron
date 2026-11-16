@@ -1,4 +1,4 @@
-hot &8000-&A862: 47 units, 10339 bytes, 0 free
+hot &8000-&A86D: 47 units, 10350 bytes, 0 free
   &8000    22 S%
   &8016   519 Main flight loop (Part 1 of 16)..Main flight loop (Part 8 of 16)
   &821D   204 Main flight loop (Part 11 of 16)..Main flight loop (Part 12 of 16)
@@ -16,36 +16,36 @@ hot &8000-&A862: 47 units, 10339 bytes, 0 free
   &8C8F   255 STARS2..QSMUL
   &8D8E   266 MU5..MULT3
   &8E98   100 SQUA..MU11
-  &8EFC   246 FMLTU2..MLTU2
-  &8FF2    77 MUT1..MULT1
-  &903F   131 TAS3..ADD
-  &90C2   180 DVID3B2
-  &9176   128 BUMP2..REDU2
-  &91F6   277 GCASH..DOEXP
-  &930B    86 DOT..CPIX2
-  &9361   171 NWSHP
-  &940C   136 PROJ..PL9 (Part 3 of 3)
-  &9494    98 CHKON..PLS6
-  &94F6    78 TT17
-  &9544   308 KS3..SFX
-  &9678   202 ZINF..Main game loop (Part 6 of 6)
-  &9742   165 TT102
-  &97E7   101 RDKEY
-  &984C   123 ECMOF..KYTB
-  &98C7   332 DKJ1..DK4
-  &9A13   110 LL28
-  &9A81    87 LL51
-  &9AD8   100 H_CIRC
-  &9B3C    29 MFRAME
-  &9B59    89 S_SHIP
-  &9BB2   947 L_REC
-  &9F65  1193 LL9 (Part 1 of 12)..LL9 (Part 9 of 12)
-  &A40E   128 None..LL9 (Part 10 of 12)
-  &A48E   305 MVEIT (Part 1 of 9)..MVEIT (Part 6 of 9)
-  &A5BF   115 MVEIT (Part 7 of 9)..MVEIT (Part 9 of 9)
-  &A632    87 MVT1
-  &A689   103 MVS4
-  &A6F0   371 MV40..SCAN
+  &8EFC   257 FMLTU2..MLTU2
+  &8FFD    77 MUT1..MULT1
+  &904A   131 TAS3..ADD
+  &90CD   180 DVID3B2
+  &9181   128 BUMP2..REDU2
+  &9201   277 GCASH..DOEXP
+  &9316    86 DOT..CPIX2
+  &936C   171 NWSHP
+  &9417   136 PROJ..PL9 (Part 3 of 3)
+  &949F    98 CHKON..PLS6
+  &9501    78 TT17
+  &954F   308 KS3..SFX
+  &9683   202 ZINF..Main game loop (Part 6 of 6)
+  &974D   165 TT102
+  &97F2   101 RDKEY
+  &9857   123 ECMOF..KYTB
+  &98D2   332 DKJ1..DK4
+  &9A1E   110 LL28
+  &9A8C    87 LL51
+  &9AE3   100 H_CIRC
+  &9B47    29 MFRAME
+  &9B64    89 S_SHIP
+  &9BBD   947 L_REC
+  &9F70  1193 LL9 (Part 1 of 12)..LL9 (Part 9 of 12)
+  &A419   128 None..LL9 (Part 10 of 12)
+  &A499   305 MVEIT (Part 1 of 9)..MVEIT (Part 6 of 9)
+  &A5CA   115 MVEIT (Part 7 of 9)..MVEIT (Part 9 of 9)
+  &A63D    87 MVT1
+  &A694   103 MVS4
+  &A6FB   371 MV40..SCAN
 hotm &79B2-&7DFF: 31 units, 1102 bytes, 0 free
   &79B2    13 INBAY
   &79BF     9 LTLI

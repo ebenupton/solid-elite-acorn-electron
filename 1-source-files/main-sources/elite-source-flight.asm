@@ -13313,9 +13313,20 @@ ENDMACRO
 \
 \ ******************************************************************************
 
+.mltz
+
+ STX P                  \ Port: Q = 0 (X = 0), so the product is 0: return
+ STX P+1                \ (A P+1 P) = 0 with X = 0, C clear, Z set and N clear,
+ TXA                    \ as the quarter squares below would leave them (and V
+ CLC                    \ as it was: every caller's MVT6 sets V before reading
+ RTS                    \ it, by its ADC or SBC)
+
  STX Q                  \ Store X in Q
 
 .MLTU2
+
+ LDX Q                  \ Port: if Q = 0 (MVEIT part 5's calls with a zero roll
+ BEQ mltz               \ or pitch), return 0 at once at mltz
 
                         \ Port: the two bytes' products come from the quarter
                         \ squares (QSMUL) rather than a 16-step shift-and-add,

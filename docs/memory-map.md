@@ -183,7 +183,7 @@ RAM, once.
   `PCLI` stages the bank 4 image, and `PCLI` copies it to its place each time it loads the program;
 * the hot pass's bank 4 container (`hot`), from `S%` at `&8000` (`HOME%`)
   to the room that the layout keeps at the bank's end: in the flight code
-  with `_CIRCLES`, the planet's surface (`CIRCSZ`, 2,717 bytes); then the
+  with `_CIRCLES`, the planet's surface (`CIRCSZ`, 2,706 bytes); then the
   blueprint slot and the quarter squares (`QSL`, `QSH`, which the loader
   makes: in both programs, the lighting's `L_REC` reads them);
 * the cold pass, bank 7 from `&8000`, then the text tokens `QQ18`, below
@@ -418,8 +418,8 @@ what the frames can use, the docked code's are free only while docked.
 | main RAM | `&7FB0-&7FBF` | the high resident block: the palette | 16 | 0 |
 | main RAM | `&7FC0-&7FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 59 | 3 |
 | main RAM | `&7FFE-&7FFF` | `VEC` | 2 | 0 |
-| bank 4 (flight) | `&8000-&A862` | `S%` and the hot pass | 10339 | 0 |
-| bank 4 (flight) | `&A863-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 11 |
+| bank 4 (flight) | `&8000-&A86D` | `S%` and the hot pass | 10350 | 0 |
+| bank 4 (flight) | `&A86E-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 0 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
@@ -449,7 +449,7 @@ what the frames can use, the docked code's are free only while docked.
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 35, main RAM (flight) 0, main RAM (docked) 1248, bank 4 (flight) 51, bank 4 (docked) 3232, bank 7 (flight) 18, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 65.
+Free, by place: main RAM 35, main RAM (flight) 0, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3232, bank 7 (flight) 18, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 65.
 
 **The build's check.** `2-build-files/mapcheck.py`, which `make` runs once
 every program and bank is assembled, fails the build if a place is out of
