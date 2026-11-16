@@ -772,7 +772,6 @@ R_ENDPAGE 9
 .r_ymaxL SKIP 1
 .r_ymaxH SKIP 1
 .r_top SKIP 1
-.r_cc SKIP 1
 R_ENDPAGE 10
 FOR r, 11, 15
   R_RUN r
