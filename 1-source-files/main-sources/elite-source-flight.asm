@@ -6489,7 +6489,15 @@ ENDIF
                         \ and QSH+b operands, and -b into the QSL-b and QSH-b
                         \ ones (whose high bytes are HI(QSL) and HI(QSH) if
                         \ b = 0, or one less)
+                        \
+                        \ If b is already patched in (the CPX operand holds
+                        \ the last b, and the assembled operands are those of
+                        \ b = 0), the operands are all set already, so return
+                        \ (STARS1 reads neither A nor C after this: STL1
+                        \ starts with LDA and CMP; X is kept either way)
 
+ CMP mlb1+1,X
+ BEQ stlpr
  STA mlb1+1,X
  STA mlb2+1,X
  STA mlb4+1,X
@@ -6503,6 +6511,9 @@ ENDIF
  STA mlb3+2,X
  ADC #2                 \ (C = 0: no carry out of HI(QSL))
  STA mlb5+2,X
+
+.stlpr
+
  RTS
 
 .MLUQ

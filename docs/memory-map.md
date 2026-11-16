@@ -213,7 +213,7 @@ the screen's (both buffers, `&1000-&6FFF`, and the dashboard,
 The low pass holds `WSCAN` and `DELAY`, which the cold pass calls directly.
 Without `_CIRCLES` bank 4 holds the whole of each hot pass, so the main RAM
 containers are empty; with it, the flight code's hot pass fills `hotm`, and
-91 bytes of `hotx`.
+all 96 of `hotx`.
 A low block may not fall into a cold one (its stub would be in the low
 pass); a hot block that falls into a low one falls into a `JMP` to it at
 its place. The stubs for a cold block go in the copy of the nearest hot
@@ -410,7 +410,7 @@ what the frames can use, the docked code's are free only while docked.
 | main RAM | `&4000-&6FFF` | buffer 1, the screen | 12288 | 0 |
 | main RAM | `&7000-&76FF` | the dashboard (`P.DIALS`) | 1792 | 0 |
 | main RAM | `&7700-&796F` | the rupture (`elite-rupture.asm`, copied there by the loader): the clock switches, the frames' registers, the flip, the display off during disc commands; its variables after its code | 624 | 0 |
-| main RAM (flight) | `&7970-&7E5F` | the main RAM part: the low pass, then `hotm` and `hotx` (main RAM's code is one run, from the rupture's) | 1259 | 5 |
+| main RAM (flight) | `&7970-&7E5F` | the main RAM part: the low pass, then `hotm` and `hotx` (main RAM's code is one run, from the rupture's) | 1264 | 0 |
 | main RAM (docked) | `&7970-&7E5F` | the main RAM part: the low pass, then `hotm` and `hotx` (main RAM's code is one run, from the rupture's) | 16 | 1248 |
 | main RAM | `&7E60-&7EFF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
 | main RAM | `&7F00-&7F9F` | the missile's blueprint (where the original has it) | 160 | 0 |
@@ -449,7 +449,7 @@ what the frames can use, the docked code's are free only while docked.
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 35, main RAM (flight) 5, main RAM (docked) 1248, bank 4 (flight) 51, bank 4 (docked) 3232, bank 7 (flight) 18, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 65.
+Free, by place: main RAM 35, main RAM (flight) 0, main RAM (docked) 1248, bank 4 (flight) 51, bank 4 (docked) 3232, bank 7 (flight) 18, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 65.
 
 **The build's check.** `2-build-files/mapcheck.py`, which `make` runs once
 every program and bank is assembled, fails the build if a place is out of
