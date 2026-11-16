@@ -93,9 +93,6 @@ ENDIF
                         \ which reads the quarter squares (docs/renderer.md)
 
 IF _CIRCLES
- _PLANET_MOON = FALSE
- _PLANET_RINGS = FALSE
- _PLANET_BANDS = FALSE
  ASSERT PF_INWK = INWK
  INCLUDE "3-assembled-output/gfx-planet7-bank4.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank4.asm"
@@ -114,7 +111,6 @@ IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
 .PFVA_END%
  ASSERT P% <= GLUE%
  ORG PFVS%
- INCLUDE "3-assembled-output/gfx-planet7-bank4top.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank4top.asm"
 .PFVS_END%
  ASSERT P% <= QSL

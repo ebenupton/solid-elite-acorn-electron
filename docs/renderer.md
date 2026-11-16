@@ -117,7 +117,7 @@ The frame layer is the BBC Master port's current one (its `gfx-frame.asm`,
 `gfx-flare.asm`, in the hand-converted NMOS 6502 code
 of its Model B branch), adapted to the Model B, with the Master port's disc
 layer (its row code in the flight code's bank 7: "The discs", below) and
-its planets' surfaces, without its kept solid rows, moons and rings. The game's drawing routines,
+its planets' surfaces, without its kept solid rows. The game's drawing routines,
 in a view that draws ships (`QQ11` = 0 and `GFORCE` = 0: record mode),
 record what they would have drawn; once per main loop iteration `F_FRAME`
 draws the records into the buffer not on show and asks the vertical sync

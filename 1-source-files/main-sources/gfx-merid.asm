@@ -58,11 +58,10 @@
 \     pc_inv. It uses Elite's zero page &10-&26, which PF_HOOK saves, and
 \     reads main RAM only for the quarter squares (QSL, QSH);
 \
-\   * PC_ROWS (the planet's records) and PC_MROWS (the moon's), in the frame
-\     (bank 6's f_bounds; the Master port's through T_CAPS): the disc
-\     layer's boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR).
-\     They use the rasteriser's scratch zero page &10-&27 (F_FRAME has saved
-\     it).
+\   * PC_ROWS (the planet's records), in the frame (bank 6's f_bounds; the
+\     Master port's through T_CAPS): the disc layer's boundaries for rows
+\     R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). They use the rasteriser's
+\     scratch zero page &10-&27 (F_FRAME has saved it).
 \
 \ ******************************************************************************
 
@@ -96,12 +95,7 @@ R_T2  = 21              \ are toggled, and from T2 those in M2 (0..192)
 R_M1  = 22
 R_M2  = 23              \ (M1 and M2 last: pr_c + RSZ follows them)
 ASSERT RSZ = R_M2 + 1   \ (RSZ, the size: gfx-rws.asm, with the mailbox's PCB)
-PCMAX = 3               \ the planet's records (slots 0-2; the moon's in slot 3,
-IF _PLANET_MOON         \ with moon=on)
-PCSLOTS = PCMAX + 1
-ELSE
-PCSLOTS = PCMAX
-ENDIF
+PCMAX = 3               \ the planet's records (slots 0-2)
 
 \       Area: bank 4
 
@@ -118,7 +112,7 @@ ENDIF
  RTS
 .pc_circ
  LDA PC_N
- CMP #PCSLOTS
+ CMP #PCMAX
  BCS pcc9
  LDX #0                 \ the magnitudes >> 2 (pf_tilt's halved vectors: the
  LDY #0                 \ beach ball's |v| >> 3), signs, non-zero flags
@@ -1332,12 +1326,12 @@ ENDMACRO
 
 \ ******************************************************************************
 \
-\ PC_ROWS (the planet: slots 0 .. PC_N - 1, base colour pc_inv), PC_MROWS
-\ (the moon: slots PCMAX .. MN_N - 1, MN_INV): the disc layer's boundaries
-\ for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). Every row starts with
-\ no boundary and the base colour; then each record in turn: its left limb's
-\ toggles flip the start colour of the rows from T1 or T2 down, and, unless
-\ every row is wholly outside its region, its rows from Yc out, down and up.
+\ PC_ROWS (the planet: slots 0 .. PC_N - 1, base colour pc_inv): the disc
+\ layer's boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). Every
+\ row starts with no boundary and the base colour; then each record in turn:
+\ its left limb's toggles flip the start colour of the rows from T1 or T2
+\ down, and, unless every row is wholly outside its region, its rows from Yc
+\ out, down and up.
 \ Called by f_bounds (bank 6; the Master port's through T_CAPS), during
 \ the frame, with this bank paged; it uses the rasteriser's scratch zero page
 \ &10-&27 (F_FRAME has saved it).
@@ -1363,18 +1357,10 @@ ZC  = &24               \ the row's centre, ceil(C)
 ZS  = &26               \ s = round(sqrt(D(k)))
 ZSS = &27               \ the half-chord used: s, or 0 once past
 
-IF _PLANET_MOON
-.PC_MROWS
- LDY MN_N
- LDA MN_INV
- LDX #PCMAX
- BNE pcr0               \ (NMOS: PCMAX is not 0)
-ENDIF
 .PC_ROWS
  LDX #0
  LDY PC_N
  LDA pc_inv
-.pcr0
  STX pr_n
  STY pr_end
  LSR A                  \ (the base colour, bit 0, to bit 7: R_NDN's)

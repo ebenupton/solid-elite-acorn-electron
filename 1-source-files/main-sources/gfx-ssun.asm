@@ -10,8 +10,7 @@
 \ again: 3-assembled-output/elite-flight-again.asm) in bank 4 by far calls
 \ (farH), and keeps D, its records of the planet and the sun and the zero
 \ page it borrows in its own variables here, writing the frame's F_SUX,
-\ F_SUY, F_SUR and F_SUON (gfx-frame.asm) directly. The moon (_PLANET_MOON)
-\ is not in this port.
+\ F_SUY, F_SUR and F_SUON (gfx-frame.asm) directly.
 \
 \ Elite has one slot for the sun and the space station (FRIN+1). When we
 \ come near the planet, part 15 of the main flight loop removes the sun (WPLS)

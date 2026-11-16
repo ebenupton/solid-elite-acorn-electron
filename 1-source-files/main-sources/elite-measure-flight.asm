@@ -43,9 +43,7 @@ ENDIF
 .FLOW_END
 
 IF _CIRCLES             \ (the planet's surface at the hot pass's end, as the
- _PLANET_MOON = FALSE   \ layout has it, for the hot pass's reference to it)
- _PLANET_RINGS = FALSE
- _PLANET_BANDS = FALSE
+                        \ layout has it, for the hot pass's reference to it)
  INCLUDE "3-assembled-output/gfx-planet7-bank4.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank4.asm"
 ENDIF
@@ -61,7 +59,6 @@ IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
  INCLUDE "3-assembled-output/gfx-merid-mainlow.asm"
  ASSERT P% <= GLUE%
  ORG PFVS%
- INCLUDE "3-assembled-output/gfx-planet7-bank4top.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank4top.asm"
  ASSERT P% <= QSL
 ENDIF

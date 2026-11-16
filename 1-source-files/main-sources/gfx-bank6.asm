@@ -51,9 +51,6 @@
  ORG &8000
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
-_PLANET_MOON = FALSE    \ (the Master port's moons, rings and bands are not in
-_PLANET_RINGS = FALSE   \ this port)
-_PLANET_BANDS = FALSE
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"
 IF _SSUN
  INCLUDE "3-assembled-output/gfx-ssun-bank6.asm"
