@@ -262,7 +262,11 @@ followed by a block of its own pass (in the hot pass, its unit), or by a
 block of the other side whose first statement is its entry label; that a
 block ending in the original's skip trick (`EQUB &2C`, which makes the next
 instruction the operand of a `BIT`), or that runs on, is followed by a
-block of its own pass; that no block branches into another pass of its
+block of its own pass (a block's last statement is the last that assembles
+anything: a constant, a `PRINT` or an `ASSERT` after it does not end the
+fall, and a label alone falls into the next block); that each hot block
+that falls through ends where the block it falls into starts, by an
+`ASSERT` in the copies, which BeebAsm checks; that no block branches into another pass of its
 side; that every stub has its own line; and that every unit fits a
 container. Then `2-build-files/bankcheck.py` checks every reference in the
 copies:

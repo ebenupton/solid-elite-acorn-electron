@@ -1,10 +1,9 @@
-hot &8000-&AE0F: 118 units, 8720 bytes, 3072 free
+hot &8000-&AE0F: 117 units, 8720 bytes, 3072 free
   &8000    22 S%
   &8016    15 INBAY
   &8025    20 DEEOR
   &8039    16 BRKBK
-  &8049    17 MVEIT (Part 1 of 9)
-  &805A   100 MVEIT (Part 7 of 9)..MVEIT (Part 9 of 9)
+  &8049   117 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
   &80BE    87 MVT1
   &8115    92 MVT3
   &8171    89 MVS4

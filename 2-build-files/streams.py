@@ -121,6 +121,10 @@
 #     fall-through across passes is an error;
 #   * a block that ends with the original's skip trick (EQUB &2C or &24) is
 #     followed by a block of its own pass (a stub cannot be skipped into);
+#   * (in the copies, checked by BeebAsm) each hot block that falls through
+#     its end ends where the block it falls into starts: an ASSERT in its
+#     copy (or a FALL_<line> constant and an ASSERT in the next block's), so
+#     a flow that parted them fails the build;
 #   * no block branches into another pass of its side (a branch to the
 #     other side reaches the target's stub, at its place in its own copy);
 #   * every stub's line is blank in its copy, and every target is defined in
@@ -267,14 +271,22 @@ ACTIVE = []
 
 def last_statement(lines, s, e):
     """the last statement of lines[s:e] that is assembled (None if none),
-    passing over the lines of conditional assembly (IF, ELIF, ELSE, ENDIF)
-    and the branches the build's flags rule out"""
+    passing over the lines of conditional assembly (IF, ELIF, ELSE, ENDIF),
+    the branches the build's flags rule out, and the statements that
+    assemble nothing (constants, PRINTs, ASSERTs ...: the docked code's MT16
+    ends with DTW7 = MT16 + 1, after the LDA that falls through into TT26);
+    a macro's definition ends with its ENDMACRO"""
     for i in range(e - 1, s - 1, -1):
         if ACTIVE and not ACTIVE[i]:
             continue
         c = code_part(lines[i])
-        if c and not re.match(r"^(IF|ELIF|ELSE|ENDIF)\b", c, re.I):
-            return c if c.upper().startswith("EQU") else c.split(" : ")[-1].strip()
+        if not c or re.match(r"^(IF|ELIF|ELSE|ENDIF)\b", c, re.I):
+            continue
+        if c.upper().startswith("EQU") or re.match(r"^ENDMACRO\b", c, re.I):
+            return c
+        for st in reversed([x.strip() for x in c.split(" : ")]):
+            if assembles(st, set()):
+                return st
     return None
 
 
@@ -321,9 +333,12 @@ def falls_through(stmt, macros):
         return False
     if re.match(r"^(EQU[BWDS]|SKIP|INCBIN|FOR|NEXT|PRINT|SAVE|ASSERT|ORG|CLEAR|GUARD|MACRO|ENDMACRO|INCLUDE|CPU|COPYBLOCK|ALIGN)\b", op):
         return False                   # (data and directives: nothing to fall from)
-    if re.match(r"^[A-Za-z_][\w%]*\s*=", stmt) or stmt.startswith("."):
-        return False                   # (a constant, or a label alone)
-    return True
+    if re.match(r"^[A-Za-z_][\w%]*\s*=", stmt):
+        return False                   # (a constant)
+    return True                        # (an instruction, or a label alone,
+                                       # which names the next block's first
+                                       # byte: the docked code's MVEIT part 1
+                                       # ends with .MV3, falling into part 7)
 
 
 IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*%?")
@@ -935,6 +950,7 @@ def program(prog, phase, errors):
     # statement is its entry label, as that label's stub is then the next
     # thing in the falling block's pass
     falls = []
+    hotfalls = []                          # (k, k2): hot block k falls into hot block k2
     lowseams = []
     ovlseams = []                          # (overlay copy, cold label, by a branch)
     for k, b in enumerate(bl):
@@ -953,6 +969,7 @@ def program(prog, phase, errors):
             elif eff[k2] == eff[k]:
                 if eff[k] == "hot":
                     join(pos[k], pos[k2])
+                    hotfalls.append((k, k2))
             elif bit_skip(st) or b.runson:
                 errors.append("%s:%d: %s (%s) %s %s (%s): they must be in one pass"
                               % (src, b.e, b.name, eff[k], "runs on into" if b.runson else "skips into",
@@ -1113,6 +1130,34 @@ def program(prog, phase, errors):
     if phase == "measure":
         for k in hot:
             copies["measure"][bl[k].s] = ".FLOW_%d" % k
+    else:
+        # each hot block that falls through its end must end where the block
+        # it falls into starts, so that a flow that parted them fails the
+        # build: on a line with no code after the falling block's last code
+        # line (in its copy), an ASSERT that the next block's entry label is
+        # there, or, if the next block starts with no label, a constant
+        # FALL_<line> = P%, which an ASSERT on a line with no code before the
+        # next block's first code line (in its copy) checks
+        def spare(rng):
+            free = [i for i in rng if not code_part(lines[i]) and ACTIVE[i]]
+            return ([i for i in free if not lines[i].strip()] + free)[:1]
+        note = "   \\ (streams.py: %s falls through into %s)"
+        for k, k2 in hotfalls:
+            b, b2 = bl[k], bl[k2]
+            code = [i for i in range(b.s, b.e) if code_part(lines[i]) and ACTIVE[i]]
+            code2 = [i for i in range(b2.s, b2.e) if code_part(lines[i]) and ACTIVE[i]]
+            entry = entry_label(lines, b2.s, b2.e, macros)
+            spot = spare(range(code[-1] + 1, b.e))
+            spot2 = [] if entry else spare(range(b2.s, code2[0]))
+            if not spot or not (entry or spot2):
+                errors.append("%s:%d: %s falls into %s: no line without code for the check"
+                              % (src, b.e, b.name, b2.name))
+                continue
+            if entry:
+                copies[copy_of[k]][spot[0]] = " ASSERT P% = " + entry + note % (b.name, b2.name)
+            else:
+                copies[copy_of[k]][spot[0]] = "FALL_%d = P%%" % (b.e + 1) + note % (b.name, b2.name)
+                copies[copy_of[k2]][spot2[0]] = " ASSERT P% = FALL_" + str(b.e + 1) + note % (b.name, b2.name)
     nstubs = glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies)
     seams = {}
     for c, entry, br in ovlseams:          # (a branch's JMP serves a fall too)
