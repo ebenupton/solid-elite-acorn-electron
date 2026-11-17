@@ -120,7 +120,8 @@ its checksum at the first `QU5`; `--mode` (`efficient`, `curious`, `fair`, `nosa
 (E.C.M., the energy bomb, the escape pod, the views, missiles, the galactic hyperdrive and
 `ghypfill`, hyperspace, mis-jumps (`misjump`: the author names on in the pause, then CTRL
 held through a jump), in-system jumps, the docking computer, the charts, the pause, the sun
-put just ahead (`sun`), drained shields, heat, an empty tank, cargo canisters put under the
+put just ahead (`sun`), the parked sun (the station holding its slot) put just ahead
+(`sunpark`; in the reference, the patch's region `SUNPK`), drained shields, heat, an empty tank, cargo canisters put under the
 nose (`scoop`, from 48 below and 128 ahead; `scoopnow`, inside the scoop test at once;
 `scoophold`, the same with the hold emptied first: the agent trades with a full hold, and a
 canister scooped into a full hold is destroyed; only a canister that is not exploding, as
@@ -129,6 +130,21 @@ the agent shoots them, so the canisters a session's kills leave set how many it 
 names over-deleted) and `docked` (market, data, inventory, charts with the cursor and the
 search, equipment, sales)); `--seed`, RAND at `TT170` and the overlay's seed. All of it goes
 through the input log, so every session replays exactly.
+
+**Dead registers.** `--deadregs` runs the candidate as the gate's comparison does
+(`blib.mjs`'s `DEAD_AFTER`): at the return from each routine listed, the registers and
+flags the port claims dead there are scrambled, so a read of any of them diverges;
+`summary.json` counts the scrambles by routine (`deadRegs`). Campaigns pass it on
+(`campaign.mjs --deadregs`). Among the routines counted are the port's sun parking
+(`SUNUP`, `SUNSC`, `SUNBK`, `SUNLAU`), `MV40` and `PTCLS`; in the reference, the fourth
+patch's `keepRand` restores and its `MV40` sites are counted as they run (`ref:site:`
+events), and the campaign's summary lists all of them.
+
+**Plans** (`campaign.mjs --plan`): `soak` (the default: every commander in curious play,
+the chaos overlay, then loads from the discs saved), `publish` (before a release, run with
+`--deadregs` and two jobs: the sun's parking with `sunpark`, fights and explosions, visible
+suns, the charts, the docked screens and the disc menu, deaths and hyperspace, the docking
+computer, and a load; about 275 game minutes) and `quick`.
 
 **Workarounds.** `--workaround inbay` (candidate only, at run time; the port's source is not
 changed) plays on past the death bug of a build whose flight code has `INBAY` in main RAM:

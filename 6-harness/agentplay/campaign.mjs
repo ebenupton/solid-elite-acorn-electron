@@ -3,8 +3,9 @@
 // few at a time, then one table of what they covered and every finding, grouped (the Master
 // port's campaign.mjs).
 //
-// node 6-harness/agentplay/campaign.mjs --out DIR [--jobs 2] [--plan soak|quick]
+// node 6-harness/agentplay/campaign.mjs --out DIR [--jobs 2] [--plan soak|publish|quick]
 //      [--only name,name] [--scale 1.0] [--summarise] [--cand build.json] [--workaround inbay]
+//      [--deadregs] (every session's candidate with blib.DEAD_AFTER's registers scrambled)
 // Each session runs as agentplay.mjs in DIR/<name>/; a session already finished there
 // (summary.json) is not run again, so a campaign can be resumed. --scale multiplies every
 // session's length. --summarise only rewrites the summary (DIR/campaign.json, DIR/campaign.md).
@@ -15,7 +16,7 @@ import { parseArgs } from "../args.mjs";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs";
 import { dirname, resolve } from "path";
 
-const a = parseArgs({ out: "value", jobs: "value", plan: "value", only: "value", scale: "value", summarise: "flag", cand: "value", workaround: "value" });
+const a = parseArgs({ out: "value", jobs: "value", plan: "value", only: "value", scale: "value", summarise: "flag", cand: "value", workaround: "value", deadregs: "flag" });
 if (!a.out) { console.error("--out DIR required"); process.exit(2); }
 const OUT = resolve(a.out), JOBS = +(a.jobs || 2), SCALE = +(a.scale || 1);
 const HERE = decodeURIComponent(new URL(".", import.meta.url).pathname);
@@ -77,6 +78,24 @@ const PLANS = {
         ["load-s25", 30, "--seed", "25", "--mode", "load", "--from", "eff-s17", "--chaos", "pod,bomb,misjump"],
         ["load-s36", 30, "--seed", "36", "--mode", "load,curious", "--from", "cur-galaxies-s39", "--chaos", "ghyp*6,ghypfill*3,scoophold*60"],
     ],
+    // before publishing (run with --deadregs, 2 jobs): the sun's parking (sunpark: the parked
+    // sun brought close ahead), then fights and explosions, visible suns, the charts, docked
+    // screens and disc menu, deaths and hyperspace, the docking computer, and a load (about
+    // 275 game minutes)
+    publish: [
+        ["pub-ss-jameson-s931", 30, "--seed", "931", "--mode", "curious", "--chaos", "dock*6,sunpark*3,sun*2"],
+        ["pub-ss-deadly-s932", 30, "--seed", "932", "--commander", "deadly", "--mode", "curious", "--chaos", "dock*6,missile*2,sunpark*4,hurt*2"],
+        ["pub-ss-equipped-s933", 25, "--seed", "933", "--commander", "equipped", "--chaos", "dock*8,jump*3,pod*2,sunpark*3,hyper*2"],
+        ["pub-ss-trader-s934", 25, "--seed", "934", "--commander", "trader", "--mode", "fair", "--chaos", "dock*6,sun*3,sunpark*3,views*2"],
+        ["pub-ss-death-s935", 20, "--seed", "935", "--commander", "equipped", "--mode", "curious", "--chaos", "hurt*4,heat*2,sun*3,sunpark*3,pod*2"],
+        ["pub-ss-galaxies-s936", 25, "--seed", "936", "--commander", "equipped", "--mode", "curious", "--chaos", "ghyp*6,ghypfill*3,dock*4,sunpark*2"],
+        ["pub-fight-deadly-s951", 25, "--seed", "951", "--commander", "deadly", "--mode", "curious", "--chaos", "missile*4,ecm*2,bomb*2,views*2"],
+        ["pub-sun-equipped-s952", 20, "--seed", "952", "--commander", "equipped", "--mode", "curious", "--chaos", "sun*6,fuel*2,sunpark*2,views*2"],
+        ["pub-docked-rich-s953", 20, "--seed", "953", "--commander", "rich", "--mode", "curious", "--chaos", "docked,disc,charts*3", "--savediscs"],
+        ["pub-death-equipped-s954", 20, "--seed", "954", "--commander", "equipped", "--chaos", "hurt*4,heat*2,hyper*3,ghyp*2,pod"],
+        ["pub-dock-trader-s955", 20, "--seed", "955", "--commander", "trader", "--mode", "fair", "--chaos", "dock*8,jump*3,docked"],
+        ["pub-load-s956", 15, "--seed", "956", "--mode", "load,curious", "--from", "pub-docked-rich-s953", "--chaos", "disc,docked"],
+    ],
     quick: [
         ["q-cur", 3, "--seed", "1", "--mode", "curious", "--savediscs"],
         ["q-chaos", 3, "--seed", "2", "--commander", "equipped", "--chaos", "all,docked,disc"],
@@ -106,6 +125,7 @@ function runOne([name, minutes, ...opts]) {
         else args.push(opts[i]);
     }
     if (a.workaround) args.push("--workaround", a.workaround);
+    if (a.deadregs) args.push("--deadregs");
     mkdirSync(dir, { recursive: true });
     console.log(`${new Date().toISOString().slice(11, 19)} ${name}: start (${args.slice(1).join(" ")})`);
     return new Promise(res => {
@@ -132,7 +152,7 @@ if (!a.summarise) {
 
 // ---- the summary
 const rows = [], groups = new Map();
-const cover = {}, features = {}, reached = new Set(), codeLabels = new Set(), creached = new Set(), ccode = new Set();
+const cover = {}, ccover = {}, sites = {}, dead = {}, features = {}, reached = new Set(), codeLabels = new Set(), creached = new Set(), ccode = new Set();
 for (const [name] of plan) {
     for (const [file, R, C] of [["coverage-ref.json", reached, codeLabels], ["coverage-cand.json", creached, ccode]]) {
         const cf = `${OUT}/${name}/${file}`;
@@ -144,6 +164,12 @@ for (const [name] of plan) {
     const cfg = existsSync(`${OUT}/${name}/config.json`) ? JSON.parse(readFileSync(`${OUT}/${name}/config.json`, "utf8")) : {};
     const ev = {};
     for (const [k, v] of Object.entries(s.events || {})) { const m = /^ref:routine:(.*)$/.exec(k); if (m) { ev[m[1]] = v; cover[m[1]] = (cover[m[1]] || 0) + v; } }
+    for (const [k, v] of Object.entries(s.events || {})) {
+        const m = /^cand:routine:(.*)$/.exec(k), t = /^ref:site:(.*)$/.exec(k);
+        if (m) ccover[m[1]] = (ccover[m[1]] || 0) + v;
+        if (t) sites[t[1]] = (sites[t[1]] || 0) + v;
+    }
+    for (const [k, v] of Object.entries(s.deadRegs || {})) dead[k] = (dead[k] || 0) + v;
     for (const [k, v] of Object.entries(s.features || {})) features[k] = (features[k] || 0) + v;
     const real = s.findings.filter(f => f.kind !== "observable" && f.kind !== "hang-both" && f.kind !== "orig-disc-lost");
     rows.push({ name, status: real.length ? "FINDINGS" : "clean", minutes: s.gameMinutes, wall: s.wall, iters: s.compared, flight: s.flight, reads: s.reads,
@@ -172,7 +198,7 @@ function fingerprint(f) {
     return `${f.kind}: ${f.text.replace(/iteration \d+/g, "iteration #").replace(/read \d+/g, "read #")}`;
 }
 const tot = rows.reduce((t, r) => ({ minutes: t.minutes + (r.minutes || 0), wall: t.wall + (r.wall || 0), iters: t.iters + (r.iters || 0), flight: t.flight + (r.flight || 0) }), { minutes: 0, wall: 0, iters: 0, flight: 0 });
-writeFileSync(`${OUT}/campaign.json`, JSON.stringify({ rows, coverage: cover, features, totals: tot, groups: [...groups.values()] }, null, 1));
+writeFileSync(`${OUT}/campaign.json`, JSON.stringify({ rows, coverage: cover, candCoverage: ccover, sites, deadRegs: dead, features, totals: tot, groups: [...groups.values()] }, null, 1));
 const pct = (r, c) => `${r.size} of ${c.size} code labels (${(100 * r.size / Math.max(1, c.size)).toFixed(1)}%)`;
 const md = [];
 md.push(`# agentplay campaign (Model B): ${OUT}`, "", `${rows.length} sessions, ${tot.minutes.toFixed(1)} game minutes, ${(tot.wall / 3600).toFixed(2)} job-hours, ${tot.iters} iterations compared (${tot.flight} in flight).`, "");
@@ -181,6 +207,10 @@ for (const r of rows) md.push(`| ${r.name} | ${r.commander || ""} | ${r.mode || 
 const gall = new Set(rows.flatMap(r => r.galaxies || []));
 md.push("", `Galaxies reached over all sessions: ${[...gall].sort((x, y) => x - y).join(" ")}.`);
 md.push("", "Routine entries (reference machine, over all sessions):", "", Object.entries(cover).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(", "), "");
+const cnt = o => Object.entries(o).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(", ") || "none";
+md.push("The port's sun parking, MV40 and explosion clouds (candidate machine, entries): " + cnt(Object.fromEntries(["SUNSC", "SUNLAU", "SUNUP", "SUNBK", "MV40", "PTCLS"].map(k => [k, ccover[k] || 0]))), "");
+md.push("The reference's patch (keepRand's restores and the sites in MV40, as they ran): " + cnt(sites), "");
+md.push("Dead registers scrambled (candidate, --deadregs), by routine: " + cnt(dead), "");
 md.push("Features seen (reference machine's state, iterations or events, over all sessions):", "", Object.entries(features).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} ${v}`).join(", "), "");
 if (codeLabels.size) {
     const un = [...codeLabels].filter(k => !reached.has(k));

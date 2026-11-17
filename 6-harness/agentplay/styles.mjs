@@ -116,6 +116,13 @@ const POKES = {
     // fuel scooping from 224 (with the scoops: nearer than about 125 x 256), and death by
     // the heat when that overflows (nearer than about 86 x 256)
     sun:     { every: 9000, when: (r, sy) => flying(r, sy) && r[sy.FRIN + 1] === 129, poke: () => [["K%", 37, [0, Math.floor(rng() * 20), Math.floor(rng() * 2) << 7, 0, Math.floor(rng() * 20), Math.floor(rng() * 2) << 7, 0, 84 + Math.floor(rng() * 42), 0]]] },
+    // the parked sun (SUNPK, while the station holds its slot: SUNUP) brought close ahead
+    // likewise, where it is drawn big over the safe zone (MA23's heat and scooping read
+    // only slot 1's sun, with the station gone); SUNPK in the reference is the patch's
+    // region (lib.mjs)
+    sunpark: { every: 20000, when: (r, sy) => flying(r, sy) && r[sy.SSPR] && !r[sy.MJ] && sy.SUNPF !== undefined && r[sy.SUNPF] & 0x80,
+        poke: () => { const c = () => [Math.floor(rng() * 256), Math.floor(rng() * 21), rng() < 0.5 ? 0 : 0x80];
+            return [["SUNPK", 0, [...c(), ...c(), Math.floor(rng() * 256), 90 + Math.floor(rng() * 41), 0]]]; } },
 };
 // the disc menu (disc Elite's: 1 load, 2 save, 3 catalogue, 4 delete, anything else
 // exits), while docked on the Status screen (up to three such actions a dock, and the

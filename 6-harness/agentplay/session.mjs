@@ -97,7 +97,7 @@ export class Session {
         // (the reference's fourth patch: the candidate's sunref.json, unless the reference is a port build)
         const refPatch = this.rb.progs.flight.sy.SUNPK === undefined ? loadRefPatch(cfg.cand) : null;
         this.ref = new BMachine({ name: "ref", build: this.rb, input: this.refInput(), rand, patch, cover: true, refPatch });
-        this.cand = new BMachine({ name: "cand", build: this.cb, input: this.candInput(), rand, patch, watch0d: true, cover: true, workarounds: cfg.workarounds || [] });
+        this.cand = new BMachine({ name: "cand", build: this.cb, input: this.candInput(), rand, patch, watch0d: true, cover: true, workarounds: cfg.workarounds || [], deadRegs: !!cfg.deadRegs });
         await this.ref.boot();
         await this.cand.boot();
         this.rsy = this.ref.sy;
@@ -378,9 +378,9 @@ export class Session {
             }
             while (m.evSeen === undefined ? (m.evSeen = 0, false) : m.evSeen < m.events.length) {
                 const [it, kind, detail] = m.events[m.evSeen++];
-                const key = `${m.name}:${kind}${kind === "routine" ? ":" + detail : ""}`;
+                const key = `${m.name}:${kind}${kind === "routine" || kind === "site" ? ":" + detail : ""}`;
                 this.stats.events[key] = (this.stats.events[key] || 0) + 1;
-                if (kind !== "routine") appendFileSync(this.files.events, JSON.stringify({ m: m.name, iter: it, kind, detail }) + "\n");
+                if (kind !== "routine" && kind !== "site") appendFileSync(this.files.events, JSON.stringify({ m: m.name, iter: it, kind, detail }) + "\n");
                 if (kind === "workaround") this.stats.workarounds = (this.stats.workarounds || 0) + 1;
                 if (kind === "brk" || kind === "page0d") {
                     this.brkSeen ||= {};
@@ -389,6 +389,7 @@ export class Session {
                     if (n === 20) { this.finding("brk-loop", `${m.name} iteration ${it}: the same BRK 20 times: ${detail}`, { iter: it }); this.stopNow = true; }
                 }
             }
+            if (m.evSeen > 4096) { m.events.splice(0, m.evSeen); m.evSeen = 0; }     // (counted: let them go)
         }
         // a filing-system error in one machine and not the other (by input reads: either
         // machine can be ahead between two reads)
@@ -487,7 +488,7 @@ export class Session {
             observables: this.obsR ? { checked: this.obsChecked, differing: this.obsDiffs, kinds: this.obsKinds || {} } : null,
             discChecks: this.stats.discChecks || 0, saveFilesSame: this.stats.saveFilesSame || 0, discFinalSkipped: !!this.stats.discSkipped,
             brksRom: { ref: ref.brks.filter(b => b.fromRom).map(b => b.msg), cand: cand.brks.filter(b => b.fromRom).map(b => b.msg) },
-            seeded: cand.seeded?.length, workarounds: cfg.workarounds || [], workaroundHits: this.stats.workarounds || 0, final: finalState(ref, this.rsy),
+            seeded: cand.seeded?.length, deadRegs: cfg.deadRegs ? cand.deadN : undefined, workarounds: cfg.workarounds || [], workaroundHits: this.stats.workarounds || 0, final: finalState(ref, this.rsy),
         };
         const cov = ref.coverage();
         if (cov) writeFileSync(`${cfg.out}/coverage-ref.json`, JSON.stringify(cov));

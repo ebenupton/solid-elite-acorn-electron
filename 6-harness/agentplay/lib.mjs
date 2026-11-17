@@ -35,7 +35,7 @@
 // What it watches for besides: BRKs (any BRK instruction run once the game has started,
 // with where it was and the error block after it), writes by game code to page &0D, and
 // the routine labels of each poll (control flow).
-import { progHooks, regionsFor, canonFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, PATCHES, bootModelB, physRead, loadSyms, page1Watch, applyRefPatch } from "../blib.mjs";
+import { progHooks, regionsFor, canonFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, PATCHES, bootModelB, physRead, loadSyms, page1Watch, applyRefPatch, DEAD_AFTER } from "../blib.mjs";
 import { existsSync, readFileSync } from "fs";
 import { dirname, resolve } from "path";
 export { regionsFor };
@@ -43,17 +43,22 @@ export { regionsFor };
 export const ROOT = decodeURIComponent(new URL("../..", import.meta.url).pathname).replace(/\/$/, "") + "/";
 export const NI = 37, NOSH = 12;
 export const CYCLES_PER_FRAME = 40000;          // 2 MHz, 50 Hz
-// routines whose entries are counted (coverage of the game's features), in either program
+// routines whose entries are counted (coverage of the game's features), in either program;
+// the sun's parking (the build's SUNUP, SUNSC, SUNBK, SUNLAU), MV40 and PTCLS (the
+// explosion clouds) among them
 export const ROUTINES = ["LAUN", "DOENTRY", "TT18", "Ghy", "MJP", "WARP", "DEATH", "ESCAPE", "ECBLB2", "ECMOF",
     "FRMIS", "SFRMIS", "EXNO3", "GTHG", "EQSHP", "TT219", "TT208", "TT213", "TT25", "TT167", "STATUS", "TT22", "TT23",
     "SVE", "LOD", "CATS", "DELT", "MEBRK", "BRBR", "MT26", "HME2", "TITLE", "DEATH2",
-    "BRIEF", "BRIEF2", "BRIEF3", "DEBRIEF", "DEBRIEF2", "FREEZE"];
+    "BRIEF", "BRIEF2", "BRIEF3", "DEBRIEF", "DEBRIEF2", "FREEZE", "SUNUP", "SUNSC", "SUNBK", "SUNLAU", "MV40", "PTCLS"];
 
 export class BMachine {
     // opts: name, build (blib.loadBuild), input ({ poll(ctx) }: ctx.kind k|w|d|c),
     //       seedFrom (another BMachine whose TT170 state seeds this one's boot leftovers),
     //       rand (4 bytes written to RAND at TT170), patch(m) (called once, at the first QU5),
-    //       watch0d (record page &0D writes by game code), cover (whole-code coverage)
+    //       watch0d (record page &0D writes by game code), cover (whole-code coverage),
+    //       refPatch (the reference's fourth patch), deadRegs (blib's DEAD_AFTER: at the
+    //       return from each routine listed, the registers and flags the port claims dead
+    //       there are scrambled, as runElite's opts.deadRegs; counted in deadN)
     constructor(opts) {
         Object.assign(this, { name: opts.name, b: opts.build, input: opts.input, opts });
         this.sy = { ...this.b.loader, ...this.b.progs.docked.sy, ...this.b.progs.flight.sy };   // (the workspace: the same in both programs)
@@ -106,6 +111,19 @@ export class BMachine {
         // the patch's keepRand (blib's: the explosion clouds' seed, kept across PTCLS)
         if (this.rp && this.rp.keepRand) add("KEEP", { ...hookOf(P.flight, "PTCLS"), a: this.rp.keepRand.at });
         this.keepPend = null;
+        // (the parked sun, for the chaos pokes and the features: the patch's region in the
+        // reference, the build's own symbols in the port)
+        if (this.rp && this.rp.region && this.rp.region[2] === "SUNPK" && this.sy.SUNPK === undefined) { this.sy.SUNPK = this.rp.region[0]; this.sy.SUNPF = this.rp.region[0] + 37; }
+        // opts.deadRegs (blib's DEAD_AFTER, as runElite's): each routine's entry in the
+        // flight program (and its body in another pass), noting the return
+        this.deadPend = []; this.deadN = {}; this.deadSeed = 0x2545F491;
+        if (this.opts.deadRegs) for (const [n, regs] of DEAD_AFTER) for (const nm of [n, n + "_C", n + "_6"]) {
+            const a = P.flight.sy[nm];
+            if (a === undefined) continue;
+            const role = P.flight.bank[nm];
+            const img = P.flight.images.find(im => (role === undefined || im.map === role || im.map === "m") && a >= im.base && a + 3 <= im.base + im.data.length);
+            if (img) add("DEAD", { prog: P.flight, name: n, a, map: img.map, sig: [0, 1, 2].map(i => img.data[a + i - img.base]), regs, n });
+        }
         this.addHook = add;
         this.hookTab = new Uint8Array(65536);
         for (const a of byPc.keys()) this.hookTab[a] = 1;
@@ -383,6 +401,7 @@ export class BMachine {
             case "KEEPRET":
                 if (this.keepPend && pc === this.keepPend.ret) {
                     this.rp.keepRand.bytes.forEach((x, i) => { this.ram[x] = this.keepPend.vals[i]; });
+                    if (this.started) this.event("site", "keepRand");
                     const hs = this.byPc.get(pc).filter(x => x.key !== "KEEPRET");
                     if (hs.length) this.byPc.set(pc, hs); else { this.byPc.delete(pc); this.hookTab[pc] = 0; }
                     this.keepPend = null;
@@ -391,8 +410,36 @@ export class BMachine {
             case "RPATCH": {                     // (the reference's fourth patch: blib.applyRefPatch,
                 const e = applyRefPatch(cpu, this.rp);   // where the flight program starts)
                 if (e) { this.events.push([this.iter, "refpatch", e]); this.error = e; }
+                // (the patch's sites in MV40, counted as they run: MV40's K2; hooked by their
+                // new bytes, so the docked program's code there is not counted)
+                else for (const st of this.rp.sites) if (/^MV40/.test(st.name) && !this.byPc.get(st.at)?.some(x => x.key === "SITE")) {
+                    this.addHook("SITE", { prog: null, name: st.name, a: st.at, map: "m", sig: st.new.slice(0, 3) });
+                    this.hookTab[st.at] = 1;
+                }
                 break;
             }
+            case "SITE": if (this.started) this.event("site", h.name); break;
+            case "DEAD": {
+                const ret = ((this.rb(0x100 + ((cpu.s + 1) & 0xff)) | this.rb(0x100 + ((cpu.s + 2) & 0xff)) << 8) + 1) & 0xffff;
+                this.deadPend.push({ ret, s: (cpu.s + 2) & 0xff, regs: h.regs, n: h.n });
+                if (this.deadPend.length > 64) this.deadPend.shift();
+                if (!this.byPc.get(ret)?.some(x => x.key === "DEADRET")) { this.addHook("DEADRET", { prog: null, name: "deadret", a: ret, map: "m", sig: [] }); this.hookTab[ret] = 1; }
+                break;
+            }
+            case "DEADRET":
+                for (let j = this.deadPend.length - 1; j >= 0; j--) {
+                    const d = this.deadPend[j];
+                    if (pc !== d.ret || cpu.s !== d.s) continue;
+                    for (const r of d.regs) {
+                        this.deadSeed ^= this.deadSeed << 13; this.deadSeed ^= this.deadSeed >>> 17; this.deadSeed ^= this.deadSeed << 5;
+                        const v = this.deadSeed >>> 0;
+                        if (r === "a" || r === "x" || r === "y") cpu[r] = v & 255; else cpu.p[r] = !!(v & 256);
+                    }
+                    this.deadN[d.n] = (this.deadN[d.n] || 0) + 1;
+                    this.deadPend.splice(j);
+                    break;
+                }
+                break;
             case "Mpc": {
                 const v = this.rb(sy.LASCT);
                 if (v) this.ram[sy.LASCT] = v - 1;
