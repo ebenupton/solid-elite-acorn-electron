@@ -4,7 +4,9 @@ disc Elite (Stairway to Hell, 4-reference-binaries/sth) that the harness
 applies so that the reference runs the same game logic as this build: the
 sun parked while the space station holds its slot (SUNUP, SUNSC, SUNBK,
 SUNLAU and SUNE in elite-source-flight.asm; docs/renderer.md, "The sun's
-place"). Run by the Makefile once the flight code is assembled; writes
+place"), and the sun's edge drawing no random numbers (SUN's JSR DORND, each
+row's random fringe, as LDA #0 : NOP: the fringe is 0, as the port's). Run by
+the Makefile once the flight code is assembled; writes
 
   3-assembled-output/sunref.json          the patch (6-harness/blib.mjs's
                                           loadRefPatch: bcompare.mjs and
@@ -12,6 +14,11 @@ place"). Run by the Makefile once the flight code is assembled; writes
                                           when it is beside the candidate's
                                           build.json)
   3-assembled-output/sunref-passive.json  its passive variant (below)
+  3-assembled-output/sunref-edge.json     the sun's edge's site alone, with
+                                          randAt: the harness advances RAND
+                                          there as the DORND would (the proof
+                                          that it changes nothing else:
+                                          6-harness/verify.sh's edge runs)
   3-assembled-output/sunref-syms.asm      the bindings elite-sunref.asm
                                           assembles with
 
@@ -165,6 +172,15 @@ def lo_hi(a):
     return [a & 255, a >> 8]
 
 
+def edge(ref):
+    """the sun's edge draws no random numbers: SUN's one JSR DORND (part 3,
+    each row's fringe, ANDed with CNT and added to the row's half-width)
+    becomes LDA #0 : NOP, so the fringe is 0 and RAND is not touched (CLC
+    follows, so the C flag DORND would leave is not read)"""
+    return {"name": "SUN: JSR DORND", "addr": None, "orig": [0x20] + lo_hi(ref["DORND"]), "new": [0xA9, 0x00, 0xEA],
+            "search": [ref["SUN"], ref["CIRCLE"]]}
+
+
 def patch(ref, sr, code, passive, sunpk):
     def site(name, addr, orig, new):
         return {"name": name, "addr": addr, "orig": orig, "new": new}
@@ -185,7 +201,9 @@ def patch(ref, sr, code, passive, sunpk):
     ]
     for s_, rng in zip(sites[4:], (("TT110", "NLUNCH"), ("NWSPS", "NWSHP"), ("NWSPS", "NWSHP"))):
         s_["search"] = [ref[rng[0]], ref[rng[1]]]
-    return {"name": "the sun's parking" + (" (passive)" if passive else ""), "slot": SR_SLOT,
+    if not passive:
+        sites.append(edge(ref))
+    return {"name": "the sun's parking" + (" (passive)" if passive else ", the sun's edge"), "slot": SR_SLOT,
             "code": [[sr["SR_START"], list(code)]], "heap": [heap, sr["SR_END"] - heap], "sites": sites,
             "lso": heap, "region": [sunpk, 38, "SUNPK"], "entry": ref["RSHIPS"],
             "hooks": {n: sr[n] for n in ("A_SUNUP", "A_SUNBK", "A_SUNSC", "A_SUNLAU", "A_SUNS1", "A_SUNE",
@@ -241,6 +259,12 @@ def main():
         ok = audit(p, sr) and ok
         with open(name, "w") as f:
             json.dump(p, f)
+    # the sun's edge alone, with the harness advancing RAND at the site as the
+    # DORND it replaces would (randAt): the proof that the site changes nothing
+    # but the random numbers' use
+    with open("3-assembled-output/sunref-edge.json", "w") as f:
+        json.dump({"name": "the sun's edge (RAND kept)", "code": [], "sites": [edge(ref)], "lso": None, "region": None,
+                   "entry": ref["RSHIPS"], "randAt": "SUN: JSR DORND"}, f)
     sys.exit(0 if ok else 1)
 
 

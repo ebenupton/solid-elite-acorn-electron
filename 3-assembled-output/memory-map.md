@@ -34,9 +34,9 @@
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 7 (flight) | `&8000-&9F0F` | the cold pass, `QQ18` | 7952 | 0 |
-| bank 7 (flight) | `&9F10-&A359` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&A35A-&B2FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 3910 | 96 |
+| bank 7 (flight) | `&8000-&9F11` | the cold pass, `QQ18` | 7954 | 0 |
+| bank 7 (flight) | `&9F12-&A35B` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
+| bank 7 (flight) | `&A35C-&B2FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 3910 | 94 |
 | bank 7 (flight) | `&B300-&BEFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
 | bank 7 | `&BF00-&BFFF` | DFS's workspace page between disc commands (`DFSSAVE%`) | 256 | 0 |
 | bank 7 (docked) | `&8000-&BEFF` | the set's face lists, the cold pass, `QQ18` | 11397 | 4731 |
@@ -56,4 +56,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 26, main RAM (flight) 3, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 96, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.
+Free, by place: main RAM 26, main RAM (flight) 3, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 94, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.

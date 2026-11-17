@@ -245,7 +245,7 @@ export function regionsFor(b, refPatch = null) {
     const naEnd = ld["NAEND%"] !== undefined ? ld["NAEND%"] : ld.CHK + 1;
     // the parked sun (SUNPK, SUNPF in WP's tail): a build's own, or the
     // reference's fourth patch's (loadRefPatch), at the same address
-    const sun = sy.SUNPK !== undefined ? [[sy.SUNPK, 38, "SUNPK"]] : refPatch ? [refPatch.region] : [];
+    const sun = sy.SUNPK !== undefined ? [[sy.SUNPK, 38, "SUNPK"]] : refPatch && refPatch.region ? [refPatch.region] : [];
     return [
         [0x0000, sy.K4 + 2, "ZP"],                       // zero page game variables (&00-&E1)
         [sy.UP, sy.CATF + 1 - sy.UP, "UP"],              // key logger, flight variables, commander (NAME..SVC), configuration
@@ -264,7 +264,7 @@ export function regionsFor(b, refPatch = null) {
 export function applyRefPatch(cpu, rp) {
     const rb = a => cpu.ramRomOs[a & 0xffff];
     if (!rp.sites.length && !rp.code.length) return null;      // (a region only: nothing applied)
-    if (!cpu.model.swram[rp.slot & 15]) return `refpatch: slot ${rp.slot} is not sideways RAM`;
+    if (rp.code.length && !cpu.model.swram[rp.slot & 15]) return `refpatch: slot ${rp.slot} is not sideways RAM`;
     const at = [];
     const is = (a, bytes) => bytes.every((v, i) => rb(a + i) === v);
     for (const st of rp.sites) {             // (a site already patched, as RSHIPS
@@ -276,8 +276,10 @@ export function applyRefPatch(cpu, rp) {
             a = hits.length ? hits[0] : done[0];
         } else if (!is(a, st.orig) && !is(a, st.new)) return `refpatch: ${st.name}: the release's bytes differ`;
         at.push([a, st.new]);
+        st.at = a;                           // (where it is: randAt's hook)
     }
     for (const [a, bytes] of at) for (let i = 0; i < bytes.length; i++) cpu.ramRomOs[a + i] = bytes[i];
+    if (!rp.code.length) return null;        // (sites only: no slot)
     for (const [a, bytes] of rp.code) for (let i = 0; i < bytes.length; i++) cpu.ramRomOs[cpu.romOffset + rp.slot * 16384 + a - 0x8000 + i] = bytes[i];
     cpu.ramRomOs[0xF4] = rp.slot;
     cpu.romSelect(rp.slot);
@@ -357,7 +359,7 @@ export function canonFor(b, regions, refPatch = null) {
     const bpLo = xx21, bpHi = xx21 + (BP_END_ORIG - XX21_ORIG);
     return buf => {
         if (sy.LSO !== LSO_ORIG) for (const o of offs) if ((buf[o] | buf[o + 1] << 8) === sy.LSO) { buf[o] = LSO_ORIG & 255; buf[o + 1] = LSO_ORIG >> 8; }
-        if (refPatch) for (const o of offs) if ((buf[o] | buf[o + 1] << 8) === refPatch.lso) { buf[o] = LSO_ORIG & 255; buf[o + 1] = LSO_ORIG >> 8; }
+        if (refPatch && refPatch.lso) for (const o of offs) if ((buf[o] | buf[o + 1] << 8) === refPatch.lso) { buf[o] = LSO_ORIG & 255; buf[o + 1] = LSO_ORIG >> 8; }
         if (xx21 !== XX21_ORIG && xx0 >= 0) {
             const v = buf[xx0] | buf[xx0 + 1] << 8;
             if (v >= bpLo && v < bpHi) { const w = v - xx21 + XX21_ORIG; buf[xx0] = w & 255; buf[xx0 + 1] = w >> 8; }
@@ -571,11 +573,24 @@ export async function runElite(opts) {
     };
 
     res.refPatched = 0;
+    let randHook = null;
     const applyRP = () => {
         if (opts.onRefPatch) opts.onRefPatch("before", cpu);    // (bsunref.mjs: the audit)
         const err = applyRefPatch(cpu, rp);
         if (opts.onRefPatch) opts.onRefPatch("after", cpu);
         if (err) { res.error = err; done = true; } else res.refPatched++;
+        // (a proof's variant, randAt: at that site, RAND advanced as the
+        // DORND call the site replaced would advance it, DORND's two sums
+        // with the C flag the call would have had, so that the value the
+        // site leaves is all that differs: 2-build-files/sunref.py's
+        // sunref-edge.json)
+        // (the reference run against such a candidate gets the patch's
+        // region only, with no sites: no hook)
+        const st = !err && rp.randAt && !randHook ? rp.sites.find(x => x.name === rp.randAt) : null;
+        if (st) {
+            randHook = { prog: P.flight, name: "randAt", a: st.at, map: "m", sig: st.new };
+            add("RAND", randHook);
+        }
     };
     const fire = (h, pc) => {
         const pn = h.prog ? h.prog.name : null;
@@ -619,6 +634,13 @@ export async function runElite(opts) {
             }
             case "PATCH": h.apply(cpu); break;
             case "RPATCH": applyRP(); break;
+            case "RAND": {
+                const R = fsy.RAND, f1 = rb(R), c = cpu.p.c ? 1 : 0;
+                const f2 = ((f1 << 1) | c) & 255, f3 = f2 + rb(R + 2) + (f1 >> 7);
+                const m1 = rb(R + 1), m2 = m1 + rb(R + 3) + (f3 >> 8);
+                wr(R, [f3 & 255, m2 & 255, f2, m1]);
+                break;
+            }
             case "Mpc": {
                 const v = rb(fsy.LASCT);
                 if (v) cpu.ramRomOs[fsy.LASCT] = v - 1;

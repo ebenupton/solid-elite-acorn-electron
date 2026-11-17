@@ -125,7 +125,10 @@ echo "regressions: PASS (redock, savetest, views, screens)"
 # the build has one: 2-build-files/sunref.py): its proofs (bsunref.mjs: the
 # audit, the slot, heap and parked-sun watches and the station's invariant,
 # over the gate's run), and its passive variant against the unpatched
-# release, game state identical, over the gate's run and the views run
+# release, game state identical, over the gate's run and the views run; and
+# the sun's edge site alone (sunref-edge.json, with RAND advanced there as the
+# DORND it replaced would: randAt), against the release, the same, and with
+# the sun put on the screen, which the gate's run never has (bsunedge.mjs)
 if [ -f 3-assembled-output/sunref.json ]; then
     node 6-harness/bsunref.mjs --iters "$ITERS" > "$LOG/sunref.log" 2>&1
     grep -E "^audit|^patch applied" "$LOG/sunref.log"
@@ -137,10 +140,21 @@ if [ -f 3-assembled-output/sunref.json ]; then
     node 6-harness/bcompare.mjs --iters 1500 --loose --views --maxsecs 600 --ref $R --cand $R --refpatch none \
         --candpatch 3-assembled-output/sunref-passive.json --out "$LOG/passive-views" > "$LOG/passive-views.log" 2>&1
     grep -q "^BCOMPARE PASS" "$LOG/passive-views.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/passive-views.log" | head -10; echo "sunref passive views: FAIL"; fail passive; }
+    if [ -f 3-assembled-output/sunref-edge.json ]; then
+        node 6-harness/bcompare.mjs --iters "$ITERS" --loose --ref $R --cand $R --refpatch none \
+            --candpatch 3-assembled-output/sunref-edge.json --out "$LOG/edge" > "$LOG/edge.log" 2>&1
+        grep -q "^BCOMPARE PASS" "$LOG/edge.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/edge.log" | head -10; echo "sunref edge: FAIL"; fail edge; }
+        node 6-harness/bcompare.mjs --iters 1500 --loose --views --maxsecs 600 --ref $R --cand $R --refpatch none \
+            --candpatch 3-assembled-output/sunref-edge.json --out "$LOG/edge-views" > "$LOG/edge-views.log" 2>&1
+        grep -q "^BCOMPARE PASS" "$LOG/edge-views.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/edge-views.log" | head -10; echo "sunref edge views: FAIL"; fail edge; }
+        node 6-harness/bsunedge.mjs > "$LOG/sunedge.log" 2>&1
+        grep -E "^(edge|control|port):" "$LOG/sunedge.log"
+        grep -q "^BSUNEDGE PASS" "$LOG/sunedge.log" || { echo "sunref edge with the sun on the screen: FAIL"; fail edge; }
+    fi
     node 6-harness/bsunslot.mjs > "$LOG/sunslot.log" 2>&1
     grep -E "^[a-z]+: (ref|cand)" "$LOG/sunslot.log" | cut -c1-200
     grep -q "^BSUNSLOT PASS" "$LOG/sunslot.log" || { grep -A6 "FAIL" "$LOG/sunslot.log" | head -10; echo "sunslot: FAIL"; fail sunslot; }
-    echo "sunref: PASS (audit and watches; passive identical over $ITERS iterations and the views run; the scenes)"
+    echo "sunref: PASS (audit and watches; passive and the sun's edge identical over $ITERS iterations and the views run; the scenes)"
 fi
 
 # ---- 3c. plain disc planets (make circles=off), in a copy of the tree

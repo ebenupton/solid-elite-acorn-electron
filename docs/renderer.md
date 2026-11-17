@@ -466,8 +466,15 @@ ship), the explosion clouds' particles (the frame draws them), the
 planet's outline and the clipping and heap of its curves, the erasing of
 the sun's and the planet's old lines, and our lasers' lines. What is real
 game state still runs, or is worked out as the skipped code would leave
-it: the sun's rows (which take random numbers for the fringe), the random
-numbers and the variables `PTCLS` leaves (`F_CLOUD`), byte #31's bits.
+it: the random numbers and the variables `PTCLS` leaves (`F_CLOUD`), byte
+#31's bits. The sun's rows took a random number each for the fringe; the
+sun's edge now draws none (`SUN` part 3: the fringe is 0, in the
+reference too, by the fourth patch's eighth site, which turns the
+release's one `JSR DORND` in `SUN` into `LDA #0 : NOP`), so in record mode
+`SUN` stops after part 1's record, with what the rows would leave that is
+read again: `K2` = K^2, which `MV40` reads, `SUNX` = `K3` and the C flag
+clear. The Short-range Chart's suns, outside record mode, are drawn row by
+row as before.
 
 One thing in the original depends on what the drawing leaves behind: the
 altitude (`ALTIT`, in the main flight loop at `MA93`) is `SQRT(R Q)` with

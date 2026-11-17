@@ -23115,36 +23115,12 @@ ENDMACRO
  JSR GCALL              \ random numbers and the heap, but HLS and HL2S draw
                         \ them only outside record mode
 
- LDA #0                 \ Set A = 0
-
- LDX K                  \ Set X = K = radius of the new sun
-
- CPX #96                \ If X >= 96, set the C flag and rotate it into bit 0
- ROL A                  \ of A, otherwise rotate a 0 into bit 0
-
- CPX #40                \ If X >= 40, set the C flag and rotate it into bit 0
- ROL A                  \ of A, otherwise rotate a 0 into bit 0
-
- CPX #16                \ If X >= 16, set the C flag and rotate it into bit 0
- ROL A                  \ of A, otherwise rotate a 0 into bit 0
-
-                        \ By now, A contains the following:
-                        \
-                        \   * If radius is 96-255 then A = %111 = 7
-                        \
-                        \   * If radius is 40-95  then A = %11  = 3
-                        \
-                        \   * If radius is 16-39  then A = %1   = 1
-                        \
-                        \   * If radius is 0-15   then A = %0   = 0
-                        \
-                        \ The value of A determines the size of the new sun's
-                        \ ragged fringes - the bigger the sun, the bigger the
-                        \ fringes
-
-.PLF18
-
- STA CNT                \ Store the fringe size in CNT
+                        \ Port: the original works out the size of the sun's
+                        \ random fringe here (CNT: 0, 1, 3 or 7, from the
+                        \ radius), which part 3 ANDs with a random number for
+                        \ each row; the sun's edge draws no random numbers (in
+                        \ the reference too, the comparison's patch to SUN),
+                        \ so the fringe is 0 and its size is not needed
 
                         \ We now calculate the highest pixel y-coordinate of the
                         \ new sun, given that P(2 1) contains the 16-bit maximum
@@ -23174,6 +23150,34 @@ ENDMACRO
 
  STA TGT                \ Set TGT to A, the maximum y-coordinate of the sun on
                         \ screen
+
+                        \ Port: in record mode (the space view) the frame fills
+                        \ the sun from its record (above), and the rows below
+                        \ are not drawn; as they take no random numbers, all
+                        \ they leave in the game's state that is read again is
+                        \ K2 = K^2 (MV40 reads K2's low byte without setting
+                        \ it), SUNX = K3 and the C flag clear, as part 4 ends
+                        \ (the line heap at LSO and the drawing temporaries
+                        \ they leave are not read before they are set again),
+                        \ so in record mode SUN sets those and returns. Outside
+                        \ it (the Short-range Chart's suns) the rows are drawn
+                        \ as before
+
+ JSR RECM
+ BNE sunrows
+ LDA K                  \ Set K2(1 0) = K * K, as below
+ JSR SQUA2
+ STA K2+1
+ LDA P
+ STA K2
+ LDA K3                 \ Set SUNX(1 0) = K3(1 0), as part 4 does
+ STA SUNX
+ LDA K3+1
+ STA SUNX+1
+ CLC                    \ Clear the C flag, as part 4 does
+ RTS
+
+.sunrows
 
                         \ We now calculate the number of lines we need to draw
                         \ and the direction in which we need to draw them, both
@@ -23360,24 +23364,11 @@ ENDMACRO
 
  LDY Y1                 \ Restore Y from Y1
 
- JSR DORND              \ Set A and X to random numbers
-
- AND CNT                \ Reduce A to a random number in the range 0 to CNT,
-                        \ where CNT is the fringe size of the new sun
-
- CLC                    \ Set A = A + Q
- ADC Q                  \
-                        \ So A now contains the half-width of the sun on row
-                        \ V, plus a random variation based on the fringe size
-
- BCC PLF44              \ If the above addition did not overflow, skip the
-                        \ following instruction
-
- LDA #255               \ The above overflowed, so set the value of A to 255
-
-                        \ So A contains the half-width of the new sun on pixel
-                        \ line Y, changed by a random amount within the size of
-                        \ the sun's fringe
+ CLC                    \ Port: the original adds a random fringe to the row's
+ LDA Q                  \ half-width Q here (DORND AND CNT), and 255 if the sum
+                        \ overflows; the sun's edge draws no random numbers (in
+                        \ the reference too), so A = Q, with the C flag clear as
+                        \ the original's sum leaves it
 
 .PLF44
 
