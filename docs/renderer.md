@@ -331,7 +331,12 @@ the player's own turn since. The mailbox holds the records only until the frame'
   which the second (`f_sec`); the layer's spans, clipped to the window
   (`f_sunrows`, `f_plrows`, `f_discspans`: `R_NDISCL/R`, `R_NDT`, `R_NDB`,
   with the half-width tables `F_HW`, `F_HW2` rebuilt when a radius
-  changes), and the planet's boundaries (`f_bounds`: `PC_ROWS`, which reads
+  changes; a disc wholly inside the window horizontally takes the fast
+  path, cx - n and cx + n a row; any other, three thresholds on the
+  half-width worked out once from cx and the window, `fkt`, below which a
+  row is empty or clamped to the window's side, and its rows made in pairs,
+  cy - k and cy + k from one half-width, `fkl`, then the rest of one side,
+  `fks`), and the planet's boundaries (`f_bounds`: `PC_ROWS`, which reads
   the records where `PF_HOOK` left them, in the mailbox: `PCB`, `PC_N`,
   `pc_inv`, before the frame uses the mailbox for anything else, or where
   `f_hrec` put back the ones kept, moved with the disc; a disc command in

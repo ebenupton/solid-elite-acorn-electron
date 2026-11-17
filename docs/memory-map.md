@@ -470,15 +470,15 @@ what the frames can use, the docked code's are free only while docked.
 | bank 5 | `&B400-&BFD4` | the per-x tables, the row pages, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY`, `R_INIT` | 3029 | 0 |
 | bank 5 | `&BFD5-&BFFF` | `RJT`, the jump table | 42 | 1 |
 | bank 6 | `&8000-&8145` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 326 | 0 |
-| bank 6 | `&8146-&A8A2` | the frame layer's code (bank 6 passes) | 10077 | 0 |
-| bank 6 | `&A8A3-&ABC0` | the faces' and the lighting's tables | 798 | 0 |
-| bank 6 | `&ABC1-&AE9E` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
-| bank 6 | `&AE9F-&AEFF` | (the page alignment of the state that follows) | 0 | 97 |
-| bank 6 | `&AF00-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 792 |
+| bank 6 | `&8146-&AA5E` | the frame layer's code (bank 6 passes) | 10521 | 0 |
+| bank 6 | `&AA5F-&AD7C` | the faces' and the lighting's tables | 798 | 0 |
+| bank 6 | `&AD7D-&B05A` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
+| bank 6 | `&B05B-&B0FF` | (the page alignment of the state that follows) | 0 | 165 |
+| bank 6 | `&B100-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 280 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 26, main RAM (flight) 18, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 8, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 907.
+Free, by place: main RAM 26, main RAM (flight) 18, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 8, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 463.
 
 **The build's check.** `2-build-files/mapcheck.py`, which `make` runs once
 every program and bank is assembled, fails the build if a place is out of

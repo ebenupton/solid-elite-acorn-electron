@@ -973,6 +973,10 @@ ENDIF
 .fsu1
  LDA #HI(F_HW2)
  STA fpr_ld+2
+ STA fkl_ld+2
+ STA fkl_ld2+2
+ STA fks_ld+2
+ STA fks_ld2+2
  STA fpr_ld2+2
  JMP f_discspans
 
@@ -996,6 +1000,10 @@ ENDIF
 .fpr1
  LDA #HI(F_HW)
  STA fpr_ld+2
+ STA fkl_ld+2
+ STA fkl_ld2+2
+ STA fks_ld+2
+ STA fks_ld2+2
  STA fpr_ld2+2
  JMP f_discspans
  ASSERT LO(F_HW) = 0 AND LO(F_HW2) = 0   \ (page aligned: only the high bytes
@@ -1055,26 +1063,33 @@ ENDIF
  LDA #0
  SBC f_cy+1
  STA fz_u
- LDA f_cxh              \ fast path if the whole disc is inside the window
- BEQ fds_z              \ horizontally: cx - r >= CL and cx + r <= CR
- LDA #&90               \ high byte of cx nonzero: fpr_b1 becomes BCC and
- BNE fds_pat            \ fpr_b2 BCS, both always taken (NMOS: for BRA)
-.fds_z
+ LDA f_cxh              \ the fast path if the whole disc is inside the window
+ BNE fds_t              \ horizontally: cx - r >= CL and cx + r <= CR
  LDA f_cx
  SEC
  SBC f_r
- BCC fds_slow
+ BCC fds_t
  CMP R_CL
- BCC fds_slow
+ BCC fds_t
  LDA f_cx
  CLC
  ADC f_r
- BCS fds_slow
+ BCS fds_t
  SBC R_CR               \ (C = 0) borrow iff cx + r <= CR
- BCS fds_slow
+ BCS fds_t
  JMP fds_fast           \ (the fast path follows the slow one, out of
                         \ branch range)
-.fds_slow               \ (the disc crosses the window's side, or the screen's)
+.fds_t                  \ else, for r = 255, the slow loop (a threshold of r + 1
+ LDA f_r                \ would not fit a byte), and for r <= 254 the rows by
+ CMP #255               \ thresholds (fkt)
+ BEQ fds_old
+ JMP fkt
+.fds_old
+ LDA f_cxh
+ BEQ fds_slow
+ LDA #&90               \ high byte of cx nonzero: fpr_b1 becomes BCC and
+ BNE fds_pat            \ fpr_b2 BCS, both always taken (NMOS: for BRA)
+.fds_slow
  LDA #&B0               \ high byte of cx zero: fpr_b1 becomes BCS and fpr_b2
 .fds_pat                \ BCC, never taken (no-ops: NMOS, for BIT #imm)
  STA fpr_b1
@@ -1285,6 +1300,260 @@ ENDIF
  CLC                    \ (Y = k of the first tail row already)
  JMP fdf1
  ASSERT LO(R_NDISCR) + 191 < 256
+
+\ fkt: the rows T..B of a disc that crosses the window's side or the
+\ screen's, when r <= 254, each from its half-width n alone, as the
+\ slow loop makes them, by thresholds on n worked out once from cx (16-bit)
+\ and the window rather than the 16-bit sums and compares per row: the slow
+\ loop gives
+\   an empty row (R = 0, L = 255) if cx + n < CL or cx - n > CR, i.e.
+\     n < max(CL - cx, cx - CR) = nmin;
+\   else R = CR if n >= CR - cx = nC, else cx + n (its low byte: the sum is
+\     on the screen), and L = CL if n >= cx - CL + 1 = mC1, else cx - n.
+\ Each threshold is clamped to 0 .. r + 1 (n <= r: r + 1 is "never"), which
+\ fits a byte as r <= 254. The rows go in runs with k = |row - cy| rising:
+\ cy - k and cy + k together for k from 0 while both are in T..B, as the fast
+\ path's pairs went, then the rest of one side, or all of T..B on one side
+
+.fkt
+ LDA R_CR               \ nC = CR - cx
+ JSR fks1
+ STA fkl_c+1
+ STA fks_c+1
+ LDX R_CL               \ mC1 = cx - (CL - 1) (CL >= 1: gfx-raster.asm)
+ DEX
+ TXA
+ JSR fks2
+ STA fkl_m+1
+ STA fks_m+1
+ LDA R_CL               \ nmin = max(CL - cx, cx - CR)
+ JSR fks1
+ STA fkl_e+1
+ LDA R_CR
+ JSR fks2
+ CMP fkl_e+1
+ BCC P%+5
+ STA fkl_e+1
+ LDA fkl_e+1
+ STA fks_e+1
+ LDA f_cx               \ cx and cx + 1 (low bytes)
+ STA fkl_x+1
+ STA fks_x+1
+ CLC
+ ADC #1
+ STA fkl_x1+1
+ STA fks_x1+1
+ LDA fz_u               \ the runs, each with k rising away from cy (a run of
+                        \ one side: fks; the pairs: fkl)
+ BMI fkt2
+ LDX R_NDT              \ d >= 0: rows T..B are cy + k, k = d .. d + B - T,
+ LDY fz_t               \ down
+ LDA R_NDB
+ SEC
+ SBC R_NDT
+ SEC
+ ADC fz_t               \ (the last k + 1 <= r + 1 <= 255)
+ STA fks_cp+1
+ LDA #&E8               \ INX
+ JMP fkgo
+.fkt2
+ LDA fz_t               \ d < 0: fz_i = a - 1 = NOT d, a = cy - T
+ EOR #&FF
+ STA fz_i
+ LDA R_NDB
+ SEC
+ SBC R_NDT
+ SEC
+ SBC fz_i               \ e + 1, e = B - cy (C clear if negative)
+ BCC fkup
+ BNE fkpr
+.fkup                   \ e < 0 (cy > B): rows B..T are cy - k, k = -e .. a, up
+ EOR #&FF               \ Y = -e = NOT (e + 1) + 2
+ CLC
+ ADC #2
+ TAY
+ LDX R_NDB
+ LDA fz_i               \ (a + 1)
+ CLC
+ ADC #2
+ STA fks_cp+1
+ LDA #&CA               \ DEX
+ JMP fkgo
+.fkpr                   \ cy in T..B: rows cy - k and cy + k together for
+ STA fz_n               \ k = 0 .. min(a, e) (fz_n = e + 1), X = cy - k, the
+ LDA R_NDT              \ second stores at R_NDISCR + cy (page aligned) and
+ SEC                    \ R_NDISCL + cy, + k; then the rows left on one side
+ ADC fz_i               \ (cy = T + a)
+ TAX
+ STA fkl_r2+1
+ STA fkl_z2+1
+ CLC
+ ADC #LO(R_NDISCL)
+ STA fkl_l2+1
+ LDA #HI(R_NDISCL)
+ ADC #0
+ STA fkl_l2+2
+ LDA fz_i               \ the last k + 1: a + 1 if a <= e, else e + 1
+ CLC
+ ADC #1
+ CMP fz_n
+ BCS fkp1
+ ADC #1                 \ (C = 0)
+ BCC fkp2               \ (always)
+.fkp1
+ LDA fz_n
+.fkp2
+ STA fkl_cp+1
+ LDY #0
+ CLC
+ JSR fkl
+ LDA fz_i               \ the rows left on one side (Y = their first k)               \ a > e: rows cy - k up to k = a (X is already the
+ CLC                    \ first)
+ ADC #1
+ CMP fz_n
+ BCS fkt3
+ CPY fz_n               \ e >= a: rows cy + k down to k = e, if e > a
+ BEQ fkt9
+ LDA fz_n
+ STA fks_cp+1
+ TYA
+ ADC fkl_r2+1           \ (C = 0) X = cy + k
+ TAX
+ LDA #&E8               \ INX
+ BNE fkgo
+.fkt3
+ ADC #0                 \ (C = 1) a + 1
+ STA fks_cp+1
+ LDA #&CA               \ DEX
+ BNE fkgo
+.fkt9
+ RTS
+.fkl                    \ the pairs: C = 0 here
+.fkl_ld
+ LDA F_HW,Y             \ patched: the half-width table (high byte)
+.fkl_e
+ CMP #0                 \ patched: nmin (n below it: an empty row)
+ BCC fkl_z
+.fkl_c
+ CMP #0                 \ patched: nC (n at or above it: R = CR)
+ BCS fkl_rc
+.fkl_x
+ ADC #0                 \ patched: cx (C = 0)
+.fkl_r
+ STA R_NDISCR,X
+.fkl_r2
+ STA R_NDISCR,Y         \ patched: R_NDISCR + cy
+.fkl_ld2
+ LDA F_HW,Y             \ patched: the half-width table (high byte)
+.fkl_m
+ CMP #0                 \ patched: mC1 (n at or above it: L = CL)
+ BCS fkl_lc
+ EOR #&FF               \ (C = 0) cx + 1 + NOT n = cx - n
+.fkl_x1
+ ADC #0                 \ patched: cx + 1
+.fkl_l
+ STA R_NDISCL,X
+.fkl_l2
+ STA R_NDISCL,Y         \ patched: R_NDISCL + cy
+ DEX
+ INY
+.fkl_cp
+ CPY #0                 \ patched: the last k + 1 (C = 0 until then)
+ BNE fkl
+ RTS
+.fkl_rc
+ LDA R_CR               \ (C = 1)
+ BCS fkl_r
+.fkl_lc
+ LDA R_CL               \ (C = 1)
+ BCS fkl_l
+.fkl_z
+ LDA #0                 \ an empty row: R = 0, L = 255
+ STA R_NDISCR,X
+.fkl_z2
+ STA R_NDISCR,Y         \ patched: R_NDISCR + cy
+ LDA #&FF
+ BNE fkl_l
+ ASSERT LO(R_NDISCR) = 0 \ (the pairs' rows cy + k: in R_NDISCR's page)
+.fkgo                   \ a run of one side: A = its step (INX or DEX), X its
+ STA fks_st             \ first row, Y its first k, fks_cp its last k + 1
+ CLC
+.fks                    \ C = 0 here
+.fks_ld
+ LDA F_HW,Y             \ patched: the half-width table (high byte)
+.fks_e
+ CMP #0                 \ patched: nmin
+ BCC fks_z
+.fks_c
+ CMP #0                 \ patched: nC
+ BCS fks_rc
+.fks_x
+ ADC #0                 \ patched: cx (C = 0)
+.fks_r
+ STA R_NDISCR,X
+.fks_ld2
+ LDA F_HW,Y             \ patched: the half-width table (high byte)
+.fks_m
+ CMP #0                 \ patched: mC1
+ BCS fks_lc
+ EOR #&FF               \ (C = 0) cx + 1 + NOT n = cx - n
+.fks_x1
+ ADC #0                 \ patched: cx + 1
+.fks_l
+ STA R_NDISCL,X
+.fks_st
+ INX                    \ patched: INX (down) or DEX (up)
+ INY
+.fks_cp
+ CPY #0                 \ patched: the last k + 1 (C = 0 until then)
+ BNE fks
+ RTS
+.fks_rc
+ LDA R_CR               \ (C = 1)
+ BCS fks_r
+.fks_lc
+ LDA R_CL               \ (C = 1)
+ BCS fks_l
+.fks_z
+ LDA #0                 \ an empty row: R = 0, L = 255
+ STA R_NDISCR,X
+ LDA #&FF
+ BNE fks_l
+
+\ fks1 and fks2: a threshold, A - cx (fks1) or cx - A (fks2), A (0 to 255)
+\ and cx 16-bit, clamped to 0 .. r + 1 (fkcl: the difference in A, high
+\ byte, and Y, low byte); returns it in A
+
+.fks2
+ STA fz_n
+ SEC
+ LDA f_cx
+ SBC fz_n
+ TAY
+ LDA f_cxh
+ SBC #0
+ JMP fkcl
+.fks1
+ SEC
+ SBC f_cx
+ TAY
+ LDA #0
+ SBC f_cxh
+.fkcl
+ BMI fkc0               \ below 0: 0
+ BNE fkcr               \ 256 or more: r + 1
+ CPY f_r
+ BCC fkcy
+ BEQ fkcy
+.fkcr
+ LDY f_r                \ above r: r + 1 (r <= 254)
+ INY
+.fkcy
+ TYA
+ RTS
+.fkc0
+ LDY #0
+ BEQ fkcy
 
 f_cx = fpr_cx + 1       \ (the operand of ADC # in the slow disc loop)
 .f_cxh EQUB 0           \ high byte of cx
