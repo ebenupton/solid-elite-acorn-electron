@@ -25,7 +25,7 @@
 import { writeFileSync, appendFileSync, mkdirSync, readFileSync } from "fs";
 import { createHash } from "crypto";
 import { BMachine, compareSetup, diffSnaps, fieldName, groupOf, CYCLES_PER_FRAME, ROOT } from "./lib.mjs";
-import { loadBuild } from "../blib.mjs";
+import { loadBuild, loadRefPatch } from "../blib.mjs";
 import { toSsdOrDsd } from "../jsbeeb.mjs";
 import { Agent } from "./agent.mjs";
 import { COMMANDERS, makeChaos } from "./styles.mjs";
@@ -94,7 +94,9 @@ export class Session {
         if (!cmdr) throw new Error(`unknown commander ${cfg.commander}`);
         const patch = cmdr.patch ? m => cmdr.patch(m) : null;
         this.builds = { ref: cfg.ref, refSha: buildSha(this.rb), cand: cfg.cand, candSha: buildSha(this.cb), refdisc: cfg.refdisc, canddisc: cfg.canddisc };
-        this.ref = new BMachine({ name: "ref", build: this.rb, input: this.refInput(), rand, patch, cover: true });
+        // (the reference's fourth patch: the candidate's sunref.json, unless the reference is a port build)
+        const refPatch = this.rb.progs.flight.sy.SUNPK === undefined ? loadRefPatch(cfg.cand) : null;
+        this.ref = new BMachine({ name: "ref", build: this.rb, input: this.refInput(), rand, patch, cover: true, refPatch });
         this.cand = new BMachine({ name: "cand", build: this.cb, input: this.candInput(), rand, patch, watch0d: true, cover: true, workarounds: cfg.workarounds || [] });
         await this.ref.boot();
         await this.cand.boot();

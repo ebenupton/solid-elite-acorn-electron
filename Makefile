@@ -29,8 +29,6 @@ PYTHON?=python
 #                       (the beach ball and the craters: the circle engine's
 #                       game part at the end of the flight code's bank 4)
 #
-#   ssun=off            Leave out the sun near the planet (S_SUN, in bank 6)
-#
 # So, for example:
 #
 #   make commander=max match=no verify=no
@@ -87,12 +85,6 @@ else
   circles-on=TRUE
 endif
 
-ifeq ($(ssun), off)
-  ssun-on=FALSE
-else
-  ssun-on=TRUE
-endif
-
 variant-number=2
 folder=sth
 
@@ -105,7 +97,6 @@ all:
 	echo _MAX_COMMANDER=$(max-commander) >> 1-source-files/main-sources/elite-build-options.asm
 	echo _INTERLACE_FIX=$(interlace-fix) >> 1-source-files/main-sources/elite-build-options.asm
 	echo _CIRCLES=$(circles-on) >> 1-source-files/main-sources/elite-build-options.asm
-	echo _SSUN=$(ssun-on) >> 1-source-files/main-sources/elite-build-options.asm
 	$(PYTHON) 2-build-files/streams.py measure > 3-assembled-output/compile.txt
 	$(PYTHON) 2-build-files/bank5.py $(BEEBASM)
 	$(BEEBASM) -i 1-source-files/main-sources/elite-missile.asm -v >> 3-assembled-output/compile.txt
@@ -118,6 +109,7 @@ all:
 	$(PYTHON) 2-build-files/layout-info.py
 	$(BEEBASM) -i 1-source-files/main-sources/elite-layout-flight.asm -v >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-layout-flight.asm -d | grep "^\[{" > 3-assembled-output/flight-symbols.txt
+	$(PYTHON) 2-build-files/sunref.py $(BEEBASM) >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-layout-docked.asm -v >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-layout-docked.asm -d | grep "^\[{" > 3-assembled-output/docked-symbols.txt
 	$(PYTHON) 2-build-files/bank6.py $(BEEBASM)

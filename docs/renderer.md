@@ -162,8 +162,9 @@ What differs from the Master port's frame layer:
 * **The discs** are the Master port's, with the disc layer's row code (the
   painter) and each buffer's disc state in the flight code's bank 7, driven
   a batch of rows at a time through the mailbox (below: "The discs"). The
-  sun near the planet (`S_SUN`) is in this bank (`make ssun=off` leaves it
-  out), calling the game's `MV40` and `ZINF` through far-call stubs.
+  sun near the planet is the game's own (below: "The sun's place"). Bank 6
+  also holds, at its start, the flight code's cold 6 pass, game code that
+  the frame layer never calls (docs/memory-map.md).
 * **The lighting** runs in the game's bank 4 (`L_SUN`, `L_REC`,
   `gfx-light.asm`, with the faces' normals, which the blueprint set
   carries), where the quarter squares are (the only copy): `F_SHIP` is
@@ -218,7 +219,7 @@ entry. Not from an interrupt.
 |---:|---|---|
 | 0 | `F_INIT`: once, first: `T_INIT`, empty lists, direct mode, buffer 0 marked as used (`GSTASH`) | |
 | 1 | `F_DIRECT`: the screen is about to be cleared and drawn on directly (`TTX66`): direct mode, buffer 1 on show, no sights, beams, text or stars; but for an in-system jump in space mode (`GWARP`), the frames go on and only the text goes | |
-| 2 | `F_FRAME`: draw this frame and empty the lists; not in a space view (`QQ11` non-zero), just empty them; with C set (the flight code's `hframe`), the sun near the planet first (`S_SUN`) | `QQ11`, C |
+| 2 | `F_FRAME`: draw this frame and empty the lists; not in a space view (`QQ11` non-zero), just empty them | `QQ11` |
 | 3 | `F_SHIP`: record the ship LL9 is drawing, as its part 6 starts (`S_SHIP`) | `GTYPE`, `GNF`, `XX2` (the faces' levels, `L_REC`), `XX4`, `INWK` 0-8, `XX16`, `XX0` |
 | 4 | `F_LINE`: record an enemy laser beam | `X1`, `Y1`, `X2`, `Y2` |
 | 5 | `F_PDOT`: a particle of the frame's `PTCLS` (`H_DOT`) | A = x, `Y1` = y, `ZZ` |
@@ -512,6 +513,43 @@ reach the game (`H_CIRC` leaves `K2` from `nosev_x`, which `MV40` adds into
 the next object's `y`), so the patched reference flies a different run
 from the original's.
 
+### The sun's place
+
+Elite has one slot, `FRIN+1`, for the sun and the space station: part 14 of
+the main flight loop removes the sun (`WPLS`) as `NWSPS` puts the station
+there, `KS4` makes a new sun directly overhead when the station goes, and
+after a launch there is no sun at all. The port keeps the sun instead (the
+BBC Master port's change): while the station holds the slot, the sun's data
+block is parked in `SUNPK` (37 bytes) with its flag `SUNPF`, in `WP`'s tail
+(`&0FD3`), and the main flight loop moves and draws it once an iteration,
+after the ships. Four routines of the port's own (`elite-source-flight.asm`,
+tagged `, again`), each reached from one original instruction:
+
+* `SUNUP` (cold 6; part 14's `JSR WPLS`): slot 1's block into `SUNPK`,
+  `SUNPF` = `&80`;
+* `SUNSC` (hot; `MAL1`'s `JMP MA18` at the end of the slots): with the
+  station present and `SUNPF` bit 7 set, the sun runs through `MAL1`'s body
+  as a slot of its own (`TYPE` 129, `INF` = `SUNPK`, `XSAV` = 11, entering at
+  `MAL1g`, after `GINF`); bit 6 tells its two visits apart;
+* `SUNBK` (cold 6; `KS4`'s `JSR ZINF`): the block back into slot 1, `SUNPF`
+  and `SSPR` cleared, the bulb off, `LSO` kept; with no sun parked, `KS4`'s
+  own path;
+* `SUNLAU` (cold 6; `TT110`'s `JSR NWSPS`): the station, then the system's
+  sun from its seeds (`QQ2`), placed relative to the planet as `SOLAR`
+  placed it on arrival (`FIST`'s bit 0 taken as clear), with `NEWB` from the
+  blueprint set's `E%` bytes through `SUNE` (hot, as `E%` is in bank 4),
+  parked.
+
+`L_SUN` seeds the light from `SUNPK` while the sun is parked. The parked
+sun survives an overlay's load (`ovload` keeps `WP`'s two pages); at a
+docking or a death the flight program is replaced, and at the next launch
+`SUNLAU` makes the sun again before anything reads it (`SUNPF` is read only
+with `SSPR` set). The renderer's old way of showing the sun near the planet,
+`S_SUN`, drawn as scenery from the system's seeds and the game's `MV40`, is
+gone with its 1,154 bytes of bank 6. The comparison's reference gets the same
+routines, assembled for the release, as its fourth patch
+([6-harness](../6-harness/README.md)).
+
 ### The frame's records
 
 **Ships.** `LL9` records each ship that is not exploding as its part 6
@@ -546,7 +584,7 @@ particle the original draws.
 
 | Where | Bank | In record mode |
 |---|---|---|
-| `TT100`, `DEATH` (`MFRAME`), `ESCAPE` (`LL9F`) | home, cold | after each `M%` (or `LL9`), `L_SUN` (the light for the next iteration's ships, in a space view) and `F_FRAME` with C set (`hframe`: A, X, Y and the flags as they were; the docked code's `hframe` clears C, so that only the flight code's frame runs `S_SUN`) |
+| `TT100`, `DEATH` (`MFRAME`), `ESCAPE` (`LL9F`) | home, cold | after each `M%` (or `LL9`), `L_SUN` (the light for the next iteration's ships, in a space view) and `F_FRAME` (`hframe`: A, X, Y and the flags as they were) |
 | `LL9` part 5 | home | `GFAR` set when a face is shown without testing its normal |
 | `LL9` part 6 (`H_LL42`), `S_SHIP`, `SPLV`, `SHAND`, `L_REC` | home, cold | the ship is recorded (above); a ship firing at us has its gun vertex projected (`F_GUN`, `LL48`) |
 | `LL9` part 9 (`EE31`: `H_EE31`, `HEE31`) | home, cold | byte #31 set as `EE31` sets it, the beam recorded (`F_LINE`); returns as `LL155` |
@@ -647,7 +685,7 @@ than the original's 11.85, 168,749 cycles: the station is placed from the
 planet's vectors, and after the launch at Lave, its fights and the jump,
 the pilot spends the rest of the run on its approach to the next system's
 station, a big planet ahead). The build has the planets' surfaces
-(`_CIRCLES`, the default) and the sun near the planet (`S_SUN`). With plain
+(`_CIRCLES`, the default). With plain
 discs (`make circles=off`) it is 163,029 cycles, 12.27 it/s (0.970 times),
 of which the dashboard's clock switches take about 1,350 cycles
 ([video-timing.md](video-timing.md)).

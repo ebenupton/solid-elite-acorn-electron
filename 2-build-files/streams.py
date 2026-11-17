@@ -531,7 +531,7 @@ def direct_calls(lines, bl, eff, cold, hot):
     return out
 
 
-def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies):
+def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c6falls=()):
     """the stubs between the sides, written into the copies at their places;
     returns (stubs into the cold pass, stubs out of it, the direct calls)"""
     noreturn = NORETURN[prog]
@@ -727,7 +727,7 @@ def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies):
     nh = place_stubs(groups, ("hot", "low", "blueprints"), "hot")
     no = overlay_stubs(prog, src, copies, errors, lines, bl, eff, copy_of, hotcopies, cold, hot, direct,
                        where, barea, host, macros, noreturn)
-    no += cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies)
+    no += cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies, c6falls)
     # a cold block that falls into a low routine the cold pass calls directly
     # falls into a jump to it, at that routine's place in the cold copy
     for side, entry in falls:
@@ -862,12 +862,15 @@ def overlay_stubs(prog, src, copies, errors, lines, bl, eff, copy_of, hotcopies,
 #
 # (farHj, farCj for the targets in NORETURN; farC6j, a stub for a cold 6
 # target in NORETURN, is to be added to elite-far.asm with the first such
-# target). A cold 6 block may not
-# fall into another area, branch out of its area, or be fallen into, and it
-# calls the low pass's routines that need nothing of the hot side directly.
+# target). A cold 6 block that falls through its end into a routine of the
+# hot or cold side falls into its stub, at that routine's entry label in the
+# cold 6 copy (a JMP for a low routine that the cold pass calls directly);
+# nothing may fall into a cold 6 block, and no branch crosses its area's
+# edge. It calls the low pass's routines that need nothing of the hot side
+# directly.
 
 
-def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies):
+def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies, c6falls=()):
     """the cold 6 copy's names and stubs, and the stubs into it; returns how
     many stubs"""
     if "c6" not in copies:
@@ -913,6 +916,15 @@ def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, 
             new += code[pos:off + len(st)]
             pos = off + len(st)
         cc[i] = new + code[pos:] + comment
+    for t in c6falls:                        # (a fall into another side's routine
+        place = alias.get(t, t)              # falls into its stub, as the cold
+        nr = place in noreturn or t in noreturn   # pass's falls do)
+        if t in cold:
+            out.setdefault(("j6c_" if nr else "x6c_") + t, ("farCj" if nr else "farC", t + "_C", t))
+        elif t in direct:
+            out.setdefault(t, None)
+        else:
+            out.setdefault(("j6_" if nr else "x6_") + t, ("farHj" if nr else "farH", t, t))
     n = 0
 
     def put(c, i, text):
@@ -923,7 +935,11 @@ def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, 
         else:
             copies[c][i] = text
 
-    for stub, (far, target, place) in sorted(out.items()):
+    for stub, v in sorted(out.items()):
+        if v is None:                        # (a fall into a low routine: a JMP to it)
+            put("c6", where[stub], " JMP %s" % stub)
+            continue
+        far, target, place = v
         i = where.get(place)
         if i is None:
             errors.append("%s: no place for the cold 6 stub %s" % (src, stub))
@@ -1070,6 +1086,7 @@ def program(prog, phase, errors):
     # thing in the falling block's pass
     falls = []
     hotfalls = []                          # (k, k2): hot block k falls into hot block k2
+    c6falls = []                           # the entry labels cold 6 blocks fall into
     lowseams = []
     ovlseams = []                          # (overlay copy, cold label, by a branch)
     for k, b in enumerate(bl):
@@ -1089,10 +1106,14 @@ def program(prog, phase, errors):
                 if eff[k] == "hot":
                     join(pos[k], pos[k2])
                     hotfalls.append((k, k2))
+            elif eff[k] == "c6" and not bit_skip(st) and not b.runson and not eff[k2].startswith("ovl") \
+                    and entry_label(lines, b2.s, b2.e, macros):
+                c6falls.append(entry_label(lines, b2.s, b2.e, macros))   # (into its stub in the
+                                                                         # cold 6 copy)
             elif "c6" in (eff[k], eff[k2]):
                 errors.append("%s:%d: %s (%s) can fall through its end (%s) into %s (%s): a cold 6 block may "
-                              "not fall into another area, nor another into it" % (src, b.e, b.name, eff[k], st,
-                                                                                  b2.name, eff[k2]))
+                              "only fall into an entry label of the hot or cold side, and nothing may fall into "
+                              "it" % (src, b.e, b.name, eff[k], st, b2.name, eff[k2]))
             elif bit_skip(st) or b.runson:
                 errors.append("%s:%d: %s (%s) %s %s (%s): they must be in one pass"
                               % (src, b.e, b.name, eff[k], "runs on into" if b.runson else "skips into",
@@ -1302,7 +1323,7 @@ def program(prog, phase, errors):
             else:
                 copies[copy_of[k]][spot[0]] = "FALL_%d = P%%" % (b.e + 1) + note % (b.name, b2.name)
                 copies[copy_of[k2]][spot2[0]] = " ASSERT P% = FALL_" + str(b.e + 1) + note % (b.name, b2.name)
-    nstubs = glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies)
+    nstubs = glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c6falls)
     seams = {}
     for c, entry, br in ovlseams:          # (a branch's JMP serves a fall too)
         seams[(c, entry)] = seams.get((c, entry), False) or br
@@ -1404,7 +1425,7 @@ def text_tokens(errors):
 # passes), as the rasteriser's test builds bank 5 before the game.
 RFILES = ("gfx-glue.asm", "gfx-raster_poly.asm", "gfx-raster_line.asm", "gfx-raster.asm",
           "gfx-raster_init.asm", "gfx-raster_rep.asm", "gfx-raster_dq.asm", "gfx-raster_lcold.asm",
-          "gfx-raster_reset.asm", "gfx-planet7.asm", "gfx-merid.asm", "gfx-frame.asm", "gfx-ssun.asm",
+          "gfx-raster_reset.asm", "gfx-planet7.asm", "gfx-merid.asm", "gfx-frame.asm",
           "gfx-flare.asm", "gfx-frame_cold.asm", "gfx-hangar.asm", "gfx-finit.asm",
           "gfx-raster_disc.asm", "gfx-raster_disc2.asm", "gfx-raster_dpatch.asm")
 RPLACES = ("bank 4", "bank 4 top", "bank 5 runs", "bank 5", "bank 5 gap", "bank 5 end", "bank 6", "bank 7", "main",

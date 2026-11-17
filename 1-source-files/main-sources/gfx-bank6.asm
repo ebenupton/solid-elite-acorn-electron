@@ -32,8 +32,8 @@
 \
 \ ******************************************************************************
 
- INCLUDE "1-source-files/main-sources/elite-build-options.asm"   \ (_SSUN: the
- INCLUDE "1-source-files/main-sources/elite-map.asm"   \ sun near the planet)
+ INCLUDE "1-source-files/main-sources/elite-build-options.asm"
+ INCLUDE "1-source-files/main-sources/elite-map.asm"
  INCLUDE "3-assembled-output/bank6-game.asm"
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"
 
@@ -55,9 +55,6 @@
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"
-IF _SSUN
- INCLUDE "3-assembled-output/gfx-ssun-bank6.asm"
-ENDIF
  INCLUDE "3-assembled-output/gfx-flare-bank6.asm"
  INCLUDE "3-assembled-output/gfx-frame_cold-bank6.asm"
  INCLUDE "3-assembled-output/gfx-hangar-bank6.asm"

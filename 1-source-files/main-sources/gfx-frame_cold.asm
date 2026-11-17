@@ -95,12 +95,6 @@
 \ then skips its screen clear and border (GMODE bit 7 still set). Keeps Y
 
 .F_DIRECT
-IF _SSUN
- LDA QQ12               \ docked: S_SUN forgets where the sun is (after a
- BEQ P%+7               \ launch it takes it from the system's seeds)
- LDA #0
- STA SS_OK
-ENDIF
  ASL GWARP              \ an in-system jump's TTX66 in space mode?
  BCC fdr1
  BIT GMODE

@@ -201,7 +201,7 @@ order("bank 6", [("the flight code's cold 6 pass", c6, c6end), ("the code", B6["
                  ("the faces' and the lighting's tables", B6["F_CODEEND"], B6["F_TABEND"]),
                  ("the state", B6["F_TABEND"], B6["F_END"]), ("the face lists' slot", fcslot, fjt),
                  ("the dispatcher", fjt, B6["FJT_END"])])
-for f in ("gfx-frame", "gfx-merid", "gfx-ssun", "gfx-flare", "gfx-frame_cold", "gfx-hangar", "gfx-finit"):
+for f in ("gfx-frame", "gfx-merid", "gfx-flare", "gfx-frame_cold", "gfx-hangar", "gfx-finit"):
     nlab += inside(B6, OUT + "%s-bank6.asm" % f, B6["F_START"], B6["F_CODEEND"], "bank 6's code")
 if B6["F_START"] != c6end:
     errors.append("bank 6: the frame layer's code starts at &%04X, not after the cold 6 pass (&%04X)" % (B6["F_START"], c6end))

@@ -116,6 +116,25 @@ node 6-harness/bcompare.mjs --iters 1500 $OPTS --screens --maxsecs 900 --cand "$
 grep -q "^BCOMPARE PASS" "$LOG/screens.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/screens.log" | head -10; echo "screens: FAIL"; fail screens; }
 echo "regressions: PASS (redock, savetest, views, screens)"
 
+# ---- 3b. the reference's fourth patch, the sun's parking (sunref.json, when
+# the build has one: 2-build-files/sunref.py): its proofs (bsunref.mjs: the
+# audit, the slot, heap and parked-sun watches and the station's invariant,
+# over the gate's run), and its passive variant against the unpatched
+# release, game state identical, over the gate's run and the views run
+if [ -f 3-assembled-output/sunref.json ]; then
+    node 6-harness/bsunref.mjs --iters "$ITERS" > "$LOG/sunref.log" 2>&1
+    grep -E "^audit|^patch applied" "$LOG/sunref.log"
+    grep -q "^BSUNREF PASS" "$LOG/sunref.log" || { grep "BSUNREF" "$LOG/sunref.log"; echo "sunref: FAIL"; fail sunref; }
+    R=4-reference-binaries/sth/build.json
+    node 6-harness/bcompare.mjs --iters "$ITERS" --loose --ref $R --cand $R --refpatch none \
+        --candpatch 3-assembled-output/sunref-passive.json --out "$LOG/passive" > "$LOG/passive.log" 2>&1
+    grep -q "^BCOMPARE PASS" "$LOG/passive.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/passive.log" | head -10; echo "sunref passive: FAIL"; fail passive; }
+    node 6-harness/bcompare.mjs --iters 1500 --loose --views --maxsecs 600 --ref $R --cand $R --refpatch none \
+        --candpatch 3-assembled-output/sunref-passive.json --out "$LOG/passive-views" > "$LOG/passive-views.log" 2>&1
+    grep -q "^BCOMPARE PASS" "$LOG/passive-views.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/passive-views.log" | head -10; echo "sunref passive views: FAIL"; fail passive; }
+    echo "sunref: PASS (audit and watches; passive identical over $ITERS iterations and the views run)"
+fi
+
 # ---- 4. speed
 ALL=$(grep -E "^ +all " "$LOG/compare.log")
 CYC=$(sed -n 's/^Cycles per flight iteration: ref [0-9.]*, cand \([0-9.]*\)$/\1/p' "$LOG/compare.log")

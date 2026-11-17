@@ -50,7 +50,7 @@
 // Exit status 0 if the game state is identical at every compared iteration
 // (and both runs completed); prints "BCOMPARE PASS <ref it/s> <cand it/s>" or
 // "BCOMPARE FAIL <reason>".
-import { runElite, loadBuild, regionsFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, ROOT, CAND_BUILD, REF_BUILD, WORK, page1Format } from "./blib.mjs";
+import { runElite, loadBuild, loadRefPatch, regionsFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, ROOT, CAND_BUILD, REF_BUILD, WORK, page1Format } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { writeFileSync, mkdirSync } from "fs";
 import { makeTracer } from "./btrace.mjs";
@@ -58,7 +58,7 @@ import { parseArgs } from "./args.mjs";
 
 const args = parseArgs({ iters: "value", ref: "value", cand: "value", seed: "value", loose: "flag", window: "value",
     out: "value", shots: "value", maxsecs: "value", nopatch: "flag", norefcache: "flag", views: "flag", screens: "flag", trace: "value", screen: "flag",
-    dump: "value", screenlo: "value", screenhi: "value" });
+    dump: "value", screenlo: "value", screenhi: "value", refpatch: "value", candpatch: "value" });
 const ITERS = +(args.iters || 5000);
 const REF = args.ref || REF_BUILD;
 const CAND = args.cand || CAND_BUILD;
@@ -69,9 +69,19 @@ const SHOTS = +(args.shots || 0);
 mkdirSync(OUT, { recursive: true });
 
 const rb = loadBuild(REF), cb = loadBuild(CAND);
+// the reference's fourth patch, the candidate's (sunref.json beside its
+// build.json: 2-build-files/sunref.py), unless the reference is a port build;
+// --refpatch FILE for another, or none; --candpatch to patch the candidate too
+// (the release against the release with a patch: bsunref.mjs)
+const refPatch = args.refpatch === "none" ? null : args.refpatch ? JSON.parse((await import("fs")).readFileSync(args.refpatch, "utf8"))
+    : (rb.progs.flight.sy.SUNPK === undefined ? loadRefPatch(CAND) : null);
+const candPatch = args.candpatch ? JSON.parse((await import("fs")).readFileSync(args.candpatch, "utf8")) : null;
+// (a patched candidate against an unpatched reference: the reference gets
+// the patch's compared region only, at the same address, and nothing else)
+const refRun = refPatch || (candPatch ? { ...candPatch, sites: [], code: [], lso: null } : null);
 const rsy = rb.progs.flight.sy;
 
-async function run(label, build, seedBoot) {
+async function run(label, build, seedBoot, refPatch = null) {
     const pilot = makePilot({ views: !!args.views, screens: !!args.screens });   // --views: the pilot changes view in flight
     const phases = [];
     // --trace FROM,TO,LABEL+LABEL,EXTRA+EXTRA (mtrace.mjs): <out>/trace-<label>.txt
@@ -79,7 +89,7 @@ async function run(label, build, seedBoot) {
     const tracer = args.trace ? makeTracer(args.trace, build, traceOut) : null;
     const t0 = Date.now();
     const r = await runElite({
-        build, pilot, iters: ITERS, maxSecs: +(args.maxsecs || 4 * ITERS),
+        build, pilot, iters: ITERS, maxSecs: +(args.maxsecs || 4 * ITERS), refPatch,
         patch: args.nopatch ? null : patchCommander, seedBoot, screen: !!args.screen,
         screenLo: args.screenlo ? parseInt(args.screenlo) : undefined, screenHi: args.screenhi ? parseInt(args.screenhi) : undefined,
         onIter: (i, s, res) => { phases.push(pilot.P.phase); if (tracer) tracer(i, s, res); },
@@ -102,6 +112,7 @@ async function cachedRef() {
     const h = createHash("sha1");
     for (const f of [REF, rb.disc, new URL("blib.mjs", import.meta.url), new URL("bpilot.mjs", import.meta.url)]) h.update(readFileSync(f));
     for (const p of Object.values(rb.progs)) { h.update(JSON.stringify(p.sy)); for (const im of p.images) h.update(im.data); }
+    h.update(JSON.stringify(refRun));
     h.update(JSON.stringify([ITERS, args.maxsecs || 0, !!args.nopatch, !!args.views, !!args.screen].concat(args.screens ? ["screens"] : []).concat(args.screenlo || args.screenhi ? [args.screenlo || "", args.screenhi || ""] : [])));
     const dir = `${WORK}refcache`, file = `${dir}/${h.digest("hex")}.json.gz`;
     if (!args.norefcache && !args.trace && existsSync(file)) {
@@ -112,7 +123,7 @@ async function cachedRef() {
         console.log(`ref: ${o.iters} iterations (${o.tt100} in flight), emulated ${o.emuSecs.toFixed(1)} s (cached)`);
         return o;
     }
-    const r = await run("ref", rb, null);
+    const r = await run("ref", rb, null, refRun);
     const o = { snaps: r.snaps.map(b => Buffer.from(b).toString("base64")), fsDirty: r.fsDirty, screens: r.screens, init: Buffer.from(r.init).toString("base64"),
         iterTimes: r.iterTimes, tt100Times: r.tt100Times, regions: r.regions, keyLog: r.keyLog,
         iters: r.iters, tt100: r.tt100, emuSecs: r.emuSecs, error: r.error, phases: r.phases, page1: r.page1,
@@ -139,7 +150,7 @@ const seedBoot = SEED !== "boot" ? null : (cregions, written, rb) => {
     }
     return out;
 };
-const cand = await run("cand", cb, seedBoot);
+const cand = await run("cand", cb, seedBoot, candPatch);
 // the boot leftovers seeded into the candidate (for mprof.mjs --seedfile)
 if (cand.seeded) writeFileSync(`${OUT}/seeded.json`, JSON.stringify(cand.seeded));
 
@@ -172,6 +183,7 @@ function symName(a) {
 }
 const n = Math.min(ref.snaps.length, cand.snaps.length);
 let firstDiv = -1, firstAny = -1, printed = false, fsCount = 0;
+const fsAddr = {};
 const perAddr = {};
 if (ok) {
     const ri = ref.init, ci = cand.init;
@@ -193,7 +205,7 @@ if (ok) {
         const a = ref.snaps[i], b = cand.snaps[i];
         const fs = fsAt(i);
         for (let o = 0; o < a.length; o++) if (a[o] !== b[o]) {
-            if (fs.has(o)) { fsCount++; continue; }
+            if (fs.has(o)) { fsCount++; fsAddr[offAddr[o]] = (fsAddr[offAddr[o]] || 0) + 1; continue; }
             const ad = offAddr[o];
             perAddr[ad] = (perAddr[ad] || 0) + 1;
             if (firstAny < 0) firstAny = i;
@@ -210,7 +222,7 @@ if (ok) {
         }
     }
 }
-if (ok) log(`Differences in filing-system bytes (excluded): ${fsCount}`);
+if (ok) log(`Differences in filing-system bytes (excluded): ${fsCount}${fsCount ? " (" + Object.entries(fsAddr).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([a, c]) => symName(+a) + " " + c).join(", ") + ")" : ""}`);
 if (cand.page0d && cand.page0d.length) {
     log(`PAGE &0D WRITTEN by the game (off limits, docs/memory-map.md): ${cand.page0d.map(([i, pc, a]) => `iteration ${i} PC &${pc.toString(16)} -> &${a.toString(16)}`).join(", ")}`);
     ok = false;

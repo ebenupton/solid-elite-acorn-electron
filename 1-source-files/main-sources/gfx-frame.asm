@@ -44,8 +44,7 @@
 \     disc layer's row code, the painter, in the flight code's bank 7
 \     (gfx-raster_disc.asm, gfx-raster_disc2.asm), reached by far calls and
 \     given its rows a batch at a time in the mailbox; the planet's surface
-\     rows (PC_ROWS, gfx-merid.asm) and the sun near the planet (S_SUN,
-\     gfx-ssun.asm, a build with _SSUN) are in this bank.
+\     rows (PC_ROWS, gfx-merid.asm) are in this bank.
 \
 \   * The lighting (L_SUN, L_REC, gfx-light.asm) runs in the game's bank 4,
 \     where the quarter squares are: F_SHIP is given the faces' levels in XX2.
@@ -656,11 +655,6 @@ RPN = 4
 
 .F_FRAME
  STY f_ysav
-IF _SSUN
- BCC ff0s               \ the flight code's frame (C set: hframe): the sun near
- JSR S_SUN              \ the planet first, in every iteration (gfx-ssun.asm)
-.ff0s
-ENDIF
  LDA QQ11
  BEQ ff1
  JMP f_reset            \ not a space view: just forget what was recorded
@@ -1799,7 +1793,7 @@ FC_PLLE = &5F : FC_PLLO = &AF
  EQUW DP_DISC2
 
 \ f_disc2: the second disc (both the sun and the planet on screen: more
-\ often since the sun near the planet is drawn too, S_SUN). It is the
+\ often since the sun is kept near the planet, SUNSC). It is the
 \ smaller disc, and the sun and the planet are the same size (PLANET's radius
 \ 24576 / z for both), so it is the further: R_DISC2 (DP_DISC2, the painter)
 \ draws what the layer's span leaves of each of its rows, incrementally. With

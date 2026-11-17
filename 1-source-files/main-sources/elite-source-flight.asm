@@ -1937,6 +1937,26 @@
                         \ through the list of pirate ship blueprints until we
                         \ find one that has been loaded
 
+                        \ Port: the sun while the space station holds its slot
+                        \ (SUNUP, SUNSC, SUNBK, SUNLAU), in WP's tail, where
+                        \ DFS keeps the end of the disc's catalogue between
+                        \ disc commands: CATD reads it back before each one,
+                        \ and ovload keeps WP's two pages across an overlay's
+                        \ load, so the parked sun survives them (the original
+                        \ does no disc command in flight)
+
+.SUNPK
+
+ SKIP NI%               \ The sun's ship data block, parked
+
+.SUNPF
+
+ SKIP 1                 \ Bit 7 set: SUNPK holds the sun (set by SUNUP and
+                        \ SUNLAU, cleared by SUNBK; RES2 leaves it, but it is
+                        \ read only while the station is present); bit 6 set:
+                        \ SUNSC is moving the sun in this pass of the main
+                        \ flight loop through the ship slots
+
  PRINT "WP workspace from ", ~WP, "to ", ~P%-1, "inclusive"
 
 \ ******************************************************************************
@@ -2711,9 +2731,10 @@ ENDIF
 
  LDA FRIN,X             \ Fetch the contents of this slot into A. If it is 0
  BNE P%+5               \ then this slot is empty and we have no more ships to
- JMP MA18               \ process, so jump to MA18 below, otherwise A contains
-                        \ the type of ship that's in this slot, so skip over the
-                        \ JMP MA18 instruction and keep going
+ JMP SUNSC              \ process, so jump to MA18 below (Port: by way of SUNSC,
+                        \ which moves the parked sun first), otherwise A
+                        \ contains the type of ship that's in this slot, so skip
+                        \ over the JMP instruction and keep going
 
  STA TYPE               \ Store the ship type in TYPE
 
@@ -2725,6 +2746,8 @@ ENDIF
                         \ Next we want to copy the ship data block from INF to
                         \ the zero-page workspace at INWK, so we can process it
                         \ more efficiently
+
+.MAL1g
 
  LDY #NI%-1             \ There are NI% bytes in each ship data block (and in
                         \ the INWK workspace, so we set a counter in Y so we can
@@ -3441,6 +3464,70 @@ ENDIF
 
 \ ******************************************************************************
 \
+\       Name: SUNSC
+\       Type: Subroutine
+\   Category: Universe
+\    Summary: Move and draw the sun while it is parked, after the ships
+\       Area: hot, again
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: MAL1 jumps here when it reaches the end of the ship slots, in place
+\ of MA18. While the space station holds the sun's slot, the sun is parked in
+\ SUNPK (SUNUP), and this runs it through the rest of MAL1 like a ship in a
+\ slot of its own: TYPE = 129, INF = SUNPK and XSAV = NOSH - 1 (the phase of
+\ TIDY in MVEIT), entering MAL1 after GINF, at MAL1g, which copies the block
+\ into INWK. MVEIT moves it, LL9 draws it (the sun's record for the
+\ renderer), the block is copied back to SUNPK, and MA27 moves on to slot
+\ NOSH, whose FRIN byte is always 0, which brings MAL1 back here. Bit 6 of
+\ SUNPF tells the two visits apart: set on the first, when the sun is run,
+\ and cleared on the second, which goes on to MA18. Nothing in the sun's
+\ pass can leave the loop (the collision and scooping tests and FAROF skip
+\ the planet and the sun, and its NEWB and byte #31 never get bit 7), so
+\ bit 6 is always clear again when the main loop reaches MLOOP.
+\
+\ ------------------------------------------------------------------------------
+\
+\ Other entry points:
+\
+\   SUNS1               Go on to MA18
+\
+\ ******************************************************************************
+
+.SUNSC
+
+ LDA SSPR               \ If the space station is not here, the sun (if any)
+ BEQ SUNS1              \ is in its slot, so jump to SUNS1 to go on to MA18
+
+ LDA SUNPF              \ If bit 7 of SUNPF is clear, there is no parked sun,
+ BPL SUNS1              \ so jump to SUNS1 to go on to MA18
+
+ EOR #%01000000         \ Flip bit 6 of SUNPF, and if it is now clear, this
+ STA SUNPF              \ is the second visit, after the sun has been moved,
+ AND #%01000000         \ so jump to SUNS1 to go on to MA18
+ BEQ SUNS1
+
+ LDA #129               \ Set TYPE to the sun's type
+ STA TYPE
+
+ LDA #LO(SUNPK)         \ Set INF to point to the parked sun's data block
+ STA INF
+ LDA #HI(SUNPK)
+ STA INF+1
+
+ LDX #NOSH-1            \ Set XSAV to the last slot, so MA27 moves on to slot
+ STX XSAV               \ NOSH, the end of the slots
+
+ JMP MAL1g              \ Rejoin MAL1 to copy the block into INWK and process
+                        \ the sun
+
+.SUNS1
+
+ JMP MA18               \ Go on to part 13 of the main flight loop
+
+
+\ ******************************************************************************
+\
 \       Name: Main flight loop (Part 13 of 16)
 \       Type: Subroutine
 \   Category: Main loop
@@ -3641,9 +3728,10 @@ ENDIF
                         \ >= 192 (i.e. they must all be < 192 for us to be near
                         \ enough to the planet to bump into a space station)
 
- JSR WPLS               \ Call WPLS to remove the sun from the screen, as we
-                        \ can't have both the sun and the space station at the
-                        \ same time
+ JSR SUNUP              \ Call SUNUP to park the sun, as we can't have both
+                        \ the sun and the space station in the same slot
+                        \ (Port: the original calls WPLS to remove the sun from
+                        \ the screen)
 
  JSR NWSPS              \ Add a new space station to our local bubble of
                         \ universe
@@ -18256,8 +18344,9 @@ ENDMACRO
 
  INC INWK+7             \ And increment z_hi, so it's only just behind us
 
- JSR NWSPS              \ Add a new space station to our local bubble of
-                        \ universe
+ JSR SUNLAU             \ Add a new space station to our local bubble of
+                        \ universe (Port: and a sun, parked; the original
+                        \ calls NWSPS)
 
  LDA #12                \ Set our launch speed in DELTA to 12
  STA DELTA
@@ -18322,6 +18411,126 @@ ENDMACRO
 .TT115
 
  JMP TT23               \ Jump to TT23 to display the Short-range Chart
+
+\ ******************************************************************************
+\
+\       Name: SUNLAU
+\       Type: Subroutine
+\   Category: Universe
+\    Summary: Add the space station and this system's sun as we launch
+\       Area: cold 6, again
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: TT110 calls this in place of NWSPS when we launch. It adds the space
+\ station, as NWSPS, then makes the system's sun where SOLAR put it when we
+\ arrived, relative to the planet, and parks it in SUNPK (as SUNUP), so the
+\ sun is there from the start, and stays when we leave the station's safe
+\ zone (SUNBK). SOLAR puts the planet at (h, h, a) in sign units (a = 3 + the
+\ low two bits of s0_hi + bit 0 of FIST, which SOLAR halves; h = a / 2) and
+\ the sun at x = b * 65536 + b * 256, y = h, z = -m (b = the low two bits of
+\ s2_hi, m = the low three bits of s1_hi with bit 0 set), so the sun is at
+\ (b - h) * 65536 + b * 256, 0, -(m + a) * 65536 from the planet. At the
+\ launch the planet is at (0, 0, 1), so the sun is at x as above, y = 0 and
+\ z = -(m + a - 1) * 65536, taking bit 0 of FIST as clear (what it was when
+\ we arrived is not known). The seeds are the current system's, QQ2, which
+\ SOLAR read in QQ15 on arrival (at the launch QQ15 holds the system that
+\ TT111 has just selected, under the chart's crosshairs). The rest of its
+\ data block is SOLAR's too: ZINF's orientation, and NEWB from the planet's
+\ and the sun's E% bytes (SUNE), as NWSHP sets them for the planet and the
+\ sun in turn.
+\
+\ ******************************************************************************
+
+.SUNLAU
+
+ JSR NWSPS              \ Add the space station, as TT110 did
+
+ JSR ZINF               \ Reset the INWK ship workspace for the sun, as SOLAR
+
+ LDA QQ2+5              \ Set x_hi = b = the low two bits of s2_hi
+ AND #%00000011
+ STA INWK+1
+
+ LDA QQ2+1              \ Set A = h = a / 2 for a = 3 + the low two bits of
+ AND #%00000011         \ s0_hi
+ CLC
+ ADC #3
+ LSR A
+
+ STA INWK+2             \ Set x_sign = h, for the subtraction
+
+ LDA INWK+1             \ Set A = b - h, and if b >= h, jump to SUNL2 with
+ SEC                    \ x_sign = A = b - h, as x = (b - h) * 65536 + b * 256
+ SBC INWK+2
+ BCS SUNL2
+
+ EOR #&FF               \ Otherwise x is negative: set A = h - b - 1 (the C
+                        \ flag is clear, from the subtraction)
+
+ LDX INWK+1             \ If b = 0, jump to SUNL1 with |x| = h * 65536
+ BEQ SUNL1
+
+ TAY                    \ Otherwise |x| = (h - b - 1) * 65536 + (256 - b) * 256,
+ TXA                    \ so set x_hi = 256 - b = -b (the C flag is still
+ EOR #&FF               \ clear)
+ ADC #1
+ STA INWK+1
+
+ TYA                    \ Set A = h - b - 1, the magnitude of x_sign, and jump
+ BCC SUNL3              \ to SUNL3 to set its sign (this BCC is effectively a
+                        \ JMP, as the addition leaves the C flag clear)
+
+.SUNL1
+
+ ADC #1                 \ Set A = h - b - 1 + 1 = h (b = 0, the C flag clear)
+
+.SUNL3
+
+ ORA #%10000000         \ Set bit 7 of A, as x is negative
+
+.SUNL2
+
+ STA INWK+2             \ Store the result in x_sign
+
+ LDA QQ2+1              \ Set z_sign = -(m + a - 1) for m = the low three bits
+ AND #%00000011         \ of s1_hi with bit 0 set and a = 3 + the low two bits
+ CLC                    \ of s0_hi, starting with A = a - 1
+ ADC #2
+ STA T
+
+ LDA QQ2+3              \ Set A = m + a - 1 (the C flag is clear, as a - 1 is
+ AND #%00000111         \ at most 5)
+ ORA #%00000001
+ ADC T
+
+ ORA #%10000000         \ Set bit 7, as the sun is behind the planet, and store
+ STA INWK+8             \ the result in z_sign
+
+ LDA tek                \ Set NEWB to the planet's E% byte, for the planet type
+ AND #%00000010         \ 128 or 130 (as SOS1 makes it from tek), OR'd with the
+ ORA #%10000000         \ sun's (SUNE), with bits 4 and 7 cleared, as NWSHP
+ TAY                    \ leaves it for the planet and then the sun
+ JSR SUNE
+ AND #%01101111
+ STA NEWB
+
+ LDX #NI%-1             \ Copy the sun's data block from INWK to SUNPK
+
+.SUNL4
+
+ LDA INWK,X
+ STA SUNPK,X
+
+ DEX
+
+ BPL SUNL4
+
+ LDA #%10000000         \ Set bit 7 of SUNPF (and clear bit 6), to record that
+ STA SUNPF              \ SUNPK holds the sun
+
+ RTS                    \ Return from the subroutine
+
 
 \ ******************************************************************************
 \
@@ -19872,7 +20081,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Set up various aspects of arriving in a new system
-\       Area: overlay 1, again
+\       Area: overlay 1
 \  Deep dive: A sense of scale
 \
 \ ------------------------------------------------------------------------------
@@ -20824,6 +21033,70 @@ ENDMACRO
  STA INF+1              \ from UNIV and store it in INF
 
  RTS                    \ Return from the subroutine
+
+\ ******************************************************************************
+\
+\       Name: SUNUP
+\       Type: Subroutine
+\   Category: Universe
+\    Summary: Park the sun outside the ship slots, as the space station is
+\             about to take its slot
+\       Area: cold 6, again
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: part 14 of the main flight loop calls this in place of WPLS, just
+\ before NWSPS puts the space station in the sun's slot. Instead of removing
+\ the sun, this copies its data block from the second slot to SUNPK, where
+\ SUNSC moves and draws it once an iteration, after the ships, and from
+\ where SUNBK puts it back in its slot when the station goes.
+\
+\ ******************************************************************************
+
+.SUNUP
+
+ LDX #NI%-1             \ Copy the sun's data block from the second slot at
+                        \ K% + NI% to SUNPK
+
+.SUNU1
+
+ LDA K%+NI%,X
+ STA SUNPK,X
+
+ DEX
+
+ BPL SUNU1
+
+ LDA #%10000000         \ Set bit 7 of SUNPF (and clear bit 6), to record that
+ STA SUNPF              \ SUNPK holds the sun
+
+ RTS                    \ Return from the subroutine
+
+\ ******************************************************************************
+\
+\       Name: SUNE
+\       Type: Subroutine
+\   Category: Universe
+\    Summary: Fetch the NEWB bits a new sun gets from the planet's and the sun's
+\             E% bytes
+\       Area: hot, again
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: SUNLAU calls this for the sun's NEWB, as E% is in the blueprint set
+\ (the home bank's, in the port, which SUNLAU in bank 6 cannot read): the
+\ E% byte of the planet's type Y, OR'd with the sun's, as NWSHP leaves NEWB
+\ when SOLAR adds the planet and then the sun.
+\
+\ ******************************************************************************
+
+.SUNE
+
+ LDA E%-1,Y             \ Set A = the planet's E% byte OR the sun's
+ ORA E%+128
+
+ RTS                    \ Return from the subroutine
+
 
 \ ******************************************************************************
 \
@@ -24192,6 +24465,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Set the SLSP ship line heap pointer after shuffling ship slots
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -24268,7 +24542,11 @@ ENDMACRO
 
 .KS4
 
- JSR ZINF               \ Call ZINF to reset the INWK ship workspace
+ JMP SUNBK              \ Port: put the parked sun back in its slot (the
+                        \ original's JSR ZINF, which SUNBK does when there is
+                        \ no parked sun, before rejoining at KS4g)
+
+.KS4g
 
  JSR FLFLLS             \ Reset the LSO block, returns with A = 0
 
@@ -24294,10 +24572,67 @@ ENDMACRO
 
 \ ******************************************************************************
 \
+\       Name: SUNBK
+\       Type: Subroutine
+\   Category: Universe
+\    Summary: Put the parked sun back in its slot, as the space station goes
+\       Area: cold 6, again
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: KS4 jumps here first. If the sun is parked (SUNUP), its data block
+\ goes back into the second slot, from SUNPK, so the sun carries on where it
+\ is, rather than KS4 making a new one directly overhead. Like KS4, this
+\ clears SSPR and the space station bulb; unlike KS4, it keeps the LSO block,
+\ which holds the sun's lines once more. If no sun is parked, this does what
+\ KS4 did.
+\
+\ ******************************************************************************
+
+.SUNBK
+
+ BIT SUNPF              \ If bit 7 of SUNPF is clear, no sun is parked, so jump
+ BPL SUNB2              \ to SUNB2 to make a new sun, as KS4 does
+
+ LDX #NI%-1             \ Copy the sun's data block from SUNPK to the second
+                        \ slot at K% + NI%
+
+.SUNB1
+
+ LDA SUNPK,X
+ STA K%+NI%,X
+
+ DEX
+
+ BPL SUNB1
+
+ LDA #129               \ Put the sun back in the second slot in FRIN
+ STA FRIN+1
+
+ LDA #0                 \ Clear SUNPF, as the sun is no longer parked
+ STA SUNPF
+
+ STA SSPR               \ Set the "space station present" flag to 0, as we are
+                        \ no longer in the space station's safe zone
+
+ JMP SPBLB              \ Call SPBLB to redraw the space station bulb, which
+                        \ will erase it from the dashboard, returning from the
+                        \ subroutine using a tail call
+
+.SUNB2
+
+ JSR ZINF               \ Call ZINF to reset the INWK ship workspace
+
+ JMP KS4g               \ Rejoin KS4 after its first instruction
+
+
+\ ******************************************************************************
+\
 \       Name: KS2
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Check the local bubble for missiles with target lock
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27566,6 +27901,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Status
 \    Summary: Process us making a kill
+\       Area: cold 6
 \  Deep dive: Combat rank
 \
 \ ------------------------------------------------------------------------------
@@ -27599,6 +27935,7 @@ ENDIF
 \   Category: Sound
 \    Summary: Make the sound of a laser strike on another ship or a ship
 \             explosion
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -30143,8 +30480,7 @@ ENDIF
  BNE P%+5               \ ships first
  JSR L_SUN
  LDX #FG_FRAME
- SEC                    \ (C set: the flight code's frame, with the sun near
- JSR GCALL              \ the planet first, S_SUN in bank 6)
+ JSR GCALL
  PLA
  TAY
  PLA

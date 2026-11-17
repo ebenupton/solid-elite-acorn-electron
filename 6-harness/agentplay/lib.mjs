@@ -35,7 +35,7 @@
 // What it watches for besides: BRKs (any BRK instruction run once the game has started,
 // with where it was and the error block after it), writes by game code to page &0D, and
 // the routine labels of each poll (control flow).
-import { progHooks, regionsFor, canonFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, PATCHES, bootModelB, physRead, loadSyms, page1Watch } from "../blib.mjs";
+import { progHooks, regionsFor, canonFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, PATCHES, bootModelB, physRead, loadSyms, page1Watch, applyRefPatch } from "../blib.mjs";
 import { existsSync, readFileSync } from "fs";
 import { dirname, resolve } from "path";
 export { regionsFor };
@@ -72,8 +72,9 @@ export class BMachine {
         this.s = await bootModelB(this.b.disc);
         const cpu = this.cpu = this.s._machine.processor, b = this.b;
         this.ram = cpu.ramRomOs;
-        this.regions = regionsFor(b);
-        this.canon = canonFor(b, this.regions);
+        this.rp = this.opts.refPatch || null;    // (the reference's fourth patch: blib.applyRefPatch)
+        this.regions = regionsFor(b, this.rp);
+        this.canon = canonFor(b, this.regions, this.rp);
         this.isRamBank = n => !!cpu.model.swram[n & 15];
         const { hookOf, hookLd, live, bankOf } = progHooks(b, cpu);
         Object.assign(this, { hookOf, live, bankOf });
@@ -101,6 +102,7 @@ export class BMachine {
         add("RDCH", { prog: null, name: "OSRDCH", a: 0xffe0, map: "m", sig: [] }, { poll: true });
         for (const a of [0xffce, 0xffd1, 0xffd4, 0xffd7, 0xffda, 0xffdd, 0xfff7, 0xfff1]) add("FS", { prog: null, name: "FS", a, map: "m", sig: [] });
         for (const name of b.patches) for (const pt of [].concat(PATCHES[name](P.flight))) add("PATCH", { prog: P.flight, name, ...pt });
+        if (this.rp) add("RPATCH", hookOf(P.flight, "RSHIPS"));
         this.hookTab = new Uint8Array(65536);
         for (const a of byPc.keys()) this.hookTab[a] = 1;
         this._labels();
@@ -366,6 +368,11 @@ export class BMachine {
             }
             case "FS": if (this.stash.size && (pc !== 0xfff1 || cpu.a === 0x7f)) this.unsettle(); break;
             case "PATCH": h.apply(cpu); break;
+            case "RPATCH": {                     // (the reference's fourth patch: blib.applyRefPatch,
+                const e = applyRefPatch(cpu, this.rp);   // where the flight program starts)
+                if (e) { this.events.push([this.iter, "refpatch", e]); this.error = e; }
+                break;
+            }
             case "Mpc": {
                 const v = this.rb(sy.LASCT);
                 if (v) this.ram[sy.LASCT] = v - 1;

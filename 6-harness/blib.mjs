@@ -240,16 +240,57 @@ export function halfPart8(inwk) {
 // Game state compared per iteration: [start, length, name]. The workspaces
 // are at the same addresses in both programs (and the regions are found by
 // the flight program's symbols, wherever a build puts them).
-export function regionsFor(b) {
+export function regionsFor(b, refPatch = null) {
     const sy = b.progs.flight.sy, ld = b.loader;
     const naEnd = ld["NAEND%"] !== undefined ? ld["NAEND%"] : ld.CHK + 1;
+    // the parked sun (SUNPK, SUNPF in WP's tail): a build's own, or the
+    // reference's fourth patch's (loadRefPatch), at the same address
+    const sun = sy.SUNPK !== undefined ? [[sy.SUNPK, 38, "SUNPK"]] : refPatch ? [refPatch.region] : [];
     return [
         [0x0000, sy.K4 + 2, "ZP"],                       // zero page game variables (&00-&E1)
         [sy.UP, sy.CATF + 1 - sy.UP, "UP"],              // key logger, flight variables, commander (NAME..SVC), configuration
         [sy["K%"], 0x0d00 - sy["K%"], "K%"],             // ship data blocks and the ship line heap (down from LS% = &0CFF)
         [sy.WP, sy.CPIR + 1 - sy.WP, "WP"],              // line buffer, ball and sun line heaps, stardust
         [ld["NA%"], naEnd - ld["NA%"], "NA%"],           // the last saved commander and its checksums
-    ];
+    ].concat(sun);
+}
+
+// applyRefPatch(cpu, rp): the reference's fourth patch, applied when the flight
+// program starts (at S%, after each load): each site's bytes checked against
+// the release's (a site with no address found by them, once, in its
+// routine), then written; the code put in the slot, and the slot paged in,
+// ROMSEL and its copy at &F4, from which the MOS restores ROMSEL after its
+// calls into the ROMs. Returns an error, or null
+export function applyRefPatch(cpu, rp) {
+    const rb = a => cpu.ramRomOs[a & 0xffff];
+    if (!rp.sites.length && !rp.code.length) return null;      // (a region only: nothing applied)
+    if (!cpu.model.swram[rp.slot & 15]) return `refpatch: slot ${rp.slot} is not sideways RAM`;
+    const at = [];
+    const is = (a, bytes) => bytes.every((v, i) => rb(a + i) === v);
+    for (const st of rp.sites) {             // (a site already patched, as RSHIPS
+        let a = st.addr;                     // may run again in one load: kept)
+        if (a === null || a === undefined) {
+            const hits = [], done = [];
+            for (let x = st.search[0]; x + st.orig.length <= st.search[1]; x++) { if (is(x, st.orig)) hits.push(x); else if (is(x, st.new)) done.push(x); }
+            if (hits.length + done.length !== 1) return `refpatch: ${st.name} found ${hits.length} times (${done.length} patched)`;
+            a = hits.length ? hits[0] : done[0];
+        } else if (!is(a, st.orig) && !is(a, st.new)) return `refpatch: ${st.name}: the release's bytes differ`;
+        at.push([a, st.new]);
+    }
+    for (const [a, bytes] of at) for (let i = 0; i < bytes.length; i++) cpu.ramRomOs[a + i] = bytes[i];
+    for (const [a, bytes] of rp.code) for (let i = 0; i < bytes.length; i++) cpu.ramRomOs[cpu.romOffset + rp.slot * 16384 + a - 0x8000 + i] = bytes[i];
+    cpu.ramRomOs[0xF4] = rp.slot;
+    cpu.romSelect(rp.slot);
+    return null;
+}
+
+// The Model B reference's fourth patch (2-build-files/sunref.py): the port's
+// sun-parking routines assembled for the release, in a sideways RAM slot,
+// with its sites in the release's main RAM; a build's is sunref.json beside
+// its build.json (null if it has none)
+export function loadRefPatch(buildJson, passive = false) {
+    const f = resolve(dirname(buildJson), passive ? "sunref-passive.json" : "sunref.json");
+    return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
 }
 
 // Addresses excluded from the comparison, by flight symbol: name -> [length, reason]
@@ -305,7 +346,7 @@ export function excludeSet(sy, lists) {
 //    data block; a build that moves the blueprints (XX21) has its XX0 moved
 //    back by the difference.
 const LSO_ORIG = 0x0e00, XX21_ORIG = 0x5600, BP_END_ORIG = 0x6000;
-export function canonFor(b, regions) {
+export function canonFor(b, regions, refPatch = null) {
     const sy = b.progs.flight.sy;
     const offOf = a => { let o = 0; for (const [s, n] of regions) { if (a >= s && a + 1 < s + n) return o + a - s; o += n; } return -1; };
     const offs = [sy.INWK + 33, ...Array.from({ length: 12 }, (_, i) => sy["K%"] + 37 * i + 33)].map(offOf).filter(o => o >= 0);
@@ -316,6 +357,7 @@ export function canonFor(b, regions) {
     const bpLo = xx21, bpHi = xx21 + (BP_END_ORIG - XX21_ORIG);
     return buf => {
         if (sy.LSO !== LSO_ORIG) for (const o of offs) if ((buf[o] | buf[o + 1] << 8) === sy.LSO) { buf[o] = LSO_ORIG & 255; buf[o + 1] = LSO_ORIG >> 8; }
+        if (refPatch) for (const o of offs) if ((buf[o] | buf[o + 1] << 8) === refPatch.lso) { buf[o] = LSO_ORIG & 255; buf[o + 1] = LSO_ORIG >> 8; }
         if (xx21 !== XX21_ORIG && xx0 >= 0) {
             const v = buf[xx0] | buf[xx0 + 1] << 8;
             if (v >= bpLo && v < bpHi) { const w = v - xx21 + XX21_ORIG; buf[xx0] = w & 255; buf[xx0 + 1] = w >> 8; }
@@ -445,8 +487,9 @@ export async function runElite(opts) {
     const s = await bootModelB(b.disc);
     const cpu = s._machine.processor;
     if (opts.onBoot) opts.onBoot(s);      // (bhsync.mjs: hooks from the loader on)
-    const regions = regionsFor(b);
-    const canon = canonFor(b, regions);
+    const rp = opts.refPatch || null;
+    const regions = regionsFor(b, rp);
+    const canon = canonFor(b, regions, rp);
     const rd = (a, n = 1) => { const r = new Array(n); for (let i = 0; i < n; i++) r[i] = cpu.ramRomOs[(a + i) & 0xffff]; return r; };
     const rb = a => cpu.ramRomOs[a & 0xffff];
     const wr = (a, bytes) => { for (let i = 0; i < bytes.length; i++) cpu.ramRomOs[a + i] = bytes[i] & 255; };
@@ -473,6 +516,10 @@ export async function runElite(opts) {
     const byPc = new Map();
     const add = (key, h) => { if (!h) return; h.key = key; (byPc.get(h.a) || byPc.set(h.a, []).get(h.a)).push(h); };
     for (const pn of ["flight", "docked"]) for (const [k, h] of Object.entries(H[pn])) add(k, h);
+    // the reference's fourth patch (opts.refPatch, loadRefPatch): applied each
+    // time the flight program starts, at RSHIPS, where its entry S% goes
+    // once DEEOR has decrypted the release's code after each load
+    if (rp) add("RPATCH", hookOf(P.flight, "RSHIPS"));
     add("LAS", lasHook); add("LASN", lasNext);
     // the build's patches (PATCHES above), on the flight program
     for (const name of b.patches) {
@@ -523,6 +570,13 @@ export async function runElite(opts) {
         return keys;
     };
 
+    res.refPatched = 0;
+    const applyRP = () => {
+        if (opts.onRefPatch) opts.onRefPatch("before", cpu);    // (bsunref.mjs: the audit)
+        const err = applyRefPatch(cpu, rp);
+        if (opts.onRefPatch) opts.onRefPatch("after", cpu);
+        if (err) { res.error = err; done = true; } else res.refPatched++;
+    };
     const fire = (h, pc) => {
         const pn = h.prog ? h.prog.name : null;
         switch (h.key) {
@@ -564,6 +618,7 @@ export async function runElite(opts) {
                 break;
             }
             case "PATCH": h.apply(cpu); break;
+            case "RPATCH": applyRP(); break;
             case "Mpc": {
                 const v = rb(fsy.LASCT);
                 if (v) cpu.ramRomOs[fsy.LASCT] = v - 1;
