@@ -14,7 +14,9 @@
 #     released disc (4-reference-binaries/sth/build.json) against the new build
 #     (3-assembled-output/build.json), both flown by the same pilot; FAIL on a
 #     divergence of game state, a run that stops early, or a write to page
-#     &0D. MODE (below) says how strict the comparison is.
+#     &0D. MODE (below) says how strict the comparison is. With the
+#     reference's fourth patch, its two sites in MV40 must have run in the
+#     reference (--needsites: the counts of every changed site are printed).
 #  3. regressions, with real key presses: dock, launch, dock again
 #     (bredock.mjs); save and load a commander through the game's disc menu,
 #     and check the file is byte for byte the original's (bsavetest.mjs); and
@@ -96,7 +98,7 @@ fi
 OPTS=
 case "$MODE" in *strict*) ;; *) OPTS="--loose" ;; esac
 case "$MODE" in *screen*) OPTS="$OPTS --screen" ;; esac
-node 6-harness/bcompare.mjs --iters "$ITERS" $OPTS --deadregs --cand "$CAND" \
+node 6-harness/bcompare.mjs --iters "$ITERS" $OPTS --deadregs --needsites '^MV40' --cand "$CAND" \
     --out "$LOG/compare" "$@" > "$LOG/compare.log" 2>&1
 CST=$?
 grep -E "^Pilot \(ref\)" "$LOG/compare.log"
@@ -106,7 +108,7 @@ fi
 if [ $CST -ne 0 ] || ! grep -q "^BCOMPARE PASS" "$LOG/compare.log"; then
     grep -E "SCREEN|PAGE" "$LOG/compare.log"; tail -5 "$LOG/compare.log"; echo "compare: FAIL (exit $CST)"; fail compare
 fi
-grep -E "Game state identical|Screen identical|registers scrambled" "$LOG/compare.log"
+grep -E "Game state identical|Screen identical|registers scrambled|^Patch" "$LOG/compare.log"
 echo "compare: PASS (mode: $MODE)"
 
 # ---- 3. regressions
@@ -130,7 +132,12 @@ echo "regressions: PASS (redock, savetest, views, screens)"
 # release, game state identical, over the gate's run and the views run; and
 # the sun's edge site alone (sunref-edge.json, with RAND advanced there as the
 # DORND it replaced would: randAt), against the release, the same, and with
-# the sun put on the screen, which the gate's run never has (bsunedge.mjs)
+# the sun put on the screen, which the gate's run never has (bsunedge.mjs);
+# MV40's two sites' control: the reference without them (--nosites) must
+# differ from the candidate within 1500 iterations (the comparison above
+# requires that they ran); and the scenes (bsunslot.mjs), whose clouds scene
+# requires keepRand's restores and has its own control, the reference
+# without keepRand, which must differ
 if [ -f 3-assembled-output/sunref.json ]; then
     node 6-harness/bsunref.mjs --iters "$ITERS" > "$LOG/sunref.log" 2>&1
     grep -E "^audit|^patch applied" "$LOG/sunref.log"
@@ -153,10 +160,13 @@ if [ -f 3-assembled-output/sunref.json ]; then
         grep -E "^(edge|control|port):" "$LOG/sunedge.log"
         grep -q "^BSUNEDGE PASS" "$LOG/sunedge.log" || { echo "sunref edge with the sun on the screen: FAIL"; fail edge; }
     fi
+    node 6-harness/bcompare.mjs --iters 1500 --loose --nosites '^MV40' --cand "$CAND" --out "$LOG/k2ctl" > "$LOG/k2ctl.log" 2>&1
+    grep -q "^BCOMPARE FAIL divergence" "$LOG/k2ctl.log" || { tail -3 "$LOG/k2ctl.log"; echo "sunref MV40 control: FAIL (the reference without MV40's sites does not differ)"; fail k2ctl; }
+    grep "^FIRST DIVERGENCE" "$LOG/k2ctl.log" | sed 's/^/MV40 control (must differ): /'
     node 6-harness/bsunslot.mjs > "$LOG/sunslot.log" 2>&1
-    grep -E "^[a-z]+: (ref|cand)" "$LOG/sunslot.log" | cut -c1-200
+    grep -E "^[a-z]+: (ref|cand)|control" "$LOG/sunslot.log" | cut -c1-200
     grep -q "^BSUNSLOT PASS" "$LOG/sunslot.log" || { grep -A6 "FAIL" "$LOG/sunslot.log" | head -10; echo "sunslot: FAIL"; fail sunslot; }
-    echo "sunref: PASS (audit and watches; passive and the sun's edge identical over $ITERS iterations and the views run; the scenes)"
+    echo "sunref: PASS (audit and watches; passive and the sun's edge identical over $ITERS iterations and the views run; the sites run, the controls differ; the scenes)"
 fi
 
 # ---- 3c. plain disc planets (make circles=off), in a copy of the tree

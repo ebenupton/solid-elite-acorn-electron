@@ -620,6 +620,12 @@ export async function runElite(opts) {
 
     res.refPatched = 0;
     res.deadN = {};
+    // (each changed site of the reference's patch counted as its new
+    // instruction runs: res.siteN, by name; keepRand's restores: res.keepN,
+    // the first at iteration res.keepFirst. A proof that the patch reached
+    // what it changes)
+    res.siteN = {}; res.keepN = 0; res.keepFirst = null;
+    const siteHooked = new Set();
     let randHook = null;
     const applyRP = () => {
         if (opts.onRefPatch) opts.onRefPatch("before", cpu);    // (bsunref.mjs: the audit)
@@ -637,6 +643,10 @@ export async function runElite(opts) {
         if (st) {
             randHook = { prog: P.flight, name: "randAt", a: st.at, map: "m", sig: st.new };
             add("RAND", randHook);
+        }
+        if (!err) for (const x of rp.sites) if (x.orig.join() !== x.new.join() && !siteHooked.has(x.at)) {
+            siteHooked.add(x.at);               // (by its new bytes: not the docked program's code there)
+            add("SITE", { prog: null, name: x.name, a: x.at, map: "m", sig: x.new.slice(0, 3) });
         }
     };
     const fire = (h, pc) => {
@@ -681,6 +691,7 @@ export async function runElite(opts) {
             }
             case "PATCH": h.apply(cpu); break;
             case "RPATCH": applyRP(); break;
+            case "SITE": res.siteN[h.name] = (res.siteN[h.name] || 0) + 1; break;
             case "KEEP":
                 if (!keepPend) {
                     keepPend = { ret: (stackWord(1) + 1) & 0xffff, vals: rp.keepRand.bytes.map(x => rb(x)) };
@@ -690,6 +701,8 @@ export async function runElite(opts) {
             case "KEEPRET":
                 if (keepPend && pc === keepPend.ret) {
                     rp.keepRand.bytes.forEach((x, i) => wr(x, [keepPend.vals[i]]));
+                    if (!res.keepN) res.keepFirst = iter;
+                    res.keepN++;
                     const hs = byPc.get(pc).filter(x => x.key !== "KEEPRET");
                     if (hs.length) byPc.set(pc, hs); else byPc.delete(pc);
                     keepPend = null;

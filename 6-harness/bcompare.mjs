@@ -10,6 +10,8 @@
 //                             [--out dir] [--shots N] [--maxsecs S] [--nopatch]
 //                             [--norefcache] [--views] [--screens]
 //                             [--trace FROM,TO,LABEL+LABEL,VAR+VAR~OFFSET]
+//                             [--refpatch FILE|none] [--candpatch FILE] [--deadregs]
+//                             [--nokeep] [--nosites REGEX] [--needsites REGEX]
 //
 // A build is a build.json (blib.mjs, loadBuild): the disc, and each program's
 // symbols and images. Defaults: reference = 4-reference-binaries/sth/build.json
@@ -58,7 +60,8 @@ import { parseArgs } from "./args.mjs";
 
 const args = parseArgs({ iters: "value", ref: "value", cand: "value", seed: "value", loose: "flag", deadregs: "flag", window: "value",
     out: "value", shots: "value", maxsecs: "value", nopatch: "flag", norefcache: "flag", views: "flag", screens: "flag", trace: "value", screen: "flag",
-    dump: "value", screenlo: "value", screenhi: "value", refpatch: "value", candpatch: "value" });
+    dump: "value", screenlo: "value", screenhi: "value", refpatch: "value", candpatch: "value",
+    nokeep: "flag", nosites: "value", needsites: "value" });
 const ITERS = +(args.iters || 5000);
 const REF = args.ref || REF_BUILD;
 const CAND = args.cand || CAND_BUILD;
@@ -79,6 +82,16 @@ const rb = loadBuild(REF), cb = loadBuild(CAND);
 const refPatch = args.refpatch === "none" ? null : args.refpatch ? JSON.parse((await import("fs")).readFileSync(args.refpatch, "utf8"))
     : (rb.progs.flight.sy.SUNPK === undefined ? loadRefPatch(CAND) : null);
 const candPatch = args.candpatch ? JSON.parse((await import("fs")).readFileSync(args.candpatch, "utf8")) : null;
+// The patch's proofs: each run reports how often each of its patch's changed
+// sites ran (blib's res.siteN) and keepRand's restores (res.keepN); with
+// --needsites REGEX, every changed site whose name matches, and with
+// --needsites keepRand keepRand's restores, must have run (else FAIL), so a
+// comparison cannot pass because the patch never reached what it changes.
+// The controls: --nokeep drops the reference's keepRand, --nosites REGEX the
+// sites whose names match: a control's comparison must then FAIL (the gate
+// checks), which shows the run reaches what those parts change
+if (refPatch && args.nokeep) delete refPatch.keepRand;
+if (refPatch && args.nosites) refPatch.sites = refPatch.sites.filter(st => !new RegExp(args.nosites).test(st.name));
 // (a patched candidate against an unpatched reference: the reference gets
 // the patch's compared region only, at the same address, and nothing else)
 const refRun = refPatch || (candPatch ? { ...candPatch, sites: [], code: [], lso: null } : null);
@@ -132,7 +145,7 @@ async function cachedRef() {
         iterTimes: r.iterTimes, tt100Times: r.tt100Times, regions: r.regions, keyLog: r.keyLog,
         iters: r.iters, tt100: r.tt100, emuSecs: r.emuSecs, error: r.error, phases: r.phases, page1: r.page1,
         screenZone: r.screenZone, fsShown: r.fsShown, fsShownAt: r.fsShownAt,
-        stats: { ...r.stats, systems: [...r.stats.systems] } };
+        stats: { ...r.stats, systems: [...r.stats.systems] }, siteN: r.siteN, keepN: r.keepN, keepFirst: r.keepFirst };
     mkdirSync(dir, { recursive: true });
     // (written whole, then renamed into place: a gate running at the same time in this
     // worktree never reads a part-written file)
@@ -170,6 +183,18 @@ function statLine(st) {
 log(`Iterations: ref ${ref.iters} (flight ${ref.tt100}), cand ${cand.iters} (flight ${cand.tt100}); seed=${SEED}${args.loose ? " loose" : ""}`);
 log(`Pilot (ref):  ${statLine(ref.stats)}`);
 log(`Pilot (cand): ${statLine(cand.stats)}`);
+// ---- the patch's sites, as they ran
+let sitesOk = true;
+for (const [label, r, p] of [["ref", ref, refRun], ["cand", cand, candPatch]]) {
+    if (!p || !p.sites) continue;
+    const ch = p.sites.filter(st => st.orig.join() !== st.new.join());
+    log(`Patch (${label}): sites run: ${ch.map(st => `${st.name} ${r.siteN?.[st.name] || 0}`).join(", ") || "none"}; keepRand ${p.keepRand ? `restored ${r.keepN || 0} times${r.keepN ? " (first at iteration " + r.keepFirst + ")" : ""}` : "none"}`);
+    if (args.needsites) {
+        const re = new RegExp(args.needsites);
+        for (const st of ch) if (re.test(st.name) && !(r.siteN?.[st.name] > 0)) { log(`NEEDSITES: ${label}'s site ${st.name} never ran`); sitesOk = false; }
+        if (re.test("keepRand") && p.keepRand && !(r.keepN > 0)) { log(`NEEDSITES: ${label}'s keepRand never restored`); sitesOk = false; }
+    }
+}
 
 // ---- Compare
 const rreg = ref.regions, creg = cand.regions;
@@ -316,6 +341,7 @@ log(`Page 1 (cand): ${page1Format(cand.page1)}`);
 writeFileSync(`${OUT}/report.txt`, report.join("\n") + "\n");
 writeFileSync(`${OUT}/keys-ref.txt`, ref.keyLog.map(k => k.join(" ")).join("\n") + "\n");
 writeFileSync(`${OUT}/keys-cand.txt`, cand.keyLog.map(k => k.join(" ")).join("\n") + "\n");
+if (!sitesOk) { log("BCOMPARE FAIL a needed site never ran"); process.exit(1); }
 if (ok && firstDiv < 0 && complete) { log(`BCOMPARE PASS ${rs.all.toFixed(2)} ${cs.all.toFixed(2)}`); process.exit(0); }
 log(`BCOMPARE FAIL ${cand.page0d?.length ? "page &0D written" : !ok ? "regions or screen" : firstDiv >= 0 ? "divergence at " + firstDiv : "incomplete"}`);
 process.exit(1);

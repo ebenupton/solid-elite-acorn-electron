@@ -46,6 +46,14 @@
 //            frame records it (F_SUON, F_SUX, F_SUY, at the frame's end,
 //            ff_stars9) must be drawn in every frame across the hand-back and
 //            move by no more than 2 pixels a frame
+//   clouds   explosion clouds, for the fourth patch's keepRand (RAND and
+//            RAND+2 put back as PTCLS found them, at its return): every 40
+//            iterations in flight a cargo canister is put in the first free
+//            slot, 1,200 ahead, killed (byte #31 bit 7), so that it explodes
+//            and its cloud is drawn; the reference's keepRand must restore
+//            (counted), and, as the control, the reference without keepRand
+//            must differ from the candidate (so the clouds' random numbers
+//            would have been seen)
 //   events   in the safe zone, in turn: the escape pod; a mis-jump (PATG
 //            set, CTRL held at TT18's test); a crash into the station
 //            (death, the title, a new game, a launch); a hyperspace jump;
@@ -60,7 +68,7 @@
 // parked, the MLOOPs with the bomb going off (BOMB negative) or the E.C.M.
 // on (ECMA) with the sun parked, and the pilot's titles.
 //
-// node 6-harness/bsunslot.mjs [--scene zone,views,full,handback,events]
+// node 6-harness/bsunslot.mjs [--scene zone,views,full,handback,clouds,events]
 //      [--iters N] [--cand build.json]
 // Prints per scene the counts in each machine and "BSUNSLOT PASS" or
 // "BSUNSLOT FAIL"; exit status 0 only on PASS.
@@ -74,8 +82,8 @@ const rb = loadBuild(REF_BUILD), cb = loadBuild(CAND);
 const RP = loadRefPatch(CAND);
 if (!RP) { console.log("BSUNSLOT FAIL: no sunref.json beside the candidate"); process.exit(1); }
 const NI = 37, SST = 2;
-const SCENES = (a.scene || "zone,views,full,handback,events").split(",");
-const ITERS_OF = { zone: 8000, views: 8000, full: 2500, handback: 400, events: 14000 };
+const SCENES = (a.scene || "zone,views,full,handback,clouds,events").split(",");
+const ITERS_OF = { zone: 8000, views: 8000, full: 2500, handback: 400, clouds: 1500, events: 14000 };
 const b6 = loadSyms(resolve(dirname(CAND), "bank6-symbols.txt"));
 const DBG = +(process.env.SUNSLOT_DEBUG || 0);
 let failed = 0;
@@ -84,7 +92,7 @@ let failed = 0;
 const putc = (ram, ad, v) => { const m = Math.abs(v); ram[ad] = m & 255; ram[ad + 1] = (m >> 8) & 255; ram[ad + 2] = ((m >> 16) & 127) | (v < 0 ? 128 : 0); };
 const EVENTS = ["ESCAPE", "TT18", "DEATH", "ECBLB2", "KILLSHP"];
 
-async function fly(b, ref, scene, refRun = null) {
+async function fly(b, ref, scene, refRun = null, rp = RP) {
     const ITERS = +(a.iters || ITERS_OF[scene]);
     // the candidate's boot leftovers seeded from the reference's state at
     // TT170, as bcompare.mjs does (--seed boot)
@@ -124,7 +132,7 @@ async function fly(b, ref, scene, refRun = null) {
     // H key's jump a galactic one)
     const dks = c => c.key === 1 && ((misjump >= it && c.site === "ee5") || (ghyp >= it && c.site === "hyp")) ? true : pilot.dks(c);
     const r = await runElite({
-        build: b, pilot: { keys, dks, observe: pilot.observe, P }, iters: ITERS, deadRegs: !ref, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: ref ? RP : null, seedBoot,
+        build: b, pilot: { keys, dks, observe: pilot.observe, P }, iters: ITERS, deadRegs: !ref, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: ref ? rp : null, seedBoot,
         onBoot: s => {
             cpu = s._machine.processor;
             const ph = progHooks(b, cpu);
@@ -235,6 +243,29 @@ async function fly(b, ref, scene, refRun = null) {
                 cnt.ev.filled = nf;
                 return;
             }
+            if (scene === "clouds") {
+                // a killed cargo canister 1,200 ahead in the first free slot
+                // (its line heap below the others', where NWSHP's test allows)
+                if (!flying || i % 40 !== 20) return;
+                let heap = ram[fsy.SLSP] | ram[fsy.SLSP + 1] << 8;
+                for (let sl = 2; sl < 12; sl++) {
+                    if (ram[fsy.FRIN + sl]) continue;
+                    const bl = k + NI * sl;
+                    if (heap - 49 < bl + 2 * NI) break;
+                    heap -= 49;
+                    for (let j = 0; j < NI; j++) ram[bl + j] = 0;
+                    putc(ram, bl, 100); putc(ram, bl + 3, -60); putc(ram, bl + 6, 1200);
+                    ram[bl + 14] = 0xe0; ram[bl + 18] = 0x60; ram[bl + 22] = 0x60;
+                    ram[bl + 31] = 0x80;
+                    ram[bl + 33] = heap & 255; ram[bl + 34] = heap >> 8;
+                    ram[bl + 35] = 17;
+                    ram[fsy.FRIN + sl] = 5; ram[fsy.MANY + 5]++; ram[fsy.JUNK]++;
+                    ram[fsy.SLSP] = heap & 255; ram[fsy.SLSP + 1] = heap >> 8;
+                    evc("killed");
+                    break;
+                }
+                return;
+            }
             if (scene === "handback") {
                 // the parked sun ahead (3 sign units, a little up and right), the
                 // station behind and below, for 40 iterations; then the station
@@ -294,6 +325,20 @@ for (const scene of SCENES) {
         const fs = new Set([...(R.r.fsDirty[i] || []), ...(C.r.fsDirty[i] || [])]);
         for (let o = 0; o < x.length; o++) if (x[o] !== y[o] && !fs.has(o) && !ex.has(offAddr[o]) && !emptySlot(x, o)) { if (div < 0) div = i; nd++; if (nd <= 5) console.log(`  ${scene}: iteration ${i}: &${offAddr[o].toString(16)} ref &${x[o].toString(16)} cand &${y[o].toString(16)}`); }
     }
+    // (clouds: keepRand restored in the reference, and the control)
+    let ctl = null;
+    if (scene === "clouds") {
+        const noKeep = JSON.parse(JSON.stringify(RP)); delete noKeep.keepRand;
+        const X = await fly(rb, true, scene, null, noKeep);
+        const m = Math.min(X.r.snaps.length, C.r.snaps.length);
+        ctl = -1;
+        for (let i = 0; i < m && ctl < 0; i++) {
+            const x = X.r.snaps[i], y = C.r.snaps[i];
+            const fs = new Set([...(X.r.fsDirty[i] || []), ...(C.r.fsDirty[i] || [])]);
+            for (let o = 0; o < x.length; o++) if (x[o] !== y[o] && !fs.has(o) && !ex.has(offAddr[o]) && !emptySlot(x, o)) { ctl = i; console.log(`  clouds: control (no keepRand): differs, as it must, from iteration ${i}: &${offAddr[o].toString(16)} ref &${x[o].toString(16)} cand &${y[o].toString(16)}`); break; }
+        }
+        console.log(`clouds: ref: keepRand restored ${R.r.keepN} times (first at iteration ${R.r.keepFirst}); cand: PTCLS's registers scrambled ${C.cnt.dead.PTCLS || 0} times`);
+    }
     const evs = m => Object.entries(m.cnt.ev).sort().map(([k, v]) => `${k} ${v}`).join(", ");
     const show = m => `${evs(m)}; SUNUP ${m.cnt.SUNUP}, SUNBK (parked) ${m.cnt.SUNBKpark}, SUNLAU ${m.cnt.SUNLAU}, SUNSC's passes ${m.cnt.SUNSCpass}, parked MLOOPs ${m.cnt.parked}, hand-back iterations without the sun's move ${m.cnt.handbackSkips}, flight iterations checked for the sun's move ${m.cnt.checked} (and ${m.cnt.jumpIters} with a jump's arrival, not checked)`;
     console.log(`${scene}: ref ${R.r.iters} iterations${R.r.error ? " (" + R.r.error + ")" : ""}: ${show(R)}`);
@@ -305,11 +350,15 @@ for (const scene of SCENES) {
     if (R.r.iters !== R.ITERS || C.r.iters !== C.ITERS) fails.push("a run stopped early");
     for (const k of ["SUNUP", "SUNBKpark", "SUNLAU", "SUNSCpass", "parked"]) if (R.cnt[k] !== C.cnt[k]) fails.push(`${k}: ref ${R.cnt[k]}, cand ${C.cnt[k]}`);
     if (evs(R) !== evs(C)) fails.push(`the events differ: ref ${evs(R)}; cand ${evs(C)}`);
-    const need = { zone: ["SUNUP", "SUNBKpark", "SUNLAU"], views: ["SUNUP", "SUNBKpark", "SUNLAU"], full: ["SUNLAU"], handback: ["SUNBKpark"], events: ["SUNUP", "SUNLAU"] }[scene];
+    const need = { zone: ["SUNUP", "SUNBKpark", "SUNLAU"], views: ["SUNUP", "SUNBKpark", "SUNLAU"], full: ["SUNLAU"], handback: ["SUNBKpark"], clouds: ["SUNLAU"], events: ["SUNUP", "SUNLAU"] }[scene];
     for (const k of need) if (!C.cnt[k]) fails.push(`${k} never ran`);
-    const needEv = { full: ["filled", "KILLSHPParked"], handback: ["handbacks"],
+    const needEv = { full: ["filled", "KILLSHPParked"], clouds: ["killed"], handback: ["handbacks"],
         events: ["ESCAPEParked", "misjump", "DEATHParked", "titles", "TT18Parked", "galactic", "bombParked", "ECBLB2Parked", "ecmParked"] }[scene] || [];
     for (const k of needEv) if (!C.cnt.ev[k]) fails.push(`no ${k}`);
+    if (scene === "clouds") {
+        if (!(R.r.keepN > 0)) fails.push("keepRand never restored in the reference");
+        if (ctl < 0) fails.push("the control (the reference without keepRand) does not differ from the candidate");
+    }
     if (scene === "handback") {
         console.log(`  the sun on the screen (iteration, slot 1, x, y, r, on): ${C.sunPos.map(q => q.join(",")).join(" ")}`);
         if (!C.sunPos.length) fails.push("the sun's position was not recorded");
