@@ -20600,14 +20600,23 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the compass
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
 .COMPAS
 
- JSR DOT                \ Call DOT to redraw (i.e. remove) the current compass
-                        \ dot
+                        \ Port: the original starts with JSR DOT, to redraw
+                        \ (i.e. remove) the current compass dot; that is
+                        \ deferred to the end of SP2, once the new dot is
+                        \ worked out, so the dot to remove is kept here
+
+ LDA COMX
+ STA cpox
+ LDA COMY
+ STA cpoy
+ LDA COMC
+ STA cpoc
 
  LDA SSPR               \ If we are inside the space station safe zone, jump to
  BNE SP1                \ SP1 to draw the space station on the compass
@@ -20625,7 +20634,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (Y X) = A / 10
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20723,7 +20732,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw the space station on the compass
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -20740,7 +20749,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw a dot on the compass, given the planet/station vector
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20802,6 +20811,107 @@ ENDMACRO
                         \ in colour 3
 
  STA COMC               \ Store the compass colour in COMC
+
+                        \ Port: the original falls into DOT here, to draw the
+                        \ new dot, having removed the old one with DOT at
+                        \ COMPAS. Both EOR the same bytes when the dot has not
+                        \ moved (most passes), so then neither is drawn; only
+                        \ what DOT leaves for the new dot is set, from the copy
+                        \ kept here of the last dot drawn: X1 = COMX, Y1,
+                        \ COL = COMC, SC(1 0) and Y, and as CPIX2 leaves them,
+                        \ X (the dot's pixel in its byte) and C = 0: RES2
+                        \ calls DIALS with MCNT = 0, so that COMPAS runs, and
+                        \ returns with DIALS's X and C (U% and ZINF keep
+                        \ them), and C goes into its caller's next DORND. DOT's
+                        \ A is not read: both of DIALS's callers load A after
+                        \ it (ZINF, LDA QQ11). The copy is that of
+                        \ the dot COMPAS kept: a skip needs the new dot equal
+                        \ to the old one, which is the last new one (only SP2
+                        \ writes COMX, COMY and COMC, but for BEGIN's zeroing
+                        \ of COMC, which no new dot equals), so by induction it
+                        \ was drawn here, or skipped with that copy. The screen
+                        \ is the original's either way, as the two EORs
+                        \ commute (the BBC Master port does the same)
+
+ TAX                    \ If the new dot differs from the old one, jump to cpd1
+ CMP cpoc               \ to remove the old one and draw the new one (X =
+ BNE cpd1               \ COMC)
+ LDA COMY
+ CMP cpoy
+ BNE cpd1
+ LDA COMX
+ CMP cpox
+ BNE cpd1
+
+ STA X1                 \ The same dot: set what DOT leaves for it, X1 = COMX,
+ STX COL                \ COL = COMC, X = its pixel in the byte and C = 0, as
+ AND #%00000110         \ CPIX2 sets them, and Y1, SC(1 0) and Y from the
+ LSR A                  \ copy, and return
+ TAX
+ LDA cpy1
+ STA Y1
+ LDA cpsc
+ STA SC
+ LDA cpsc+1
+ STA SCH
+ LDY cpy
+ RTS
+
+.cpd1
+
+ LDA COMX               \ Remove the old dot: DOT with the old dot in COMX,
+ PHA                    \ COMY and COMC, and the new one put back after
+ LDA COMY
+ PHA
+ LDA COMC
+ PHA
+ LDA cpox
+ STA COMX
+ LDA cpoy
+ STA COMY
+ LDA cpoc
+ STA COMC
+ JSR DOT
+ PLA
+ STA COMC
+ PLA
+ STA COMY
+ PLA
+ STA COMX
+
+ JSR DOT                \ Draw the new dot, and keep what DOT leaves for it
+ STY cpy
+ LDA Y1
+ STA cpy1
+ LDA SC
+ STA cpsc
+ LDA SCH
+ STA cpsc+1
+ RTS
+
+.cpox
+
+ EQUB 0                 \ The old dot's COMX, COMY and COMC (COMPAS)
+
+.cpoy
+
+ EQUB 0
+
+.cpoc
+
+ EQUB 0
+
+.cpy1
+
+ EQUB 0                 \ What DOT left for the last dot drawn: Y1, SC(1 0)
+
+.cpsc                   \ and Y
+
+ EQUW 0
+
+.cpy
+
+ EQUB 0
 
                         \ Fall through into DOT to draw the dot on the compass
 

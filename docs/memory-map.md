@@ -456,9 +456,9 @@ what the frames can use, the docked code's are free only while docked.
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 7 (flight) | `&8000-&9F67` | the cold pass, `QQ18` | 8040 | 0 |
-| bank 7 (flight) | `&9F68-&A3B1` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&A3B2-&B2FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 3910 | 8 |
+| bank 7 (flight) | `&8000-&9F0F` | the cold pass, `QQ18` | 7952 | 0 |
+| bank 7 (flight) | `&9F10-&A359` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
+| bank 7 (flight) | `&A35A-&B2FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 3910 | 96 |
 | bank 7 (flight) | `&B300-&BEFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
 | bank 7 | `&BF00-&BFFF` | DFS's workspace page between disc commands (`DFSSAVE%`) | 256 | 0 |
 | bank 7 (docked) | `&8000-&BEFF` | the set's face lists, the cold pass, `QQ18` | 11397 | 4731 |
@@ -469,7 +469,7 @@ what the frames can use, the docked code's are free only while docked.
 | bank 5 | `&B133-&B3FF` | the room below the per-x tables: `R_LINE`'s cold part, the private state, `R_RESETBUF`, `r_wq`, `pf_tilt` | 692 | 25 |
 | bank 5 | `&B400-&BFD4` | the per-x tables, the row pages, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY`, `R_INIT` | 3029 | 0 |
 | bank 5 | `&BFD5-&BFFF` | `RJT`, the jump table | 42 | 1 |
-| bank 6 | `&8000-&8245` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 341 | 241 |
+| bank 6 | `&8000-&8245` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 582 | 0 |
 | bank 6 | `&8246-&AB5E` | the frame layer's code (bank 6 passes) | 10521 | 0 |
 | bank 6 | `&AB5F-&AE7C` | the faces' and the lighting's tables | 798 | 0 |
 | bank 6 | `&AE7D-&B15A` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
@@ -478,7 +478,7 @@ what the frames can use, the docked code's are free only while docked.
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 26, main RAM (flight) 3, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 8, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 448.
+Free, by place: main RAM 26, main RAM (flight) 3, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 96, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.
 
 **The build's check.** `2-build-files/mapcheck.py`, which `make` runs once
 every program and bank is assembled, fails the build if a place is out of
