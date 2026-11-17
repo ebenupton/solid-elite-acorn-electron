@@ -129,6 +129,8 @@
 #     other side reaches the target's stub, at its place in its own copy);
 #   * every stub's line is blank in its copy, and every target is defined in
 #     the program's source (a stub has a place only there);
+#   * a hot block that the cold side or cold 6 reads (not calls) goes into
+#     a main RAM container (hotm, hotx), as bank 4 is not paged in there;
 #   * every unit fits a container, and the flow fits.
 import glob, os, re, sys
 
@@ -1211,9 +1213,27 @@ def program(prog, phase, errors):
         for u0, u1 in units:
             names = "%s..%s" % (bl[hot[u0]].name, bl[hot[u1]].name) if u1 > u0 else bl[hot[u0]].name
             sized.append((sum(bsize[n] for n in range(u0, u1 + 1)), u0, u1, names))
+        # a hot block that the cold side or cold 6 reads (a table: not a call,
+        # which goes through a stub, nor an address) must be in main RAM, as
+        # bank 4 is not paged in there: its unit skips bank 4's container
+        mainonly = set()
+        for k, b in enumerate(bl):
+            if eff[k] not in ("cold", "c6") or not ASM[k]:
+                continue
+            for i in range(b.s, b.e):
+                if not ACTIVE[i]:
+                    continue
+                for off, st in statements(split_code(lines[i])[0]):
+                    m = re.match(r"^\s*(?:\.[A-Za-z_]\w*\s+)*([A-Za-z]{3})\s+(.*)$", st)
+                    if not m or m.group(1).upper() in BRANCH | {"JSR", "JMP"} or m.group(2).strip().startswith("#"):
+                        continue
+                    for x in IDENT.findall(m.group(2)):
+                        k2 = blockof.get(x)
+                        if k2 is not None and eff[k2] == "hot" and k2 in pos:
+                            mainonly.add(pos[k2])
         where = {}
         for size, u0, u1, names in [sized[0]] + sorted(sized[1:], key=lambda s: (-s[0], s[1])):
-            cur = 0
+            cur = 1 if any(n in mainonly for n in range(u0, u1 + 1)) else 0
             while cur < len(conts) and conts[cur][1] + used[conts[cur][0]] + size > conts[cur][2]:
                 cur += 1
             if cur == len(conts):

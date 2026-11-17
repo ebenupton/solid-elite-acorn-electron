@@ -214,7 +214,10 @@ continue, or is a BIT skip, `EQUB &2C` or `&24`), branches into another
 side, which sits at that routine's place), or runs on into the next. `S%`'s
 unit goes first, at the start of bank 4 (the entry table), and then each
 other unit, the largest first, into the first container with room for it:
-`hot`, `hotm`, `hotx` (code runs as fast in main RAM as in bank 4). Each
+`hot`, `hotm`, `hotx` (code runs as fast in main RAM as in bank 4), but
+a unit that the cold side or cold 6 reads (a table such as `UNIV`, not a
+call, which goes through a stub) goes into `hotm` or `hotx`, as bank 4 is
+not paged in there. Each
 container's copy assembles its units in the source's order. The sizes are
 measured, not estimated: the Makefile runs `2-build-files/streams.py`
 twice. `streams.py measure` writes each program's hot pass as one copy,
