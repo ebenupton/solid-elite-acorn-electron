@@ -48,18 +48,18 @@ make
 
 The original is two programs, the flight code and the docked code, each loading the other from disc when you launch, dock or die, and each filling main RAM below the screen. The port moves both into sideways RAM and keeps the swaps: each program has a **home bank** (bank 4), paged in whenever it runs, and a **cold bank** (bank 7), reached only through far calls, and the other two banks hold the renderer (bank 5, the rasteriser; bank 6, the frame layer, the discs and the lens flare, after a small second cold pass of the flight code's rarely run routines, reached by the same far calls). Main RAM holds the two screen buffers (`&1000` and `&4000`), the dashboard and the split-screen interrupt above them, and the hot code that does not fit in bank 4. As in the Master port, each program's source is emitted in three passes, each in the original's order: a **low pass** of what must stay in main RAM, a **hot pass** flowed by measured sizes through main RAM and bank 4, and a **cold pass** in bank 7 for the docked screens, the text, the missions and the rest of what runs once an event. The ships' edge lists are left out (every ship is drawn from its faces), and some of the flight code's once-an-event code is loaded from disc into bank 7 as two overlays (the charts, the hyperspace jump, the launch and the escape pod; the status, market and inventory screens).
 
-The Model B has 64K of sideways RAM against the Master's 64K plus 20K of shadow RAM, HAZEL and ANDY, so space is tight: after the planets' surfaces, bank 4 and main RAM's hot containers are full, and 18 bytes are free in bank 7, 65 in bank 6 and 1,217 in bank 5 (1,122 of them in the row runs' 65-byte tails). The Master port's kept solid rows for docking do not fit. [docs/memory-map.md](docs/memory-map.md) has the details, and [docs/modelb-memory.md](docs/modelb-memory.md) what the MOS and DFS keep where.
+The Model B has 64K of sideways RAM against the Master's 64K plus 20K of shadow RAM, HAZEL and ANDY, so space is tight: after the planets' surfaces, bank 4, main RAM's hot containers and bank 6's cold pass are full, and 96 bytes are free in bank 7, 207 in bank 6 and 1,217 in bank 5 (1,122 of them in the row runs' 65-byte tails). The Master port's kept solid rows for docking do not fit. [docs/memory-map.md](docs/memory-map.md) has the details, and [docs/modelb-memory.md](docs/modelb-memory.md) what the MOS and DFS keep where.
 
 ## Speed
 
-In the gate's flight run (a deterministic pilot's launch, fights, a hyperspace jump and the long approach to the next system's station, 10,000 iterations), the port runs at 7.25 main-loop iterations per emulated second, against the original's 12.64 (the original with the planet's half spin, as the comparison has it): 0.574 times its speed. Everything is drawn filled, double-buffered, on the same 2 MHz 6502 that runs the game. Most of the gap is the planets' surfaces: with plain disc planets (`make circles=off`) the port runs at 12.27, 0.970 times the original. By scene, over the same run (nearly all of it with a big planet ahead):
+In the gate's flight run (a deterministic pilot's launch, fights, a hyperspace jump and the long approach to the next system's station, 10,000 iterations), the port runs at 7.47 main-loop iterations per emulated second, against the original's 12.63 (the original with the planet's half spin and the sun's parking, as the comparison has it): 0.591 times its speed. Everything is drawn filled, double-buffered, on the same 2 MHz 6502 that runs the game. Most of the gap is the planets' surfaces: with plain disc planets (`make circles=off`) the port runs at 12.87, 1.019 times the original. By scene, over the same run (nearly all of it with a big planet ahead):
 
 | Scene | Iterations | Original (wireframe) | Port | Port, `circles=off` |
 |---|---:|---:|---:|---:|
-| Open space | 133 | 19.48 | 13.69 | 18.97 |
-| Big planet | 9,670 | 12.75 | 7.21 | 12.34 |
-| Lave, just after launch | 586 | 7.91 | 5.13 | 15.67 |
-| Planet close | 134 | 6.52 | 7.08 | 7.08 |
+| Open space | 133 | 19.48 | 13.89 | 19.32 |
+| Big planet | 9,670 | 12.75 | 7.43 | 12.96 |
+| Lave, just after launch | 586 | 7.91 | 5.14 | 15.70 |
+| Planet close | 134 | 6.52 | 7.15 | 7.14 |
 
 ## Testing
 
@@ -92,7 +92,7 @@ The port is a series of commits on top of Mark's source, in three parts:
 
 1. **The memory map.** Both programs move out of main RAM into sideways RAM, two banks each, swapped from disc at the same moments as the original swapped them, leaving main RAM below the screen and two banks for a renderer. The game is still the original, iteration for iteration and pixel for pixel: 11.87 flight iterations per emulated second against the original's 11.85.
 2. **The speed-ups.** The game logic made faster one idea per commit, still drawing the original's wireframe pixel for pixel: 14.51 flight iterations per emulated second (1.224 times the original).
-3. **The filled renderer.** The Master port's renderer, rewritten for the NMOS 6502 and the Model B's memory: filled ships lit by the sun, a double-buffered four-colour screen, disc planets and suns drawn incrementally, the sun near the planet, the lens flare, the hangar and the briefing's ship; the original's dashboard at the 1 MHz clock below the space view; then the planets' surfaces, with the Master port's faster circle arithmetic and the planet's half spin. The gate's flight run gives 7.25 iterations per emulated second (0.574 times the original with the same half spin), or 12.27 (0.970 times) with plain disc planets.
+3. **The filled renderer.** The Master port's renderer, rewritten for the NMOS 6502 and the Model B's memory: filled ships lit by the sun, a double-buffered four-colour screen, disc planets and suns drawn incrementally, the sun kept in its slot while the station is near, the lens flare, the hangar and the briefing's ship; the original's dashboard at the 1 MHz clock below the space view; then the planets' surfaces, with the Master port's faster circle arithmetic and the planet's half spin, and the CPC port's findings as the Master port has them. The gate's flight run gives 7.47 iterations per emulated second (0.591 times the original with the same half spin and sun), or 12.87 (1.019 times) with plain disc planets.
 
 Throughout, the game logic is the original's: the port's game state matches the release at every iteration, and save files are byte-identical with the original's. See [docs/README.md](docs/README.md) for the step-by-step results, [docs/renderer.md](docs/renderer.md) for the renderer, [docs/speedups.md](docs/speedups.md) for the speed-ups, [docs/memory-map.md](docs/memory-map.md) for the layout and [docs/video-timing.md](docs/video-timing.md) for the split screen's timing.
 

@@ -71,6 +71,7 @@ default commander's checksum.
 | Part 3: the circle engine's short products (`make circles=off`: 13.20 it/s, 1.142 times, 151,546 cycles) | 7.72 | 0.667 | 259,184 |
 | Part 3: the planet's surface made every iteration close up, every other in deep space (`make circles=off`: 13.20 it/s, 1.142 times, 151,527 cycles) | 7.48 | 0.647 | 267,323 |
 | Part 3: the planet's half spin by half steps on every iteration; against the patched original, which flies another run with them, 12.64 it/s (`make circles=off`: 12.27 it/s, 0.970 times, 163,029 cycles) | 7.25 | 0.574 | 275,703 |
+| Part 3: the sun kept in its slot while the station holds slot 1 (a fourth patch to the reference, `sunref`), and the CPC port's findings as the BBC Master port has them: the disc rows by thresholds and in pairs, the stardust's skips, the compass dot drawn only when it moves, and smaller ones; against the patched original, 12.63 it/s (`make circles=off`: 12.87 it/s, 1.019 times, 155,349 cycles) | 7.47 | 0.591 | 267,764 |
 
 These are the gate's run: the pilot's mix of launches, fights, approaches to
 the station and hyperspace jumps, over 10,000 iterations (in the last row's
@@ -93,10 +94,10 @@ sun; [renderer.md](renderer.md), "Speed"):
 
 | Scene | Iterations | The patched original, it/s | The port, it/s | Against it |
 |---|---:|---:|---:|---:|
-| Planet close (nearer than 128 x 256, ahead; mostly off the screen) | 134 | 6.52 | 7.08 | 1.09 |
-| Big planet (128 x 256 to 512 x 256, ahead) | 9,670 | 12.75 | 7.21 | 0.57 |
-| Open space (planet far, no ships, no station near) | 133 | 19.48 | 13.69 | 0.70 |
-| The first system (Lave, combat just after launch) | 586 | 7.91 | 5.13 | 0.65 |
+| Planet close (nearer than 128 x 256, ahead; mostly off the screen) | 134 | 6.52 | 7.15 | 1.10 |
+| Big planet (128 x 256 to 512 x 256, ahead) | 9,670 | 12.75 | 7.43 | 0.58 |
+| Open space (planet far, no ships, no station near) | 133 | 19.48 | 13.89 | 0.71 |
+| The first system (Lave, combat just after launch) | 586 | 7.91 | 5.14 | 0.65 |
 
 The filled renderer is slower than the original's wireframe: every frame
 is drawn filled (all of it but the bigger disc, which is kept from frame

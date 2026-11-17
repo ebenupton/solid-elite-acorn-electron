@@ -683,15 +683,15 @@ and the frame's runs of game code leave everything as the original does.
 
 ## Speed
 
-The gate's run, 10,000 iterations: 275,703 cycles per flight iteration,
-7.25 flight iterations per second, against the patched original's 12.64
-(0.574 times; the planet's half spin makes the reference fly another run
+The gate's run, 10,000 iterations: 267,764 cycles per flight iteration,
+7.47 flight iterations per second, against the patched original's 12.63
+(0.591 times; the planet's half spin makes the reference fly another run
 than the original's 11.85, 168,749 cycles: the station is placed from the
 planet's vectors, and after the launch at Lave, its fights and the jump,
 the pilot spends the rest of the run on its approach to the next system's
 station, a big planet ahead). The build has the planets' surfaces
 (`_CIRCLES`, the default). With plain
-discs (`make circles=off`) it is 163,029 cycles, 12.27 it/s (0.970 times),
+discs (`make circles=off`) it is 155,349 cycles, 12.87 it/s (1.019 times),
 of which the dashboard's clock switches take about 1,350 cycles
 ([video-timing.md](video-timing.md)).
 By scene (`6-harness/bscenes.mjs` records each iteration's time and the
@@ -703,10 +703,10 @@ fits), without `_CIRCLES` (`make circles=off`: plain discs) and with it
 
 | Scene | Iterations | The original | The port | Against the original | With `_CIRCLES` | Against the original |
 |---|---:|---:|---:|---:|---:|---:|
-| Planet close: the planet ahead, nearer than 128 x 256 (mostly off the screen) | 134 | 306,965 cycles, 6.52 it/s | 282,573 cycles, 7.08 it/s | 1.09 | 282,569, 7.08 | 1.09 |
-| Big planet: the planet ahead, 128 x 256 to 512 x 256 (the big discs, 100 to 190 rows) | 9,670 | 156,880, 12.75 | 162,118, 12.34 | 0.97 | 277,352, 7.21 | 0.57 |
-| Open space: the planet at 512 x 256 or more, no station within 64 x 256, no ships | 133 | 102,695, 19.48 | 105,428, 18.97 | 0.97 | 146,133, 13.69 | 0.70 |
-| The first system's front view (Lave, a beach ball, combat after launch) | 586 | 252,926, 7.91 | 127,658, 15.67 | 1.98 | 390,167, 5.13 | 0.65 |
+| Planet close: the planet ahead, nearer than 128 x 256 (mostly off the screen) | 134 | 306,965 cycles, 6.52 it/s | 280,094 cycles, 7.14 it/s | 1.10 | 279,862, 7.15 | 1.10 |
+| Big planet: the planet ahead, 128 x 256 to 512 x 256 (the big discs, 100 to 190 rows) | 9,670 | 156,880, 12.75 | 154,285, 12.96 | 1.02 | 269,260, 7.43 | 0.58 |
+| Open space: the planet at 512 x 256 or more, no station within 64 x 256, no ships | 133 | 102,695, 19.48 | 103,539, 19.32 | 0.99 | 143,998, 13.89 | 0.71 |
+| The first system's front view (Lave, a beach ball, combat after launch) | 586 | 252,926, 7.91 | 127,354, 15.70 | 1.99 | 389,471, 5.14 | 0.65 |
 
 The original here is the patched one the gate compares with (its run, with
 the planet's half spin, differs from the original's). The run has no
