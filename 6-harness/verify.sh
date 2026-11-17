@@ -20,6 +20,11 @@
 #     (bcompare.mjs --views); and the status, data, chart, market and
 #     inventory screens in flight, which load and swap the flight code's
 #     overlays, against the reference over 1500 iterations (--screens).
+#  3c. plain disc planets: the build with make circles=off (the planets drawn
+#     as discs, without their surfaces), made in a copy of the tree under the
+#     log directory, which must build (bankcheck.py and ovlcheck.py are part
+#     of make) and fly 1500 iterations in step with the reference (bcompare.mjs
+#     --loose), so that the option cannot break unseen.
 #  4. speed: flight-loop iterations per emulated second over the whole run,
 #     reference and candidate, their ratio, and the candidate's cycles per
 #     flight iteration (reported, not gated; the per-window table is in the
@@ -137,6 +142,18 @@ if [ -f 3-assembled-output/sunref.json ]; then
     grep -q "^BSUNSLOT PASS" "$LOG/sunslot.log" || { grep -A6 "FAIL" "$LOG/sunslot.log" | head -10; echo "sunslot: FAIL"; fail sunslot; }
     echo "sunref: PASS (audit and watches; passive identical over $ITERS iterations and the views run; the scenes)"
 fi
+
+# ---- 3c. plain disc planets (make circles=off), in a copy of the tree
+OFF=$LOG/circles-off
+rm -rf "$OFF"; mkdir -p "$OFF"
+tar cf - Makefile 1-source-files 2-build-files 4-reference-binaries 3-assembled-output 5-compiled-game-discs | (cd "$OFF" && tar xf -)
+(cd "$OFF" && make BEEBASM="$BEEBASM" PYTHON="$PYTHON" circles=off) > "$LOG/circles-off-build.log" 2>&1 || { tail -5 "$LOG/circles-off-build.log"; echo "circles=off: FAIL (build)"; fail circles-off; }
+if grep -iE "error|assertion failed" "$LOG/circles-off-build.log" "$OFF/3-assembled-output/compile.txt" > "$LOG/circles-off-errors.log"; then
+    head -5 "$LOG/circles-off-errors.log"; echo "circles=off: FAIL (error/ASSERT)"; fail circles-off
+fi
+node 6-harness/bcompare.mjs --iters 1500 --loose --cand "$OFF/3-assembled-output/build.json" --out "$LOG/circles-off" > "$LOG/circles-off.log" 2>&1
+grep -q "^BCOMPARE PASS" "$LOG/circles-off.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/circles-off.log" | head -10; echo "circles=off: FAIL"; fail circles-off; }
+echo "circles=off: PASS (build, and 1500 iterations in step)"
 
 # ---- 4. speed
 ALL=$(grep -E "^ +all " "$LOG/compare.log")

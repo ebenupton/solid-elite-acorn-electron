@@ -40,7 +40,10 @@ original source's build) against the new build
 runs the regression checks: dock, launch and dock again; save, load, fail
 to load and catalogue through the game's disc menu, with the saved file
 compared byte for byte with the one the released game saves; and change
-view in flight. It prints `VERIFY PASS` with the speed of both builds in
+view in flight. It also builds the option with plain disc planets (`make
+circles=off`) in a copy of the tree, which must build and fly 1,500
+iterations in step with the reference, so that the option cannot break
+unseen. It prints `VERIFY PASS` with the speed of both builds in
 flight-loop iterations per emulated second, their ratio, and the new build's
 cycles per flight iteration.
 
