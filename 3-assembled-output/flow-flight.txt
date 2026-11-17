@@ -1,31 +1,30 @@
-hot &8000-&A86D: 47 units, 10350 bytes, 0 free
+hot &8000-&A86D: 46 units, 10350 bytes, 0 free
   &8000    22 S%
   &8016   519 Main flight loop (Part 1 of 16)..Main flight loop (Part 8 of 16)
   &821D   204 Main flight loop (Part 11 of 16)..Main flight loop (Part 12 of 16)
-  &82E9   344 Main flight loop (Part 13 of 16)..SPIN
-  &8441   122 PIX1..PIXEL2
-  &84BB   146 BLINE
-  &854D   474 STARS..STARS1
-  &8727   258 STARS6
-  &8829    14 MAS2
-  &8837    92 MVT3
-  &8893   182 MVS5
-  &8949   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
-  &8B8C   187 DOCKIT
-  &8C47    85 HITCH
-  &8C9C   255 STARS2..QSMUL
-  &8D9B   266 MU5..MULT3
-  &8EA5    76 MLS2..MLS1
-  &8EF1   100 SQUA..MU11
-  &8F55   257 FMLTU2..MLTU2
-  &9056    77 MUT1..MULT1
-  &90A3   131 TAS3..ADD
-  &9126   180 DVID3B2
-  &91DA   128 BUMP2..REDU2
-  &925A   277 GCASH..DOEXP
-  &936F    86 DOT..CPIX2
-  &93C5   171 NWSHP
-  &9470   136 PROJ..PL9 (Part 3 of 3)
+  &82E9    41 SUNSC
+  &8312   344 Main flight loop (Part 13 of 16)..SPIN
+  &846A   122 PIX1..PIXEL2
+  &84E4   146 BLINE
+  &8576   474 STARS..STARS1
+  &8750   258 STARS6
+  &8852    92 MVT3
+  &88AE   182 MVS5
+  &8964   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
+  &8BA7   187 DOCKIT
+  &8C62    85 HITCH
+  &8CB7   255 STARS2..QSMUL
+  &8DB6   266 MU5..MULT3
+  &8EC0   100 SQUA..MU11
+  &8F24   257 FMLTU2..MLTU2
+  &9025   131 TAS3..ADD
+  &90A8   180 DVID3B2
+  &915C   128 BUMP2..REDU2
+  &91DC   277 GCASH..DOEXP
+  &92F1    86 DOT..CPIX2
+  &9347   171 NWSHP
+  &93F2   136 PROJ..PL9 (Part 3 of 3)
+  &947A   126 WPLS2..WPLS
   &94F8    98 CHKON..PLS6
   &955A    78 TT17
   &95A8   247 KS1..SFX
@@ -49,23 +48,23 @@ hot &8000-&A86D: 47 units, 10350 bytes, 0 free
 hotm &79B2-&7DFF: 33 units, 1102 bytes, 0 free
   &79B2    13 INBAY
   &79BF    20 DOENTRY..DEATH2
-  &79D3    41 SUNSC
-  &79FC    26 UNIV
-  &7A16    15 HLOIN2
-  &7A25    38 MAS3
-  &7A4B    59 VCSU1..TAS1
-  &7A86    24 TAS6
-  &7A9E     5 MU6
-  &7AA3    43 DV42..DVID4
-  &7ACE    23 cntr
-  &7AE5    16 SHD..DENGY
-  &7AF5    18 SPS3
-  &7B07    19 GINF
-  &7B1A    12 SUNE
-  &7B26    24 PLS1
-  &7B3E    45 PLS22..CIRCLE
-  &7B6B    75 WPLS2..WP1
-  &7BB6    51 WPLS
+  &79D3    26 UNIV
+  &79ED    15 HLOIN2
+  &79FC    14 MAS2
+  &7A0A    38 MAS3
+  &7A30    59 VCSU1..TAS1
+  &7A6B    24 TAS6
+  &7A83    76 MLS2..MLS1
+  &7ACF     5 MU6
+  &7AD4    77 MUT1..MULT1
+  &7B21    43 DV42..DVID4
+  &7B4C    23 cntr
+  &7B63    16 SHD..DENGY
+  &7B73    18 SPS3
+  &7B85    19 GINF
+  &7B98    12 SUNE
+  &7BA4    24 PLS1
+  &7BBC    45 PLS22..CIRCLE
   &7BE9    13 FAROF..FAROF2
   &7BF6    14 DPLT
   &7C04    76 SPS1..TAS2

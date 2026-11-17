@@ -211,7 +211,9 @@ RAM, once.
 together, because one falls through into the next (its last statement can
 continue, or is a BIT skip, `EQUB &2C` or `&24`), branches into another
 (the blocks from one to the other, or to the stub of a routine on the other
-side, which sits at that routine's place), or runs on into the next. `S%`'s
+side, which sits at that routine's place), runs on into the next, or is
+reached from before the next one's entry (the original's `BMI WPLS-1`,
+which takes the `RTS` that ends `WP1`, the block before `WPLS`). `S%`'s
 unit goes first, at the start of bank 4 (the entry table), and then each
 other unit, the largest first, into the first container with room for it:
 `hot`, `hotm`, `hotx` (code runs as fast in main RAM as in bank 4), but
@@ -287,7 +289,10 @@ block of its own pass (a block's last statement is the last that assembles
 anything: a constant, a `PRINT` or an `ASSERT` after it does not end the
 fall, and a label alone falls into the next block); that each hot block
 that falls through ends where the block it falls into starts, by an
-`ASSERT` in the copies, which BeebAsm checks; that no block branches into another pass of its
+`ASSERT` in the copies, which BeebAsm checks; that a reference to the
+bytes before a block's entry (`X-n`, with `X` a label at the block's
+start) finds the block before it, which assembles, in the same pass, and
+an `ASSERT` in its copy that it ends where `X` starts; that no block branches into another pass of its
 side; that every stub has its own line; and that every unit fits a
 container. Then `2-build-files/bankcheck.py` checks every reference in the
 copies:

@@ -125,6 +125,10 @@
 #     its end ends where the block it falls into starts: an ASSERT in its
 #     copy (or a FALL_<line> constant and an ASSERT in the next block's), so
 #     a flow that parted them fails the build;
+#   * a reference to the bytes before a block's entry (X - n, X a label at
+#     the block's start: the original's BMI WPLS-1, into the RTS that ends
+#     WP1) needs the block before it that assembles in the same pass (in the
+#     hot pass, its unit), and its copy is checked to end where X starts;
 #   * no block branches into another pass of its side (a branch to the
 #     other side reaches the target's stub, at its place in its own copy);
 #   * every stub's line is blank in its copy, and every target is defined in
@@ -1154,6 +1158,54 @@ def program(prog, phase, errors):
                 errors.append("%s:%d: %s (%s) can fall through its end (%s) into %s (%s), another pass"
                               % (src, b.e, b.name, eff[k], st, b2.name, eff[k2]))
             break
+    # a reference to the bytes before a block's entry (X - n, where X is a
+    # label at the block's start: the original's BMI WPLS-1, which takes the
+    # RTS that ends WP1, its block before) needs that block's last bytes to be
+    # the ones before X: the block before it that assembles must be in its
+    # pass, in the hot pass in its unit, and its copy is checked to end where
+    # X starts (as a fall's)
+    starts = {}                            # label -> block, for labels at a block's start
+    for k, b in enumerate(bl):
+        if eff[k] == "config" or not ASM[k]:
+            continue
+        done = False
+        for i in range(b.s, b.e):
+            if not ACTIVE[i] or done:
+                continue
+            for st in (x.strip() for x in code_part(lines[i]).split(" : ")):
+                m = re.match(r"^\.([A-Za-z_][A-Za-z0-9_]*%?)\s*(.*)$", st)
+                if m:
+                    starts[m.group(1)] = k
+                    st = m.group(2).strip()
+                    if not st:
+                        continue
+                if assembles(st, macros):
+                    done = True
+                    break
+    behind = []                            # (k, k2): X - n in block k2 reaches back into block k
+    for k3, b in enumerate(bl):
+        if eff[k3] == "config" or not ASM[k3]:
+            continue
+        for i in range(b.s, b.e):
+            if not ACTIVE[i]:
+                continue
+            for m in re.finditer(r"(?<![\w%])([A-Za-z_]\w*)\s*-\s*(\d+)\b", split_code(lines[i])[0]):
+                k2 = starts.get(m.group(1))
+                if k2 is None or not re.search(r"\b(?:B(?:CC|CS|EQ|MI|NE|PL|VC|VS)|JMP|JSR)\s+$",
+                                                split_code(lines[i])[0][:m.start()], re.I):
+                    continue
+                k = next((j for j in range(k2 - 1, -1, -1) if ASM[j]), None)
+                if k is None or eff[k] == "config":
+                    continue
+                if eff[k] != eff[k2]:
+                    errors.append("%s:%d: %s-%s reaches back into %s (%s), which is not in %s's pass (%s)"
+                                  % (src, i + 1, m.group(1), m.group(2), bl[k].name, eff[k], bl[k2].name,
+                                     eff[k2]))
+                    continue
+                if eff[k] == "hot":
+                    join(pos[k], pos[k2])
+                if (k, k2) not in behind:
+                    behind.append((k, k2))
     # branches: a hot block that branches into another keeps the blocks from
     # the one to the other in one unit (a branch reaches only 128 bytes); no
     # branch crosses passes
@@ -1307,8 +1359,11 @@ def program(prog, phase, errors):
             free = [i for i in rng if not code_part(lines[i]) and ACTIVE[i]]
             return ([i for i in free if not lines[i].strip()] + free)[:1]
         note = "   \\ (streams.py: %s falls through into %s)"
-        for k, k2 in hotfalls:
+        checks = hotfalls + [kk for kk in behind if kk not in hotfalls]
+        for k, k2 in checks:
             b, b2 = bl[k], bl[k2]
+            note = "   \\ (streams.py: %s falls through into %s)" if (k, k2) in hotfalls else \
+                "   \\ (streams.py: %s's last bytes are reached from %s, before its entry)"
             code = [i for i in range(b.s, b.e) if code_part(lines[i]) and ACTIVE[i]]
             code2 = [i for i in range(b2.s, b2.e) if code_part(lines[i]) and ACTIVE[i]]
             entry = entry_label(lines, b2.s, b2.e, macros)
