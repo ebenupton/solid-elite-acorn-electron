@@ -37,6 +37,11 @@ A patch is:
           (elite-sunref.asm: streams.py's second emission of the blocks
           tagged ", again"), in the slot
   heap    [address, length]: the station's line heap, SR_HEAP, after them
+  keepRand  {at, bytes}: the explosion clouds' random seed: RAND and RAND+2
+          as PTCLS finds them are put back when it returns (the harness does
+          it, at PTCLS's return address, read from the stack at its entry:
+          DOEXP falls into PTCLS), so drawing a cloud takes no random numbers
+          that last, as the port's F_CLOUD takes none
   sites   [{name, addr, orig, new}]: the release's bytes at each changed
           site in its main RAM and what they become, each the same length
           (the harness checks orig before it writes anything, at each start
@@ -203,7 +208,10 @@ def patch(ref, sr, code, passive, sunpk):
         s_["search"] = [ref[rng[0]], ref[rng[1]]]
     if not passive:
         sites.append(edge(ref))
-    return {"name": "the sun's parking" + (" (passive)" if passive else ", the sun's edge"), "slot": SR_SLOT,
+    # the explosion clouds' seed: RAND and RAND+2 as PTCLS finds them, put back
+    # when it returns (the harness does it, at PTCLS's return address)
+    keep = {} if passive else {"keepRand": {"at": ref["PTCLS"], "bytes": [ref["RAND"], ref["RAND"] + 2]}}
+    return {**keep, "name": "the sun's parking" + (" (passive)" if passive else ", the sun's edge, the clouds' seed"), "slot": SR_SLOT,
             "code": [[sr["SR_START"], list(code)]], "heap": [heap, sr["SR_END"] - heap], "sites": sites,
             "lso": heap, "region": [sunpk, 38, "SUNPK"], "entry": ref["RSHIPS"],
             "hooks": {n: sr[n] for n in ("A_SUNUP", "A_SUNBK", "A_SUNSC", "A_SUNLAU", "A_SUNS1", "A_SUNE",

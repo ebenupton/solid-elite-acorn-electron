@@ -545,6 +545,13 @@ export async function runElite(opts) {
     // time the flight program starts, at RSHIPS, where its entry S% goes
     // once DEEOR has decrypted the release's code after each load
     if (rp) add("RPATCH", hookOf(P.flight, "RSHIPS"));
+    // the patch's keepRand ({ at, bytes }: the explosion clouds' seed): the
+    // bytes (RAND and RAND+2) as they are when the routine at "at" (PTCLS) is
+    // entered are put back when it returns, at its return address, read from
+    // the stack at the entry (DOEXP falls into PTCLS, so that is LL9's
+    // caller's), so the routine takes no random numbers that last
+    let keepPend = null;
+    if (rp && rp.keepRand) add("KEEP", { ...hookOf(P.flight, "PTCLS"), a: rp.keepRand.at });
     // opts.deadRegs (DEAD_AFTER): a routine's entry, at its name in the flight
     // program (the stub, for a routine in another pass: the caller's return
     // is then on the stack's top), noting the return; there the registers
@@ -674,6 +681,20 @@ export async function runElite(opts) {
             }
             case "PATCH": h.apply(cpu); break;
             case "RPATCH": applyRP(); break;
+            case "KEEP":
+                if (!keepPend) {
+                    keepPend = { ret: (stackWord(1) + 1) & 0xffff, vals: rp.keepRand.bytes.map(x => rb(x)) };
+                    add("KEEPRET", { prog: null, name: "keepRand", a: keepPend.ret, map: "m", sig: [] });
+                }
+                break;
+            case "KEEPRET":
+                if (keepPend && pc === keepPend.ret) {
+                    rp.keepRand.bytes.forEach((x, i) => wr(x, [keepPend.vals[i]]));
+                    const hs = byPc.get(pc).filter(x => x.key !== "KEEPRET");
+                    if (hs.length) byPc.set(pc, hs); else byPc.delete(pc);
+                    keepPend = null;
+                }
+                break;
             case "DEAD": {
                 const ret = (stackWord(1) + 1) & 0xffff;
                 deadPend.push({ ret, s: (cpu.s + 2) & 255, regs: h.regs, n: h.n });

@@ -3818,10 +3818,12 @@ FGZ = 4 + 1 + 1 + 9 + 1 + 2
 \ each particle: f_gcloud, F_PDOT). The heap is the cloud's record (bytes 0-2
 \ its size, counter and vertex count, 3-6 its seeds, then the vertices' screen
 \ coordinates), and nothing writes it again before the frame. Then both
-\ passes do what the game keeps of PTCLS: the random numbers, which depend
-\ only on the last vertex's seeds and the particle count, as PTCLS calls
-\ DORND2 three times a particle and keeps RAND+1, and RAND+3 = the planet's
-\ z_lo; and Q, U, TGT and CNT as it leaves them. Port (Model B): disc
+\ passes do what the game keeps of PTCLS: of the random numbers, only RAND+3
+\ = the planet's z_lo, as PTCLS takes none that last (it keeps RAND+1
+\ itself, and RAND and RAND+2, which its DORND2s step three times a
+\ particle, are put back as it found them: the explosion clouds' seed, in
+\ the comparison's reference too, by the fourth patch's keepRand); and Q, U,
+\ TGT and CNT as it leaves them. Port (Model B): disc
 \ Elite's PTCLS, whose particles per vertex are U + 1 with U = (the counter,
 \ or its complement past 127) / 8 OR 1
 
@@ -3861,30 +3863,8 @@ FGZ = 4 + 1 + 1 + 9 + 1 + 2
  BCC fcd2
 .fcd3
  STA CNT
- INY                    \ its seeds RAND and RAND+2 (the bytes after them
- LDA (XX19),Y           \ feed DORND2's RAND+1 and RAND+3, which PTCLS
- EOR CNT                \ puts back as it found them, and as K%+6)
- STA RAND
- LDY #5
- LDA (XX19),Y
- EOR CNT
- STA RAND+2
- LDA U                  \ X = 3 * (U + 1): DORND2's RAND and RAND+2
- ASL A                  \ (U <= 15, so the carry is clear)
- ADC U
- ADC #3
- TAX
-.fcd4
- LDA RAND
- ASL A
- TAY
- ADC RAND+2
- STA RAND
- STY RAND+2
- DEX
- BNE fcd4
- LDA K%+6               \ (main RAM)
- STA RAND+3
+ LDA K%+6               \ RAND+3 = the planet's z_lo, as PTCLS leaves it (main
+ STA RAND+3             \ RAM)
  RTS
 
 \ F_SHPPT: record a distant ship as a 2x2 dot at (K3, K4), in its hue

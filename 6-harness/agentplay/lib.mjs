@@ -103,6 +103,10 @@ export class BMachine {
         for (const a of [0xffce, 0xffd1, 0xffd4, 0xffd7, 0xffda, 0xffdd, 0xfff7, 0xfff1]) add("FS", { prog: null, name: "FS", a, map: "m", sig: [] });
         for (const name of b.patches) for (const pt of [].concat(PATCHES[name](P.flight))) add("PATCH", { prog: P.flight, name, ...pt });
         if (this.rp) add("RPATCH", hookOf(P.flight, "RSHIPS"));
+        // the patch's keepRand (blib's: the explosion clouds' seed, kept across PTCLS)
+        if (this.rp && this.rp.keepRand) add("KEEP", { ...hookOf(P.flight, "PTCLS"), a: this.rp.keepRand.at });
+        this.keepPend = null;
+        this.addHook = add;
         this.hookTab = new Uint8Array(65536);
         for (const a of byPc.keys()) this.hookTab[a] = 1;
         this._labels();
@@ -368,6 +372,22 @@ export class BMachine {
             }
             case "FS": if (this.stash.size && (pc !== 0xfff1 || cpu.a === 0x7f)) this.unsettle(); break;
             case "PATCH": h.apply(cpu); break;
+            case "KEEP":
+                if (!this.keepPend) {
+                    const s = cpu.s, ret = ((this.rb(0x100 + ((s + 1) & 0xff)) | this.rb(0x100 + ((s + 2) & 0xff)) << 8) + 1) & 0xffff;
+                    this.keepPend = { ret, vals: this.rp.keepRand.bytes.map(x => this.rb(x)) };
+                    this.addHook("KEEPRET", { prog: null, name: "keepRand", a: ret, map: "m", sig: [] });
+                    this.hookTab[ret] = 1;
+                }
+                break;
+            case "KEEPRET":
+                if (this.keepPend && pc === this.keepPend.ret) {
+                    this.rp.keepRand.bytes.forEach((x, i) => { this.ram[x] = this.keepPend.vals[i]; });
+                    const hs = this.byPc.get(pc).filter(x => x.key !== "KEEPRET");
+                    if (hs.length) this.byPc.set(pc, hs); else { this.byPc.delete(pc); this.hookTab[pc] = 0; }
+                    this.keepPend = null;
+                }
+                break;
             case "RPATCH": {                     // (the reference's fourth patch: blib.applyRefPatch,
                 const e = applyRefPatch(cpu, this.rp);   // where the flight program starts)
                 if (e) { this.events.push([this.iter, "refpatch", e]); this.error = e; }
