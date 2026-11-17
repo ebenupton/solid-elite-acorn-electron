@@ -32939,6 +32939,21 @@ LIGHT_SUN = TRUE
                         \ assembled (below)
 
 \ ******************************************************************************
+\
+\       Name: LL9 (Part 9 of 12), drawing
+\       Type: Subroutine
+\   Category: Drawing ships
+\    Summary: Port: the rest of part 9, which nothing reaches: the edge loop's
+\             set-up and the ship's laser beam on the ship line heap
+\       Area: none
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: every LL9 records its ship for the renderer (H_LL42), so this part of
+\ the original's part 9, like parts 10 to 12, is not assembled (the BBC
+\ Master port removes it).
+\
+\ ******************************************************************************
 
 .ee31d
 
