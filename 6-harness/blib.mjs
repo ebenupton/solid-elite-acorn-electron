@@ -370,6 +370,7 @@ export function progHooks(b, cpu) {
     const hookOf = (prog, name, off = 0) => {
         if (typeof prog === "string") prog = b.progs[prog];
         if (prog.sy[name + "_C"] !== undefined) name += "_C";
+        else if (prog.sy[name + "_6"] !== undefined) name += "_6";   // (in the flight code's cold 6 pass)
         const a0 = prog.sy[name];
         if (a0 === undefined) return null;
         const a = a0 + off;
@@ -480,7 +481,7 @@ export async function runElite(opts) {
     }
 
     // label lookup for call sites, per program and mapping ("m": main RAM,
-    // or a bank role; a cold body's label, name_C, is reported as name)
+    // or a bank role; a cold body's label, name_C or name_6, is reported as name)
     const labs = {};
     for (const p of [P.flight, P.docked]) {
         const l = {};
@@ -497,7 +498,7 @@ export async function runElite(opts) {
         const lab = labs[prog.name][a < 0x8000 || a >= 0xc000 ? "m" : (roleOf(romsel) || "m")] || [];
         let lo = 0, hi = lab.length - 1, r = null;
         while (lo <= hi) { const m = (lo + hi) >> 1; if (lab[m][1] <= a) { r = lab[m][0]; lo = m + 1; } else hi = m - 1; }
-        return r && r.endsWith("_C") ? r.slice(0, -2) : r;
+        return r && /_[C6]$/.test(r) ? r.slice(0, -2) : r;
     };
     const stackWord = k => rb(0x100 + ((cpu.s + k) & 0xff)) | (rb(0x100 + ((cpu.s + k + 1) & 0xff)) << 8);
     // the JSR whose return address is at S+k and the ROMSEL it ran with,

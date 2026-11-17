@@ -196,11 +196,16 @@ for f in ("gfx-raster_lcold", "gfx-raster_reset", "gfx-raster_dq", "gfx-planet7"
 
 # bank 6
 fcslot, fjt = C["FCSLOT"], C["FJT"]
-order("bank 6", [("the code", 0x8000, B6["F_CODEEND"]), ("the faces' and the lighting's tables", B6["F_CODEEND"], B6["F_TABEND"]),
+c6, c6end = C["C6_P"], C["C6_P"] + C["C6SZ"]
+order("bank 6", [("the flight code's cold 6 pass", c6, c6end), ("the code", B6["F_START"], B6["F_CODEEND"]),
+                 ("the faces' and the lighting's tables", B6["F_CODEEND"], B6["F_TABEND"]),
                  ("the state", B6["F_TABEND"], B6["F_END"]), ("the face lists' slot", fcslot, fjt),
                  ("the dispatcher", fjt, B6["FJT_END"])])
 for f in ("gfx-frame", "gfx-merid", "gfx-ssun", "gfx-flare", "gfx-frame_cold", "gfx-hangar", "gfx-finit"):
-    nlab += inside(B6, OUT + "%s-bank6.asm" % f, 0x8000, B6["F_CODEEND"], "bank 6's code")
+    nlab += inside(B6, OUT + "%s-bank6.asm" % f, B6["F_START"], B6["F_CODEEND"], "bank 6's code")
+if B6["F_START"] != c6end:
+    errors.append("bank 6: the frame layer's code starts at &%04X, not after the cold 6 pass (&%04X)" % (B6["F_START"], c6end))
+nlab += inside(FL, OUT + "elite-flight-c6.asm", c6, c6end, "the cold 6 pass")
 
 # every pass copy that defines a label is INCLUDEd by an assembly
 inc = set()

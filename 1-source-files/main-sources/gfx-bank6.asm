@@ -48,7 +48,10 @@
  SAVE "3-assembled-output/GLUE.bin", GLUE%, GLUE_TOP, GLUE%
 
  CLEAR &8000, &C000
- ORG &8000
+ ORG C6%                \ the flight code's cold 6 pass (its layout assembles
+ INCBIN "3-assembled-output/C6.bin"   \ it: C6.bin, C6SZ bytes)
+ ASSERT P% = C6% + C6SZ
+.F_START
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"
@@ -125,7 +128,7 @@ ENDIF
  ASSERT fjt_hi - fjt_lo = FG_N AND FJT_END <= &C000
 
 
-PRINT "Bank 6 (frame layer): code &8000-", ~F_CODEEND-1, " (", F_CODEEND-&8000, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_END-1, ", free ", FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
+PRINT "Bank 6: the flight code's cold 6 pass &8000-", ~F_START-1, ", the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_END-1, ", free ", FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
 PRINT "Glue (main RAM): ", ~GLUE%, "-", ~GLUE_TOP-1, " (", GLUE_TOP-GLUE%, " bytes: trampolines ", rtramp_end-GLUE%, ", GCALL ", GLUE_END-GCALL, ", pcb_o ", GLUE_TOP-GLUE_END, ")"
  ASSERT F_END <= FCSLOT
 

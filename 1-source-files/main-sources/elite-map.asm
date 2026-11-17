@@ -57,6 +57,12 @@
                         \ hotm's in the source's order, moving hotm's across
                         \ page boundaries, and their branches' cycles)
 
+ C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
+ C6SZ = 10              \ (BANK6), before the frame layer, and its room (the
+                        \ flight code's layout assembles it there and saves it
+                        \ as C6.bin, which bank 6's assembly takes in; a far
+                        \ call, farC6, reaches it: elite-far.asm, streams.py)
+
  BPSLOT% = &B300        \ The blueprint set in each home bank, to BPSLOT_END%
  BPSLOT_END% = &BBA2    \ without their edge lists (the EDGE macro), then its
                         \ ships' unit normals for the lighting, and their table

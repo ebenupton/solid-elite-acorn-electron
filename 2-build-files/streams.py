@@ -135,7 +135,7 @@ import glob, os, re, sys
 SRCDIR = "1-source-files/main-sources/"
 OUTDIR = "3-assembled-output/"
 PROGS = ("flight", "docked")
-TAGS = {"hot": "hot", "low": "low", "cold": "cold", "blueprints": "blueprints", "none": "none"}
+TAGS = {"hot": "hot", "low": "low", "cold": "cold", "cold 6": "c6", "blueprints": "blueprints", "none": "none"}
 TOKENS = SRCDIR + "elite-text-tokens.asm"
 TOKTAGS = {"cold": "cold", "resident": "resident"}
 STAR = re.compile(r"^\\ \*{70,}\s*$")
@@ -725,6 +725,7 @@ def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies):
     nh = place_stubs(groups, ("hot", "low", "blueprints"), "hot")
     no = overlay_stubs(prog, src, copies, errors, lines, bl, eff, copy_of, hotcopies, cold, hot, direct,
                        where, barea, host, macros, noreturn)
+    no += cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies)
     # a cold block that falls into a low routine the cold pass calls directly
     # falls into a jump to it, at that routine's place in the cold copy
     for side, entry in falls:
@@ -843,6 +844,120 @@ def overlay_stubs(prog, src, copies, errors, lines, bl, eff, copy_of, hotcopies,
     return n
 
 
+# ---------------------------------------------------------------- cold 6
+#
+# "Area: cold 6" (the flight code only): cold code in bank 6, after the room
+# the frame layer leaves (C6%, elite-map.asm), its own pass and copy,
+# elite-flight-c6.asm, assembled at C6% with its labels named X_6. It is a
+# side of its own, reached and reaching out only through stubs, as the cold
+# pass in bank 7 is:
+#
+#   .X     JSR farC6 : EQUW X_6      (a hot copy, at X's place: a call)
+#   .xs_X  JSR farC6 : EQUW X_6      (the cold copy, at X's place: the cold
+#                                     pass's and the overlays' calls of X)
+#   .x6_H  JSR farH : EQUW H         (the cold 6 copy, at a hot routine's place)
+#   .x6c_C JSR farC : EQUW C_C       (the cold 6 copy, at a cold routine's place)
+#
+# (farHj, farCj for the targets in NORETURN; farC6j, a stub for a cold 6
+# target in NORETURN, is to be added to elite-far.asm with the first such
+# target). A cold 6 block may not
+# fall into another area, branch out of its area, or be fallen into, and it
+# calls the low pass's routines that need nothing of the hot side directly.
+
+
+def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies):
+    """the cold 6 copy's names and stubs, and the stubs into it; returns how
+    many stubs"""
+    if "c6" not in copies:
+        return 0
+    cc = copies["c6"]
+    own = {n for n, i in defined(cc)}
+    ovl = set()
+    for c in [c for c in copies if c.startswith("ovl")]:
+        ovl.update(n[:-2] for n, i in defined(copies[c]) if n.endswith("_O"))
+    out = {}                                 # stub -> (far, target as assembled, place)
+    for i, l in enumerate(cc):
+        code, comment = split_code(l)
+        if not code.strip():
+            continue
+        new, pos = "", 0
+        for off, st in statements(code):
+            m = re.match(r"^(\s*)(JSR|JMP)(\s+)([A-Za-z_][A-Za-z0-9_]*%?)(.*)$", st, re.I)
+            if m and m.group(4) not in own and m.group(4) not in direct:
+                t = m.group(4)
+                if m.group(5).strip():
+                    errors.append("%s:%d: %s %s%s from cold 6: a stub can only call a label"
+                                  % (src, i + 1, m.group(2), t, m.group(5)))
+                place = alias.get(t, t)
+                nr = place in noreturn or t in noreturn
+                if t in ovl:
+                    errors.append("%s:%d: cold 6 calls %s, in an overlay" % (src, i + 1, t))
+                    stub = t
+                elif t in cold:
+                    stub = ("j6c_" if nr else "x6c_") + t
+                    out.setdefault(stub, ("farCj" if nr else "farC", t + "_C", t))
+                elif t in hot:
+                    stub = ("j6_" if nr else "x6_") + t
+                    out.setdefault(stub, ("farHj" if nr else "farH", t, t))
+                else:
+                    stub = t
+                new += code[pos:off] + m.group(1) + m.group(2) + m.group(3) + stub + m.group(5)
+                pos = off + len(st)
+                continue
+            for a, b, name in tokens(st):
+                if name in own and not mnemonic(st, a):
+                    new += code[pos:off + a] + name + "_6"
+                    pos = off + b
+            new += code[pos:off + len(st)]
+            pos = off + len(st)
+        cc[i] = new + code[pos:] + comment
+    n = 0
+
+    def put(c, i, text):
+        if code_part(copies[c][i]) and not copies[c][i].lstrip().startswith("."):
+            errors.append("%s:%d: the stub %s's line is not blank in the %s copy" % (src, i + 1, text, c))
+        elif code_part(copies[c][i]):
+            copies[c][i] = copies[c][i] + " : " + text
+        else:
+            copies[c][i] = text
+
+    for stub, (far, target, place) in sorted(out.items()):
+        i = where.get(place)
+        if i is None:
+            errors.append("%s: no place for the cold 6 stub %s" % (src, stub))
+            continue
+        put("c6", i, ".%s JSR %s : EQUW %s" % (stub, far, target))
+        n += 1
+    # the stubs into cold 6: the hot copies' references, and the cold copy's
+    # and the overlays' calls (renamed xs_X)
+    need = {}
+    for c in hotcopies + ["config"]:
+        for l in copies[c]:
+            for a, b, name in tokens(split_code(l)[0]):
+                if name in own:
+                    need.setdefault(name, set()).add("hot")
+    for c in ["cold"] + [c for c in copies if c.startswith("ovl")]:
+        for j, l in enumerate(copies[c]):
+            code, comment = split_code(l)
+            new, pos = "", 0
+            for a, b, name in tokens(code):
+                if name in own and not mnemonic(code, a):
+                    new += code[pos:a] + "xs_" + name
+                    pos = b
+                    need.setdefault(name, set()).add("cold")
+            copies[c][j] = new + code[pos:] + comment
+    for name, sides in sorted(need.items()):
+        i = where.get(name)
+        far = "farC6j" if name in noreturn else "farC6"
+        for sd in sorted(sides):
+            if sd == "hot":
+                put(host(i), i, ".%s JSR %s : EQUW %s_6" % (name, far, name))
+            else:
+                put("cold", i, ".xs_%s JSR %s : EQUW %s_6" % (name, far, name))
+            n += 1
+    return n
+
+
 ASM = []
 
 
@@ -927,7 +1042,9 @@ def program(prog, phase, errors):
     eff = ["config" if k < first else b.area for k, b in enumerate(bl)]
     if any(eff[k] != "hot" for k in range(first, first + 1)):
         errors.append("%s: S%%'s block must be in the hot pass" % src)
-    side = lambda p: p if p == "cold" or p.startswith("ovl") else "hot"
+    side = lambda p: p if p in ("cold", "c6") or p.startswith("ovl") else "hot"
+    if prog != "flight" and "c6" in eff:
+        errors.append("%s: Area: cold 6 is the flight code's only" % src)
     # the hot pass's blocks that assemble, in the source's order, and its units
     hot = [k for k in range(len(bl)) if eff[k] == "hot" and ASM[k]]
     pos = {k: n for n, k in enumerate(hot)}
@@ -970,6 +1087,10 @@ def program(prog, phase, errors):
                 if eff[k] == "hot":
                     join(pos[k], pos[k2])
                     hotfalls.append((k, k2))
+            elif "c6" in (eff[k], eff[k2]):
+                errors.append("%s:%d: %s (%s) can fall through its end (%s) into %s (%s): a cold 6 block may "
+                              "not fall into another area, nor another into it" % (src, b.e, b.name, eff[k], st,
+                                                                                  b2.name, eff[k2]))
             elif bit_skip(st) or b.runson:
                 errors.append("%s:%d: %s (%s) %s %s (%s): they must be in one pass"
                               % (src, b.e, b.name, eff[k], "runs on into" if b.runson else "skips into",
@@ -1034,6 +1155,9 @@ def program(prog, phase, errors):
                 if eff[k3] == eff[k]:
                     if k in pos:
                         join(pos[k], pos[k3])
+                elif "c6" in (eff[k], eff[k3]):
+                    errors.append("%s:%d: %s branches to %s in another area (%s): cold 6 branches stay in it"
+                                  % (src, i + 1, b.name, m.group(2), eff[k3]))
                 elif eff[k].startswith("ovl") and eff[k3] == "cold":
                     ovlseams.append((eff[k], m.group(2), True))   # (a JMP to it in reach: the
                                                                   # overlay's copy, at its place)
@@ -1121,7 +1245,7 @@ def program(prog, phase, errors):
                 report.append("  &%04X %5d %s" % (a + off, size, names))
     copies = {}
     ovls = sorted(set(e for e in eff if e.startswith("ovl")))
-    allc = ["config", "low", "cold", "blueprints"] + ovls + \
+    allc = ["config", "low", "cold", "blueprints"] + ovls + (["c6"] if prog == "flight" else []) + \
         (["measure"] if phase == "measure" else [c[0] for c in CONTAINERS])
     for a in allc:
         copies[a] = []

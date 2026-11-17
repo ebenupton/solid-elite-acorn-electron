@@ -81,6 +81,10 @@ ENDIF
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_dpatch-bank7.asm"
 
+ CLEAR C6%, C6% + C6SZ  \ (the cold 6 pass, at the start of bank 6, for its
+ ORG C6%                \ labels, which the hot pass's stubs name)
+ INCLUDE "3-assembled-output/elite-flight-c6.asm"
+
                         \ The containers' bounds, as labels for the symbols
                         \ (bank 4 also holds the main RAM part's image)
  ORG HOME%

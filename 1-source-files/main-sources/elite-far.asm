@@ -69,6 +69,12 @@
  BNE farc               \ Jump to farc (BANK7 is never 0: it is the highest of
                         \ the four slots found, so at least 3)
 
+.farC6
+ PHP                    \ (farC6: the flight code's cold 6 pass, in bank 6)
+ STA fA
+ LDA BANK6
+ BNE farc               \ Jump to farc (BANK6 is never 0, as in farC)
+
 .farH
  PHP
  STA fA

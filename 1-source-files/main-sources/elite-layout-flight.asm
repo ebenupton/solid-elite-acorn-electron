@@ -190,3 +190,11 @@ ENDIF
                                    \ DFS's workspace in the last page)
 
  SAVE "3-assembled-output/D.CODEC.bin", &8000, WIN7_END%, &8000
+
+ CLEAR C6%, C6% + C6SZ  \ the cold 6 pass, at the start of bank 6 (streams.py:
+ ORG C6%                \ Area: cold 6), saved as C6.bin for bank 6's assembly
+ INCLUDE "3-assembled-output/elite-flight-c6.asm"
+.C6_END%
+ PRINT "Flight cold 6: ", ~C6%, "-", ~C6_END%-1, " (", C6_END%-C6%, " bytes), free ", C6% + C6SZ - C6_END%
+ ASSERT C6_END% <= C6% + C6SZ
+ SAVE "3-assembled-output/C6.bin", C6%, C6% + C6SZ, C6%

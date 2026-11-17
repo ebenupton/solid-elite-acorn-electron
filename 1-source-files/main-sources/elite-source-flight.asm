@@ -20141,6 +20141,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing the screen
 \    Summary: Show or hide the dashboard (for when we die)
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
