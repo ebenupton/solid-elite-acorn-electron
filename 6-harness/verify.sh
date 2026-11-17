@@ -132,7 +132,10 @@ if [ -f 3-assembled-output/sunref.json ]; then
     node 6-harness/bcompare.mjs --iters 1500 --loose --views --maxsecs 600 --ref $R --cand $R --refpatch none \
         --candpatch 3-assembled-output/sunref-passive.json --out "$LOG/passive-views" > "$LOG/passive-views.log" 2>&1
     grep -q "^BCOMPARE PASS" "$LOG/passive-views.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/passive-views.log" | head -10; echo "sunref passive views: FAIL"; fail passive; }
-    echo "sunref: PASS (audit and watches; passive identical over $ITERS iterations and the views run)"
+    node 6-harness/bsunslot.mjs > "$LOG/sunslot.log" 2>&1
+    grep -E "^[a-z]+: (ref|cand)" "$LOG/sunslot.log" | cut -c1-200
+    grep -q "^BSUNSLOT PASS" "$LOG/sunslot.log" || { grep -A6 "FAIL" "$LOG/sunslot.log" | head -10; echo "sunslot: FAIL"; fail sunslot; }
+    echo "sunref: PASS (audit and watches; passive identical over $ITERS iterations and the views run; the scenes)"
 fi
 
 # ---- 4. speed

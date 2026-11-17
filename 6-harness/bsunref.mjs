@@ -36,6 +36,7 @@ const fails = [];
 const fail = m => { if (fails.length < 20) fails.push(m); };
 let cpu = null, applied = 0, audited = false, parked = 0, stationIters = 0, sunWrites = 0, heapAcc = 0, siteRuns = 0;
 const siteAddrs = new Set();
+const entries = ["A_SUNUP", "A_SUNBK", "A_SUNLAU", "A_SUNSC"].map(n => [n.slice(2), rp.hooks[n]]), runs = {};
 const before = { ram: null, slot: null };
 const r = await runElite({
     build: rb, pilot: makePilot({ views: !!args.views, screens: !!args.screens }), iters: ITERS, maxSecs: 4 * ITERS,
@@ -68,14 +69,23 @@ const r = await runElite({
         const slotOff = cpu.romOffset + slot * 16384 - 0x8000;
         const inPatch = () => cpu.pc >= codeLo && cpu.pc < codeHi && (cpu.romsel & 15) === slot;
         const isFS = () => (cpu.pc >= 0xc000) || (cpu.pc >= 0x8000 && !inPatch()) || (cpu.pc >= 0x0d00 && cpu.pc < 0x0e00);
-        cpu.debugInstruction.add(pc => {
+        let seenPc = -1, seenAt = -1;       // (also before each execute() slice, whose first
+        const ih = pc => {                  // instruction jsbeeb 1.6.0 passes no hook: once each)
+            const t = cpu.cycleSeconds * 2e6 + cpu.currentCycles;
+            if (pc === seenPc && t === seenAt) return false;
+            seenPc = pc; seenAt = t;
+            // (the routines' entries, counted: the gate's run's coverage)
+            if ((cpu.romsel & 15) === slot) for (const [n, ad] of entries) if (pc === ad) runs[n] = (runs[n] || 0) + 1;
             // (2) each site's new instruction runs with the slot paged
             if (siteAddrs.has(pc) && cpu.ramRomOs[pc] !== undefined) {
                 siteRuns++;
                 if ((cpu.romsel & 15) !== slot) fail(`watch: the site at &${pc.toString(16)} ran with ROMSEL ${cpu.romsel & 15}`);
             }
             return false;
-        });
+        };
+        cpu.debugInstruction.add(ih);
+        const ex = cpu.execute.bind(cpu);
+        cpu.execute = n => { ih(cpu.pc); return ex(n); };
         cpu.debugRead.add(a => {
             if (a >= heapLo && a < heapHi && audited && (cpu.pc < 0x8000 || inPatch())) {
                 heapAcc++;
@@ -111,6 +121,7 @@ if (r.error) fail(`run: ${r.error}`);
 if (r.iters !== ITERS) fail(`run: ${r.iters} iterations of ${ITERS}`);
 if (!r.refPatched) fail("the patch was never applied");
 if (!audited) fail("the audit did not run");
+console.log(`entries in the run: ${entries.map(([n]) => `${n} ${runs[n] || 0}`).join(", ")}`);
 console.log(`patch applied ${r.refPatched} time(s); sites run ${siteRuns} times; the station's heap accessed ${heapAcc} times; the parked sun written ${sunWrites} times; station present in flight at ${stationIters} MLOOPs, the sun parked at ${parked}`);
 for (const f of fails) console.log("  " + f);
 console.log(fails.length ? `BSUNREF FAIL ${fails[0]}` : "BSUNREF PASS");
