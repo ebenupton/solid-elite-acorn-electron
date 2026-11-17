@@ -35,7 +35,7 @@ const sunLo = rp.region[0], sunHi = sunLo + rp.region[1];
 const fails = [];
 const fail = m => { if (fails.length < 20) fails.push(m); };
 let cpu = null, applied = 0, audited = false, parked = 0, stationIters = 0, sunWrites = 0, heapAcc = 0, siteRuns = 0;
-const siteAddrs = new Set();
+const siteAddrs = new Map();         // (each changed site's address -> its new bytes)
 const entries = ["A_SUNUP", "A_SUNBK", "A_SUNLAU", "A_SUNSC"].map(n => [n.slice(2), rp.hooks[n]]), runs = {};
 const before = { ram: null, slot: null };
 const r = await runElite({
@@ -52,7 +52,7 @@ const r = await runElite({
             if (a === null || a === undefined) for (let x = st.search[0]; x + st.orig.length <= st.search[1]; x++) if (st.new.every((v, i) => c.ramRomOs[x + i] === v) && st.orig.every((v, i) => before.ram[x + i] === v)) { a = x; break; }
             if (a === null || a === undefined) { fail(`audit: site ${st.name} not found`); continue; }
             for (let i = 0; i < st.new.length; i++) allowed.add(a + i);
-            if (st.orig.join() !== st.new.join()) siteAddrs.add(a);
+            if (st.orig.join() !== st.new.join()) siteAddrs.set(a, st.new);
         }
         let n = 0;
         for (let a = 0; a < 0x8000; a++) if (a !== 0xF4 && c.ramRomOs[a] !== before.ram[a] && !allowed.has(a)) { n++; if (n <= 5) fail(`audit: main RAM &${a.toString(16)} changed outside the sites`); }
@@ -76,8 +76,10 @@ const r = await runElite({
             seenPc = pc; seenAt = t;
             // (the routines' entries, counted: the gate's run's coverage)
             if ((cpu.romsel & 15) === slot) for (const [n, ad] of entries) if (pc === ad) runs[n] = (runs[n] || 0) + 1;
-            // (2) each site's new instruction runs with the slot paged
-            if (siteAddrs.has(pc) && cpu.ramRomOs[pc] !== undefined) {
+            // (2) each site's new instruction runs with the slot paged (the
+            // site's bytes the new ones: not the docked program's code there)
+            const nw = siteAddrs.get(pc);
+            if (nw && nw.every((v, i) => cpu.ramRomOs[pc + i] === v)) {
                 siteRuns++;
                 if ((cpu.romsel & 15) !== slot) fail(`watch: the site at &${pc.toString(16)} ran with ROMSEL ${cpu.romsel & 15}`);
             }

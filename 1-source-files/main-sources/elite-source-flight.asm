@@ -22580,6 +22580,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing planets
 \    Summary: Calculate (Y A) = nosev_x / z
+\       Area: none
 \
 \ ------------------------------------------------------------------------------
 \
@@ -23155,21 +23156,15 @@ ENDMACRO
                         \ the sun from its record (above), and the rows below
                         \ are not drawn; as they take no random numbers, all
                         \ they leave in the game's state that is read again is
-                        \ K2 = K^2 (MV40 reads K2's low byte without setting
-                        \ it), SUNX = K3 and the C flag clear, as part 4 ends
-                        \ (the line heap at LSO and the drawing temporaries
-                        \ they leave are not read before they are set again),
-                        \ so in record mode SUN sets those and returns. Outside
-                        \ it (the Short-range Chart's suns) the rows are drawn
-                        \ as before
+                        \ SUNX = K3 and the C flag clear, as part 4 ends (the
+                        \ line heap at LSO and the drawing temporaries they
+                        \ leave, K2 among them, are not read before they are
+                        \ set again), so in record mode SUN sets those and
+                        \ returns. Outside it (the Short-range Chart's suns)
+                        \ the rows are drawn as before
 
  JSR RECM
  BNE sunrows
- LDA K                  \ Set K2(1 0) = K * K, as below
- JSR SQUA2
- STA K2+1
- LDA P
- STA K2
  LDA K3                 \ Set SUNX(1 0) = K3(1 0), as part 4 does
  STA SUNX
  LDA K3+1
@@ -30596,12 +30591,11 @@ ENDMACRO
 \ the circle engine has it, and returns from PL9 itself, whose meridians and
 \ crater the renderer draws (PL9 parts 2 and 3, PLS2, PLS22, PLS3, PLS4 and
 \ PLS5 are "Area: none"), leaving what the game reads of them, as the BBC
-\ Master port's H_CIRC does: K2 (MV40 adds it into the next object's y
-\ without setting it first) as PLS1 leaves it for nosev_x (a meridian planet
-\ of radius 6 or more; halved, a crater planet whose crater faces us), TGT
-\ (31 or 64) and FLAG (0); and LSX2 = 0, STP and CNT as CIRCLE2 would. If the
-\ circle isn't on screen (CHKON), it returns from CIRCLE with C set, as
-\ CIRCLE does. Outside record mode it returns to CIRCLE.
+\ Master port's H_CIRC does: TGT (31 or 64) and FLAG (0), and LSX2 = 0, STP
+\ and CNT as CIRCLE2 would (nothing for MV40, which reads no K2 that PLS1
+\ leaves, so PLS1 is "Area: none" too). If the circle isn't on screen
+\ (CHKON), it returns from CIRCLE with C set, as CIRCLE does. Outside record
+\ mode it returns to CIRCLE.
 \
 \ ******************************************************************************
 
@@ -30666,13 +30660,6 @@ ENDIF
 .hci3
 
  STA TGT
- LDX #9
- JSR PLS1
- LDY TYPE               \ (halved for a crater planet)
- CPY #128
- BEQ P%+3
- LSR A
- STA K2
 
 .hci9
 
@@ -35967,15 +35954,18 @@ LIGHT_SUN = TRUE
                         \ add them together to get the result we're after, and
                         \ then set the sign afterwards
 
- LDA K                  \ We now do the following sum:
- ADC K2                 \
+                        \ We now do the following sum:
+                        \
                         \   (A y_hi y_lo -) = K(3 2 1 0) + K2(3 2 1 0)
                         \
-                        \ starting with the low bytes (which we don't keep)
-                        \
-                        \ There is no need for a CLC because MULT3 clears the
-                        \ C flag on every exit, and nothing since then has
-                        \ affected it
+                        \ Port: the original starts with the low bytes (LDA K,
+                        \ ADC K2), which it does not keep, for the carry; but
+                        \ nothing in MV40 sets K2's low byte, so the carry came
+                        \ from whatever last left K2. The low byte added is 0
+                        \ (in the reference too: the comparison's patch to
+                        \ MV40, ADC #0), so with the C flag clear, as MULT3
+                        \ leaves it on every exit, there is no carry, and the
+                        \ middle bytes follow at once
 
  LDA K+1                \ We then do the middle bytes, which go into y_lo
  ADC K2+1
@@ -35995,10 +35985,13 @@ LIGHT_SUN = TRUE
 
 .MV1
 
- LDA K                  \ If we get here then K2 and K have different signs, so
- CMP K2                 \ instead of adding, we need to subtract to get the
-                        \ result we want (the CMP sets the C flag for the low
-                        \ bytes as SEC and SBC would), like this:
+ SEC                    \ If we get here then K2 and K have different signs, so
+                        \ instead of adding, we need to subtract to get the
+                        \ result we want (Port: the original subtracts the low
+                        \ bytes first for the borrow, of K2's low byte, which
+                        \ nothing in MV40 sets; the low byte subtracted is 0, in
+                        \ the reference too, SBC #0, so there is no borrow:
+                        \ SEC), like this:
                         \
                         \   (A y_hi y_lo -) = K(3 2 1 0) - K2(3 2 1 0)
                         \

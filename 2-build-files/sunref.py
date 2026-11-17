@@ -4,8 +4,10 @@ disc Elite (Stairway to Hell, 4-reference-binaries/sth) that the harness
 applies so that the reference runs the same game logic as this build: the
 sun parked while the space station holds its slot (SUNUP, SUNSC, SUNBK,
 SUNLAU and SUNE in elite-source-flight.asm; docs/renderer.md, "The sun's
-place"), and the sun's edge drawing no random numbers (SUN's JSR DORND, each
-row's random fringe, as LDA #0 : NOP: the fringe is 0, as the port's). Run by
+place"), the sun's edge drawing no random numbers (SUN's JSR DORND, each
+row's random fringe, as LDA #0 : NOP: the fringe is 0, as the port's), the
+explosion clouds' seed (keepRand, below) and MV40's K2 (its ADC K2 and SBC
+K2, of a low byte nothing in MV40 sets, as ADC #0 and SBC #0). Run by
 the Makefile once the flight code is assembled; writes
 
   3-assembled-output/sunref.json          the patch (6-harness/blib.mjs's
@@ -186,6 +188,16 @@ def edge(ref):
             "search": [ref["SUN"], ref["CIRCLE"]]}
 
 
+def k2(ref):
+    """MV40's K2: its ADC K2 and SBC K2 add or subtract K2's low byte, which
+    nothing in MV40 sets, into the low byte of y = K2 + K: they become ADC #0
+    and SBC #0 (each found once in [MV40, PU1))"""
+    return [{"name": "MV40: ADC K2", "addr": None, "orig": [0x65, ref["K2"]], "new": [0x69, 0x00],
+             "search": [ref["MV40"], ref["PU1"]]},
+            {"name": "MV40: SBC K2", "addr": None, "orig": [0xE5, ref["K2"]], "new": [0xE9, 0x00],
+             "search": [ref["MV40"], ref["PU1"]]}]
+
+
 def patch(ref, sr, code, passive, sunpk):
     def site(name, addr, orig, new):
         return {"name": name, "addr": addr, "orig": orig, "new": new}
@@ -208,10 +220,11 @@ def patch(ref, sr, code, passive, sunpk):
         s_["search"] = [ref[rng[0]], ref[rng[1]]]
     if not passive:
         sites.append(edge(ref))
+        sites += k2(ref)
     # the explosion clouds' seed: RAND and RAND+2 as PTCLS finds them, put back
     # when it returns (the harness does it, at PTCLS's return address)
     keep = {} if passive else {"keepRand": {"at": ref["PTCLS"], "bytes": [ref["RAND"], ref["RAND"] + 2]}}
-    return {**keep, "name": "the sun's parking" + (" (passive)" if passive else ", the sun's edge, the clouds' seed"), "slot": SR_SLOT,
+    return {**keep, "name": "the sun's parking" + (" (passive)" if passive else ", the sun's edge, the clouds' seed, MV40's K2"), "slot": SR_SLOT,
             "code": [[sr["SR_START"], list(code)]], "heap": [heap, sr["SR_END"] - heap], "sites": sites,
             "lso": heap, "region": [sunpk, 38, "SUNPK"], "entry": ref["RSHIPS"],
             "hooks": {n: sr[n] for n in ("A_SUNUP", "A_SUNBK", "A_SUNSC", "A_SUNLAU", "A_SUNS1", "A_SUNE",

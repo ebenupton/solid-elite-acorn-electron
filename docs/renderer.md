@@ -472,9 +472,20 @@ sun's edge now draws none (`SUN` part 3: the fringe is 0, in the
 reference too, by the fourth patch's eighth site, which turns the
 release's one `JSR DORND` in `SUN` into `LDA #0 : NOP`), so in record mode
 `SUN` stops after part 1's record, with what the rows would leave that is
-read again: `K2` = K^2, which `MV40` reads, `SUNX` = `K3` and the C flag
-clear. The Short-range Chart's suns, outside record mode, are drawn row by
+read again: `SUNX` = `K3` and the C flag clear. The Short-range Chart's suns, outside record mode, are drawn row by
 row as before.
+
+Two more leftovers of the drawing were game state, and are gone from both
+machines. `PTCLS` (an explosion cloud) seeded `RAND` and `RAND+2` from the
+cloud and stepped them three times a particle, so each cloud drawn decided
+the next random numbers; now `RAND` and `RAND+2` are put back as `PTCLS`
+found them when it returns (the fourth patch's `keepRand`, applied by the
+harness at `PTCLS`'s entry and return address), and `F_CLOUD` keeps only
+what else `PTCLS` leaves. And `MV40`, which moves the planet and the sun,
+added `K2`'s low byte, which nothing in `MV40` sets (what the last drawing
+left there), into their y's low byte: it adds 0 now (the fourth patch's
+`MV40` sites, `ADC #0` and `SBC #0`), so the port no longer works out
+`PLS1`'s `K2` for it in `H_CIRC`.
 
 One thing in the original depends on what the drawing leaves behind: the
 altitude (`ALTIT`, in the main flight loop at `MA93`) is `SQRT(R Q)` with
@@ -521,9 +532,8 @@ works out the half steps from the planet's vectors exactly as `MVS5` does
 (`blib.mjs`'s `halfPart8`, with a model of the original's `ADD`), and at
 `MV5`, once its own part 8 has run (its counters, `RAT2` and `Q` as the
 port leaves them), puts them in place of its vectors. The planet's vectors
-reach the game (`H_CIRC` leaves `K2` from `nosev_x`, which `MV40` adds into
-the next object's `y`), so the patched reference flies a different run
-from the original's.
+are game state (they move it), so the patched reference flies a different
+run from the original's.
 
 ### The sun's place
 
@@ -606,7 +616,7 @@ particle the original draws.
 | `PIXEL2` (`PX2`, `px24r`) | home | star `Y` is recorded straight into the mailbox (`MB_SX`, `MB_SY`, `MB_SS`; size 1, 2 or 3 by `ZZ`, as `PIXEL` draws it), or marked absent if it is off screen |
 | `SUN` (`HLS`, `HL2S`) | home | the sun is recorded as a disc (`F_PLANET`); its rows are worked out as before (they take random numbers), but not drawn |
 | `WPLS` | home | the sun's heap is emptied, nothing erased |
-| `CIRCLE` (`H_CIRC`) | home | the planet is recorded as a disc (`F_PLANET`) and its surface as circles (`PF_HOOK`, in a build with `_CIRCLES`: at the end of the home bank, with the circle engine's `pc_circ`, which reads the quarter squares), and `H_CIRC` returns from `PL9` as its parts 2 and 3 would, leaving what the game reads of them (`K2`, `TGT`, `FLAG`, `LSX2`, `STP`, `CNT`, as the Master port's `H_CIRC`): `PL9` parts 2 and 3, `PLS2`, `PLS22`, `PLS3`, `PLS4` and `PLS5` are `Area: none` (outside record mode, the launch and hyperspace rings' frames, the planet is its circle alone) |
+| `CIRCLE` (`H_CIRC`) | home | the planet is recorded as a disc (`F_PLANET`) and its surface as circles (`PF_HOOK`, in a build with `_CIRCLES`: at the end of the home bank, with the circle engine's `pc_circ`, which reads the quarter squares), and `H_CIRC` returns from `PL9` as its parts 2 and 3 would, leaving what the game reads of them (`TGT`, `FLAG`, `LSX2`, `STP`, `CNT`): `PL9` parts 2 and 3, `PLS2`, `PLS22`, `PLS3`, `PLS4` and `PLS5` are `Area: none` (outside record mode, the launch and hyperspace rings' frames, the planet is its circle alone) |
 | `WPLS2` | home | the heap is reset, nothing erased |
 | `LASLI`, `LASLI2` | cold | `GLASV` is set (the frame draws the beams from `LASX`, `LASY`); nothing to draw or remove |
 | `MA93` | home | (every mode) `Q = 0` before the altitude's `JSR LL5`; the reference is patched to match |
