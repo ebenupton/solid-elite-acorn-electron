@@ -14,6 +14,10 @@
 //     which TT18 runs, a jump's arrival, is not checked: the new system's
 //     sun comes in in its middle; an iteration with a hand-back, whose SUNBK
 //     runs inside MAL1 as KS4 did, may not move it);
+//   * (the candidate runs with blib's deadRegs: the registers and flags its
+//     port claims dead after the routines in DEAD_AFTER are scrambled at
+//     each return, so the comparison fails if any is read; the events
+//     scene's RES2 paths reach DIALS)
 //   * the entries of SUNUP, SUNBK (with the sun parked), SUNLAU and SUNSC's
 //     pass of the sun are counted, and must be the same in both machines.
 //
@@ -120,7 +124,7 @@ async function fly(b, ref, scene, refRun = null) {
     // H key's jump a galactic one)
     const dks = c => c.key === 1 && ((misjump >= it && c.site === "ee5") || (ghyp >= it && c.site === "hyp")) ? true : pilot.dks(c);
     const r = await runElite({
-        build: b, pilot: { keys, dks, observe: pilot.observe, P }, iters: ITERS, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: ref ? RP : null, seedBoot,
+        build: b, pilot: { keys, dks, observe: pilot.observe, P }, iters: ITERS, deadRegs: !ref, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: ref ? RP : null, seedBoot,
         onBoot: s => {
             cpu = s._machine.processor;
             const ph = progHooks(b, cpu);
@@ -270,6 +274,7 @@ async function fly(b, ref, scene, refRun = null) {
         },
     });
     cnt.ev.titles = P.stats.titles;
+    cnt.dead = r.deadN || {};
     return { r, cnt, tt100s, sunPos, ITERS };
 }
 
@@ -293,6 +298,7 @@ for (const scene of SCENES) {
     const show = m => `${evs(m)}; SUNUP ${m.cnt.SUNUP}, SUNBK (parked) ${m.cnt.SUNBKpark}, SUNLAU ${m.cnt.SUNLAU}, SUNSC's passes ${m.cnt.SUNSCpass}, parked MLOOPs ${m.cnt.parked}, hand-back iterations without the sun's move ${m.cnt.handbackSkips}, flight iterations checked for the sun's move ${m.cnt.checked} (and ${m.cnt.jumpIters} with a jump's arrival, not checked)`;
     console.log(`${scene}: ref ${R.r.iters} iterations${R.r.error ? " (" + R.r.error + ")" : ""}: ${show(R)}`);
     console.log(`${scene}: cand ${C.r.iters} iterations${C.r.error ? " (" + C.r.error + ")" : ""}: ${show(C)}`);
+    console.log(`${scene}: cand: registers scrambled after ${Object.entries(C.cnt.dead).map(([n, c]) => n + " " + c).join(", ") || "none"}`);
     const st = p => p.stats;
     const fails = [...R.cnt.fails.map(f => "ref: " + f), ...C.cnt.fails.map(f => "cand: " + f)];
     if (div >= 0) fails.push(`game state differs from iteration ${div}`);

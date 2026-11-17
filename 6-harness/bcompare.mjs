@@ -56,7 +56,7 @@ import { writeFileSync, mkdirSync } from "fs";
 import { makeTracer } from "./btrace.mjs";
 import { parseArgs } from "./args.mjs";
 
-const args = parseArgs({ iters: "value", ref: "value", cand: "value", seed: "value", loose: "flag", window: "value",
+const args = parseArgs({ iters: "value", ref: "value", cand: "value", seed: "value", loose: "flag", deadregs: "flag", window: "value",
     out: "value", shots: "value", maxsecs: "value", nopatch: "flag", norefcache: "flag", views: "flag", screens: "flag", trace: "value", screen: "flag",
     dump: "value", screenlo: "value", screenhi: "value", refpatch: "value", candpatch: "value" });
 const ITERS = +(args.iters || 5000);
@@ -71,6 +71,9 @@ mkdirSync(OUT, { recursive: true });
 const rb = loadBuild(REF), cb = loadBuild(CAND);
 // the reference's fourth patch, the candidate's (sunref.json beside its
 // build.json: 2-build-files/sunref.py), unless the reference is a port build;
+// --deadregs: in the candidate, the registers and flags its port claims dead
+// at the return from the routines in blib.DEAD_AFTER are scrambled there, so
+// a read of any of them diverges.
 // --refpatch FILE for another, or none; --candpatch to patch the candidate too
 // (the release against the release with a patch: bsunref.mjs)
 const refPatch = args.refpatch === "none" ? null : args.refpatch ? JSON.parse((await import("fs")).readFileSync(args.refpatch, "utf8"))
@@ -89,12 +92,13 @@ async function run(label, build, seedBoot, refPatch = null) {
     const tracer = args.trace ? makeTracer(args.trace, build, traceOut) : null;
     const t0 = Date.now();
     const r = await runElite({
-        build, pilot, iters: ITERS, maxSecs: +(args.maxsecs || 4 * ITERS), refPatch,
+        build, pilot, iters: ITERS, maxSecs: +(args.maxsecs || 4 * ITERS), refPatch, deadRegs: !!args.deadregs && label === "cand",
         patch: args.nopatch ? null : patchCommander, seedBoot, screen: !!args.screen,
         screenLo: args.screenlo ? parseInt(args.screenlo) : undefined, screenHi: args.screenhi ? parseInt(args.screenhi) : undefined,
         onIter: (i, s, res) => { phases.push(pilot.P.phase); if (tracer) tracer(i, s, res); },
         shots: SHOTS, onShot: async (s, i) => writeFileSync(`${OUT}/${label}-${String(i).padStart(6, "0")}.png`, await s.screenshotActive({ scale: 1 })),
     });
+    if (Object.keys(r.deadN || {}).length) console.log(`${label}: registers scrambled after ${Object.entries(r.deadN).map(([n, c]) => n + " " + c).join(", ")}`);
     r.phases = phases; r.stats = pilot.P.stats; r.wall = (Date.now() - t0) / 1000;
     if (tracer) writeFileSync(`${OUT}/trace-${label}.txt`, traceOut.join("\n") + "\n");
     console.log(`${label}: ${r.iters} iterations (${r.tt100} in flight), emulated ${r.emuSecs.toFixed(1)} s, wall ${r.wall.toFixed(1)} s${r.error ? ", STOPPED: " + r.error : ""}`);

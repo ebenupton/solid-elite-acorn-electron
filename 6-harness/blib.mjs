@@ -484,6 +484,29 @@ export const FSZONE = [[0x1000, 0x1100], [0x1600, 0x2600], [0x3C00, 0x3EE2]];
 //   the offsets that hold filing-system bytes), screens, iterTimes, tt100Times
 //   ([emulated s, iteration] per flight TT100), init (snapshot at TT170), keyLog,
 //   events, iters, tt100, emuSecs, error, page0d }
+// The routines whose port leaves some registers or flags other than the
+// original leaves them, claiming them dead at the return (to the caller of
+// the JSR that entered the routine, or its stub; a routine entered by a tail
+// call returns to its caller's caller): runElite's opts.deadRegs scrambles
+// them there, so a read of any of them shows as a divergence (the BBC Master
+// port's DEAD_AFTER, with this port's list)
+//   DIALS   A: COMPAS's SP2, for an unmoved dot, sets what DOT leaves for the
+//           dot, X and C (which RES2's caller reads) as CPIX2 leaves them, but
+//           not A, the screen byte DOT leaves
+//   SUN     A, X, Y: in record mode SUN ends after its record (C clear, as
+//           part 4 leaves it)
+//   PTCLS   A, X, Y, C: in record mode H_PTCLS notes the cloud and returns
+//           from PTCLS (F_CLOUD)
+//   WPLS    A, X, C: in record mode WPLS only empties the sun's heap
+//   stl_pat X: STARS1 sets X again after it
+//   mlsk    C, V: the stardust's MLSA and ADD for a roll of 0 (STARS1 reads
+//           neither before the next MLSA, MLSB or CPX sets them)
+//   mlbk    X, C, V: the stardust's MLSB for a pitch of 0
+//   stlad0  C, V: the ADD of the pitch's square for a pitch of 0
+//   MAD     V: MAD's own path for |Q| = 0 (mad2) leaves V as it was
+export const DEAD_AFTER = [["DIALS", "a"], ["SUN", "axy"], ["PTCLS", "axyc"], ["WPLS", "axc"], ["stl_pat", "x"],
+    ["mlsk", "cv"], ["mlbk", "xcv"], ["stlad0", "cv"], ["MAD", "v"]];
+
 export async function runElite(opts) {
     const b = opts.build;
     const s = await bootModelB(b.disc);
@@ -522,6 +545,22 @@ export async function runElite(opts) {
     // time the flight program starts, at RSHIPS, where its entry S% goes
     // once DEEOR has decrypted the release's code after each load
     if (rp) add("RPATCH", hookOf(P.flight, "RSHIPS"));
+    // opts.deadRegs (DEAD_AFTER): a routine's entry, at its name in the flight
+    // program (the stub, for a routine in another pass: the caller's return
+    // is then on the stack's top), noting the return; there the registers
+    // and flags claimed dead are scrambled (a seeded xorshift), and counted
+    const deadPend = [];
+    let deadSeed = 0x2545F491;
+    const deadRnd = () => { deadSeed ^= deadSeed << 13; deadSeed ^= deadSeed >>> 17; deadSeed ^= deadSeed << 5; return deadSeed >>> 0; };
+    if (opts.deadRegs) for (const [n, regs] of DEAD_AFTER) for (const nm of [n, n + "_C", n + "_6"]) {
+        // (the body in another pass too: a caller there calls it directly)
+        const a = P.flight.sy[nm];
+        if (a === undefined) continue;
+        const role = P.flight.bank[nm];
+        const img = P.flight.images.find(im => (role === undefined || im.map === role || im.map === "m") && a >= im.base && a + 3 <= im.base + im.data.length);
+        if (!img) continue;
+        add("DEAD", { prog: P.flight, name: n, a, map: img.map, sig: [0, 1, 2].map(i => img.data[a + i - img.base]), regs, n });
+    }
     add("LAS", lasHook); add("LASN", lasNext);
     // the build's patches (PATCHES above), on the flight program
     for (const name of b.patches) {
@@ -573,6 +612,7 @@ export async function runElite(opts) {
     };
 
     res.refPatched = 0;
+    res.deadN = {};
     let randHook = null;
     const applyRP = () => {
         if (opts.onRefPatch) opts.onRefPatch("before", cpu);    // (bsunref.mjs: the audit)
@@ -634,6 +674,27 @@ export async function runElite(opts) {
             }
             case "PATCH": h.apply(cpu); break;
             case "RPATCH": applyRP(); break;
+            case "DEAD": {
+                const ret = (stackWord(1) + 1) & 0xffff;
+                deadPend.push({ ret, s: (cpu.s + 2) & 255, regs: h.regs, n: h.n });
+                if (deadPend.length > 64) deadPend.shift();
+                if (!byPc.get(ret)?.some(x => x.key === "DEADRET")) add("DEADRET", { prog: null, name: "deadret", a: ret, map: "m", sig: [] });
+                break;
+            }
+            case "DEADRET":
+                for (let j = deadPend.length - 1; j >= 0; j--) {
+                    const d = deadPend[j];
+                    if (pc !== d.ret || cpu.s !== d.s) continue;
+                    for (const r of d.regs) {
+                        const v = deadRnd();
+                        if (r === "a" || r === "x" || r === "y") cpu[r] = v & 255;
+                        else cpu.p[r] = !!(v & 256);
+                    }
+                    res.deadN[d.n] = (res.deadN[d.n] || 0) + 1;
+                    deadPend.splice(j);
+                    break;
+                }
+                break;
             case "RAND": {
                 const R = fsy.RAND, f1 = rb(R), c = cpu.p.c ? 1 : 0;
                 const f2 = ((f1 << 1) | c) & 255, f3 = f2 + rb(R + 2) + (f1 >> 7);

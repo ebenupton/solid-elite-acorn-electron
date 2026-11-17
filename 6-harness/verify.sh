@@ -8,7 +8,9 @@
 #     every primitive against a pixel-exact model, on py65) runs first. Once
 #     the speed-ups begin, their routines are checked against the original's
 #     on py65 (6-harness/test_routines.py --quick) after the build.
-#  2. determinism: 6-harness/bcompare.mjs --iters N (default 10000) of the
+#  2. determinism (with --deadregs: the registers and flags the port claims
+#     dead after the routines in blib.DEAD_AFTER scrambled at each return):
+#     6-harness/bcompare.mjs --iters N (default 10000) of the
 #     released disc (4-reference-binaries/sth/build.json) against the new build
 #     (3-assembled-output/build.json), both flown by the same pilot; FAIL on a
 #     divergence of game state, a run that stops early, or a write to page
@@ -94,7 +96,7 @@ fi
 OPTS=
 case "$MODE" in *strict*) ;; *) OPTS="--loose" ;; esac
 case "$MODE" in *screen*) OPTS="$OPTS --screen" ;; esac
-node 6-harness/bcompare.mjs --iters "$ITERS" $OPTS --cand "$CAND" \
+node 6-harness/bcompare.mjs --iters "$ITERS" $OPTS --deadregs --cand "$CAND" \
     --out "$LOG/compare" "$@" > "$LOG/compare.log" 2>&1
 CST=$?
 grep -E "^Pilot \(ref\)" "$LOG/compare.log"
@@ -104,7 +106,7 @@ fi
 if [ $CST -ne 0 ] || ! grep -q "^BCOMPARE PASS" "$LOG/compare.log"; then
     grep -E "SCREEN|PAGE" "$LOG/compare.log"; tail -5 "$LOG/compare.log"; echo "compare: FAIL (exit $CST)"; fail compare
 fi
-grep -E "Game state identical|Screen identical" "$LOG/compare.log"
+grep -E "Game state identical|Screen identical|registers scrambled" "$LOG/compare.log"
 echo "compare: PASS (mode: $MODE)"
 
 # ---- 3. regressions
@@ -113,7 +115,7 @@ grep -E "^docking|^REDOCK" "$LOG/redock.log"
 grep -q "^REDOCK PASS" "$LOG/redock.log" || { echo "redock: FAIL"; fail redock; }
 node 6-harness/bsavetest.mjs --build "$CAND" --out "$LOG/save" > "$LOG/save.log" 2>&1 || { tail -8 "$LOG/save.log"; echo "savetest: FAIL"; fail savetest; }
 grep -E "^SAVETEST" "$LOG/save.log"
-node 6-harness/bcompare.mjs --iters 1500 $OPTS --views --maxsecs 600 --cand "$CAND" \
+node 6-harness/bcompare.mjs --iters 1500 $OPTS --deadregs --views --maxsecs 600 --cand "$CAND" \
     --out "$LOG/views" > "$LOG/views.log" 2>&1
 grep -q "^BCOMPARE PASS" "$LOG/views.log" || { grep -A8 "FIRST DIVERGENCE" "$LOG/views.log" | head -10; grep SCREEN "$LOG/views.log"; echo "views: FAIL"; fail views; }
 node 6-harness/bcompare.mjs --iters 1500 $OPTS --screens --maxsecs 900 --cand "$CAND" \
