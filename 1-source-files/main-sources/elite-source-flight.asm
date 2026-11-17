@@ -6376,11 +6376,15 @@ ENDIF
                         \ A has the opposite sign to the flipped roll angle
                         \ alpha, i.e. it gets the same sign as alpha
 
+.stl_r1
+
  JSR MLSA               \ Call MLSA (Port: MLS1 with ALP1 patched in) to
                         \ calculate:
                         \
                         \   (A P) = A * ALP1
                         \         = (x / 256) * alpha
+
+.stl_a1
 
  JSR ADD                \ Call ADD to calculate:
                         \
@@ -6405,6 +6409,8 @@ ENDIF
  STX R                  \ is MLS2 with ALP1 patched in) to calculate:
  LDX XX+1
  STX S
+.stl_r2
+
  JSR MLSA               \
                         \
                         \   (S R) = XX(1 0)
@@ -6412,6 +6418,8 @@ ENDIF
                         \
                         \   (A P) = A * ALP1
                         \         = -y / 256 * alpha
+
+.stl_a2
 
  JSR ADD                \ Call ADD to calculate:
                         \
@@ -6424,6 +6432,8 @@ ENDIF
 
  LDA YY+1               \ Set A to y_hi and set it to the flipped sign of beta
  EOR BET2+1
+
+.stl_p1
 
  JSR MLSB               \ Call MLSB (Port: MULTS-2 with X = BET1 patched in)
                         \ to calculate:
@@ -6455,6 +6465,8 @@ ENDIF
  STA P
  LDA QSH,X
  ROL A
+
+.stl_a3
 
  JSR ADD                \ Call ADD to calculate:
                         \
@@ -6582,10 +6594,11 @@ ENDIF
                         \ the last b, and the assembled operands are those of
                         \ b = 0), the operands are all set already, so return
                         \ (STARS1 reads neither A nor C after this: STL1
-                        \ starts with LDA and CMP; X is kept either way)
+                        \ starts with LDA and CMP; X is kept)
 
  CMP mlb1+1,X
- BEQ stlpr
+ BNE P%+3
+ RTS
  STA mlb1+1,X
  STA mlb2+1,X
  STA mlb4+1,X
@@ -6600,9 +6613,132 @@ ENDIF
  ADC #2                 \ (C = 0: no carry out of HI(QSL))
  STA mlb5+2,X
 
+                        \ Port: and the stardust's call sites, by b = 0 or
+                        \ not: for the roll (X <> 0), the two calls of MLSA
+                        \ and the ADD after each (stl_r1, stl_a1; stl_r2,
+                        \ stl_a2), JSR mlsk and BIT ADD (a no-op) when the
+                        \ roll is 0, else JSR MLSA and JSR ADD; for the pitch
+                        \ (X = 0), MLSB and the ADD of its square (stl_p1,
+                        \ stl_a3), JSR mlbk and JSR stlad0 when the pitch is
+                        \ 0, else JSR MLSB and JSR ADD (until ALP1 or BET1
+                        \ first changes, the assembled JSRs stay: their own
+                        \ paths, which give the same results); X is not kept
+                        \ (STARS1 sets it again)
+
+ TXA
+ BEQ stlpp
+ LDA mla1+1             \ (the roll's b)
+ BEQ stlr0
+ LDY #LO(MLSA)
+ LDX #HI(MLSA)
+ LDA #&20               \ JSR
+ BNE stlr1
+.stlr0
+ LDY #LO(mlsk)
+ LDX #HI(mlsk)
+ LDA #&2C               \ BIT
+.stlr1
+ STA stl_a1
+ STA stl_a2
+ STY stl_r1+1
+ STY stl_r2+1
+ STX stl_r1+2
+ STX stl_r2+2
+ RTS
+
+.stlpp
+
+ LDY #0                 \ The pitch: Y = 0 (b <> 0) or 4 (b = 0) for stlpt
+ LDA mlb1+1
+ BNE P%+4
+ LDY #4
+ LDA stlpt,Y
+ STA stl_p1+1
+ LDA stlpt+1,Y
+ STA stl_p1+2
+ LDA stlpt+2,Y
+ STA stl_a3+1
+ LDA stlpt+3,Y
+ STA stl_a3+2
+
 .stlpr
 
  RTS
+
+.stlpt
+
+ EQUW MLSB, ADD         \ The pitch's call sites for b <> 0, and for b = 0
+ EQUW mlbk, stlad0
+
+.mlsk
+
+                        \ Port: MLSA and the ADD after it (stl_a1, stl_a2:
+                        \ BIT ADD now) when ALP1 = 0. The product is 0 with
+                        \ A's sign, P = 0, so when |A| and |S| are both
+                        \ non-zero ADD gives (A X) = (S R) whatever the signs
+                        \ (the same-sign sum, or MU8 with |S R| > 0), which
+                        \ is returned here; else MLSA's own path, then ADD.
+                        \ The T, T1 and P that MLSA and ADD would leave, and
+                        \ C, are not read before they are written again (the
+                        \ next MLSA's or MLSB's STA T, the next ADD's T1, P
+                        \ from MLSB's product or PIX1's STA P; the C of
+                        \ MLSA's or MLSB's CPX)
+
+ STA T                  \ If |A| = 0, take MLSA's path
+ AND #%01111111
+ BEQ mlsf
+ LDX S                  \ If |S| = 0 (S = 0 or &80), take MLSA's path
+ BEQ mlsf
+ CPX #%10000000
+ BEQ mlsf
+ TXA                    \ (A X) = (S R)
+ LDX R
+ RTS
+
+.mlsf
+
+ LDA T                  \ MLSA's path: MLSA, then ADD
+ JSR MLSA
+ JMP ADD
+
+.mlbk
+
+                        \ Port: MLSB when BET1 = 0 (stl_p1): with |A| <> 0 the
+                        \ product is 0 with A's sign, so (A P) = (A AND &80,
+                        \ 0), as MLSB returns it (its X and flags are not
+                        \ read: STARS1 stores A in Q and then sets X); with
+                        \ |A| = 0 it ends as MLSB does, at mlbz (P(1 0) = 0)
+
+ STA T                  \ T = A, as MLSB does
+ AND #%01111111         \ If |A| = 0, finish as MLSB does at mlbz, with A = 0
+ BEQ mlbz
+ LDA #0
+ STA P
+ LDA T
+ AND #%10000000
+ RTS
+
+.stlad0
+
+                        \ Port: the ADD of the pitch's square (stl_a3) when
+                        \ BET1 = 0: (A P) is 0 then, so when |S| is non-zero
+                        \ ADD gives (A X) = (S R) (the same-sign sum, or MU8
+                        \ with |S R| > 0), which is returned here (the T and
+                        \ T1 it would leave, and C, are not read before PIX1's
+                        \ ADD writes them); else ADD's own path, with A = 0
+
+ LDX S                  \ If |S| = 0 (S = 0 or &80), take ADD's path
+ BEQ stlaf
+ CPX #%10000000
+ BEQ stlaf
+ TXA                    \ (A X) = (S R)
+ LDX R
+ RTS
+
+.stlaf
+
+ LDA #0                 \ ADD's path (A = 0: P is 0, as the square left it)
+ JMP ADD
 
 .MLUQ
 
@@ -24498,6 +24634,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Remove the current ship from our local bubble of universe
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \

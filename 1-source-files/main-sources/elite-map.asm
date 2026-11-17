@@ -58,10 +58,13 @@
                         \ page boundaries, and their branches' cycles)
 
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
- C6SZ = 326             \ (BANK6), before the frame layer, and its room (the
+ C6SZ = 582             \ (BANK6), before the frame layer, and its room (the
                         \ flight code's layout assembles it there and saves it
                         \ as C6.bin, which bank 6's assembly takes in; a far
-                        \ call, farC6, reaches it: elite-far.asm, streams.py)
+                        \ call, farC6, reaches it: elite-far.asm, streams.py;
+                        \ it grows by 256 bytes at a time, so that the frame
+                        \ layer after it keeps its page offsets, and with
+                        \ them its branches' and indexed reads' cycles)
 
  BPSLOT% = &B300        \ The blueprint set in each home bank, to BPSLOT_END%
  BPSLOT_END% = &BBA2    \ without their edge lists (the EDGE macro), then its
