@@ -29,6 +29,53 @@ Every commit of the port passes the gate, `6-harness/verify.sh`.
 * Python 3 and BeebAsm 1.11 for the build, as for the rest of the
   repository, and py65 (`pip install py65`) for the rasteriser's test.
 
+## Electron candidates
+
+A candidate whose `build.json` says `"machine": "electron"` runs on `clkh`,
+a headless Acorn Electron (MOS 1.00, a Plus 3 with the ACP 1770 DFS, sideways
+RAM in every free slot) on Clock Signal's core ([clkh/README.md](clkh/README.md));
+the reference stays on jsbeeb's Model B, as it is, with its cache.
+`elib.mjs` is the candidate's `runElite` there, with blib's options and
+results, and the same hooks, pilot, snapshots, seeding, filing-system
+exclusions, `LASCT` count, dead registers and page `&0D` and page 1 checks.
+`bcompare.mjs` (and so the gate's comparisons), `bshot.mjs`, `bbench.mjs`,
+`bredock.mjs` and `bsavetest.mjs` pick it from the build; `eramacc.mjs`
+measures the Electron build's main-RAM traffic and profiles it. It needs:
+
+* clkh built (`cmake -S 6-harness/clkh -B 6-harness/clkh/build && make -C
+  6-harness/clkh/build -j6`, or `$CLKH`), and the ROMs in
+  `~/elite-electron-roms` (or `$ELK_ROMS`);
+* from the port: the labels blib hooks, as now; `DKSX` in each program, the
+  instruction after its keyboard read where X holds the key's internal
+  number with bit 7 set if it is down (else `DKS4+17` is used); `LASDEC`
+  (loader), the interrupt's `DEC LASCT`; `farret` (loader), if far calls
+  push a frame (farret's return, the caller's slot, the caller's return);
+  the bank numbers in the loader's `BANKS` (`"banks"` in `build.json`), as
+  now; `OVSTASH`, if an overlay loader stashes WP and zero page there (WP's
+  two pages, then zero page at `+&200`); optionally `"elkKeys"` in
+  `build.json`, where the port puts a BBC key the tools press (for example
+  `{ "AT": "COPY" }`).
+
+The differences: the paged slot is `&FE05`'s; keys are injected at `DKSX`;
+the write tracking runs in clkh (blib's rules: a write by code at `&C000`
+on, in `&8000-&BFFF` with a ROM paged, or in page `&0D` is the filing
+system's); the screen is not compared (`--screen`: another format), and
+screenshots are clkh's (640 x 256). A hook is a breakpoint in clkh: the
+machine stops at its opcode fetch, before its instruction, and the harness
+reads and sets registers and memory there (one round trip a page, cached).
+On the test program, clkh runs at about 17 times real time with no stops,
+and serves about 100,000 bare stops a second, 7,000 with three page reads
+each (on an unloaded machine).
+
+`clkh/test/` tests it with a stand-in for disc Elite that runs on both
+machines: `python3 6-harness/clkh/test/fake.py` builds it,
+`node 6-harness/clkh/test/serve-test.mjs` checks the serve mode (stops,
+registers and memory set at them, the same state and cycles as clkh's
+command line, speed), and `node 6-harness/bcompare.mjs --ref
+6-harness/clkh/build/fake/ref.json --cand 6-harness/clkh/build/fake/elk.json`
+compares its Model B run with its Electron run (identical), and with
+`elk-bad.json`, the control, which must differ.
+
 ## The gate
 
     make verify                 (or: sh 6-harness/verify.sh [iterations])
@@ -151,4 +198,6 @@ cycles per flight iteration.
 | `bspin.mjs` | The planet's turn over the gate's run: its turn from one iteration to the next with the player still, by `MCNT`'s parity, and the lengths of its vectors and how far they are from right angles; `--build` the reference for its figures. |
 | `hotset.py` | From a profile of the original (or, with `--port`, of the port's home bank), lists the flight program's blocks with their cycles, the share of flight iterations that run them and their calls per iteration: the hot and cold split, and what a far call into a block would cost. |
 | `agentplay/` | elite-agent plays the released disc while the port replays its inputs read for read, game state and dashboard compared at every iteration, with save-file, BRK, hang and coverage checks: sessions, replays, campaigns ([agentplay/README.md](agentplay/README.md)). Not part of the gate. |
+| `elib.mjs`, `clkh.mjs`, `clkh/` | An Electron candidate on clkh ("Electron candidates", above): `elib.mjs`'s `runElite`, `ElkDriver` (real keys, for `bredock.mjs` and `bsavetest.mjs`); `clkh.mjs`, the synchronous client of clkh's serve mode; `clkh/`, clkh's sources and tests. |
+| `eramacc.mjs` | An Electron build's main-RAM bus accesses over the gate's run, per iteration and per flight iteration, by category (zero page, stack, other low data, screen reads, screen writes, code fetched from main RAM) and by the label of the code that made them, with their cycles; and the cycles run at each label (the whole machine's profile). |
 | `verify.sh` | The gate. |
