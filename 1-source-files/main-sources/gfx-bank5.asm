@@ -58,6 +58,10 @@
                         \ stars' records and variables
  INCLUDE "3-assembled-output/gfx-raster-bank5runs.asm"
  ASSERT P% = R_IMG%
+ ASSERT r_s1b + 48 <= SND5A AND SND5A + SND5ASZ <= R_IMG%   \ the sound engine's
+ ASSERT r_ylo + 192 <= SND5B AND SND5B + SND5BSZ <= r_s0x    \ gaps (elite-map.asm,
+ ASSERT r_zb + &22 <= SND5D AND SND5D + SND5DSZ <= r_s1x     \ gfx-sound.asm)
+ ASSERT RZB + &06 = r_zb
 
  ORG R_ST%
 

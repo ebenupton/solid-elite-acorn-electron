@@ -1,15 +1,16 @@
 \ ******************************************************************************
 \
-\ gfx-sound.asm - the sound engine (the Electron), in bank 6
+\ gfx-sound.asm - the sound engine (the Electron), in bank 5
 \
 \ Port: the Electron's ULA has one square-wave tone channel (&FE06, the
 \ counter: 1 MHz / (16 * (n + 1)); bits 1-2 of &FE07 switch it on as 01), no
 \ volume and no noise. Acornsoft's Electron Elite played the BBC's sounds
 \ through the MOS's OSWORD 7 on that one channel, with a priority and a
 \ minimum duration for each (its SFX2) to choose which one played. This
-\ engine plays them itself, ticked 100 times a second by the resident
-\ block's interrupt handler (IRQG: both the display end and the real-time
-\ clock interrupt, about half a field apart), with no MOS sound queue:
+\ engine plays them itself, with no MOS sound queue, ticked 100 times a
+\ second from the resident block's interrupt handler (IRQG calls SNDH on
+\ every interrupt; the game's only interrupts are the display end and the
+\ real-time clock, about half a field apart; the disc's are NMIs):
 \
 \   * four voices, one for each of the BBC's channels (0 the noise channel,
 \     1 to 3 the tones), so that the sounds the BBC makes together are kept
@@ -26,41 +27,52 @@
 \   * each sound is one sweep: a start divider, a signed step added to it
 \     each tick and a length in ticks; a noise sound flips the divider's bits
 \     in its noise mask at random each tick (an 8-bit LFSR, the engine's own,
-\     not the game's RAND), and the E.C.M.'s siren repeats until E.C.M. off.
-
-\ The game starts a sound through NO3 (each program's, with DNOIZ zero):
-\ GCALL's entry FG_SOUND with A = the sound's number / 8 (0-9, SFX's rows)
-\ and its BBC channel in XX16 (NOS1's block). The engine reads XX16 and
-\ writes only its own state below and &FE06/&FE07 (the mode register from
-\ the MOS's copy at &0282, so the screen mode, the caps LED and the motor
-\ bit stay as the MOS has them).
+\     not the game's RAND), and the E.C.M.'s siren repeats while the E.C.M.
+\     is on (ECMA).
 \
-\ gfx-bank6.asm includes this file (the code, slen and sdiv) in the room
-\ below its page-aligned state, declares the engine's state (svlen to srr)
-\ and sflag at the state's end, and puts sdel after its dispatcher FJT and
-\ SNDJ, the tick's JMP, at a fixed address (&BFFD) for the resident block.
+\ The game asks for a sound through NO3 (each program's, with DNOIZ zero):
+\ it puts the sound's number / 8, with bit 7 set, in SREQ (a queue of two in
+\ the resident block: SREQ+1 gets the older request) and the engine's bank
+\ in SNDH+1, which SNDH tests: while it is 0 (no sound playing and none
+\ asked for), the interrupt pages nothing. The tick starts the sounds asked
+\ for, plays, and when every voice is idle turns the sound off and puts 0
+\ in SNDH+1. It writes only its own state, SREQ, SNDH+1 and &FE06/&FE07
+\ (the mode register from the MOS's copy at &0282, so the screen mode, the
+\ caps LED and the motor bit stay as the MOS has them); with DNOIZ set
+\ nothing of it runs.
+\
+\ Bank 5 is loaded once at boot and never reloaded. The engine lives in
+\ the part that is not in its image, R.BANK (the rasteriser's row runs and
+\ row tables, which R_INIT makes at start), in three gaps that R_INIT
+\ leaves: SND5A (code), SND5B (code) and SND5D (the tables and the state),
+\ at fixed addresses (elite-map.asm, which gfx-bank5.asm checks are free).
+\ The loader assembles this file there and carries its bytes, which it
+\ copies into bank 5 at boot (elite-loader3.asm).
 \
 \ ******************************************************************************
+
+ ORG SND5A
 
 \ ******************************************************************************
 \
 \       Name: SND_TICK
 \       Type: Subroutine
 \   Category: Sound
-\    Summary: The sound engine's tick, 100 times a second (IRQG)
-\       Area: bank 6
+\    Summary: The sound engine's tick, 100 times a second (IRQG, SNDH)
+\       Area: bank 5 (SND5A, the loader's assembly)
 \
 \ ------------------------------------------------------------------------------
 \
-\ Entered by a JMP from SNDH (in main RAM, from IRQG) with bank 6 paged in and
-\ interrupts disabled; returns to IRQG with A = the ULA's interrupt status
-\ (&FE00). X is changed (IRQG keeps it), Y is kept.
+\ Called by SNDH (in main RAM, from IRQG) with bank 5 paged in and interrupts
+\ disabled. A is changed, X and Y are kept.
 \
 \ ******************************************************************************
 
 .SND_TICK
 
- TYA                    \ Keep Y
+ TXA                    \ Keep X and Y
+ PHA
+ TYA
  PHA
 
  LDA srnd               \ Step the noise's LFSR (a right shift, taps &B8: 255
@@ -68,6 +80,14 @@
  BCC P%+4
  EOR #&B8
  STA srnd
+
+ LDA SREQ+1             \ Start the sounds asked for, the older first, and
+ JSR srq                \ empty the queue
+ LDA SREQ
+ JSR srq
+ LDA #0
+ STA SREQ
+ STA SREQ+1
 
  LDX #3                 \ Update each voice X = 3 to 0
 
@@ -87,7 +107,7 @@
  BNE stk4               \ E.C.M.'s siren (sound 8) again while the E.C.M. is
  CPY #8                 \ on (ECMA): it plays until E.C.M. off, or until the
  BNE stk4               \ E.C.M. stops without one (with the sound turned off,
- LDA ECMA               \ or on docking)
+ LDA SND_ECMA           \ or on docking)
  BEQ stk4
  TYA
  JSR svs
@@ -96,6 +116,58 @@
 
  DEX                    \ Loop back for the next voice
  BPL stk1
+
+ JMP sout               \ Play (SND5B)
+
+ RTS                    \ (srq's return)
+
+.srq
+
+ BPL srq-1              \ Start the sound asked for in A (bit 7 set; else
+ AND #%01111111         \ return, from the RTS before srq) on its BBC channel's
+ TAY                    \ voice, falling into svs
+ LDX schan,Y
+ TYA
+
+\ ******************************************************************************
+\
+\       Name: svs
+\       Type: Subroutine
+\   Category: Sound
+\    Summary: Start sound A on voice X
+\       Area: bank 5 (SND5A, the loader's assembly)
+\
+\ ******************************************************************************
+
+.svs
+
+ STA sveff,X            \ The sound, its start divider and its length (Y is
+ TAY                    \ changed)
+ LDA sdiv,Y
+ STA svdiv,X
+ LDA slen,Y
+ STA svlen,X
+ RTS
+
+.SND_AEND
+
+ ORG SND5B
+
+\ ******************************************************************************
+\
+\       Name: sout
+\       Type: Subroutine
+\   Category: Sound
+\    Summary: The tick's end: play the next active voice, or stop
+\       Area: bank 5 (SND5B, the loader's assembly)
+\
+\ ******************************************************************************
+
+.sout
+
+ LDA &0282              \ The mode register as the MOS has it, with the sound
+ AND #%11111001         \ bits 00 (off), on the stack
+ PHA
 
  LDY #4                 \ Find the next active voice after the last one played
                         \ (srr), in turn, so that the active voices take a tick
@@ -109,7 +181,10 @@
  BNE sgo
  DEY
  BNE ssl
- BEQ sso                \ None: sound off (Y = 0)
+
+ STY SNDH+1             \ None: every voice is idle, so the interrupt need not
+ BEQ sso                \ call the engine again until a sound is asked for
+                        \ (Y = 0), and the sound goes off
 
 .sgo
 
@@ -119,111 +194,41 @@
  EOR svdiv,X
  STA &FE06
 
- LDY #1                 \ Sound on (Y = 1)
+ PLA                    \ Sound on: the sound bits 01
+ ORA #%00000010
+ PHA
 
 .sso
 
- LDA &0282              \ The mode register as the MOS has it, with the sound
- AND #%11111001         \ bits 01 (on) if Y = 1, or 00 (off) if Y = 0
- DEY
- BMI P%+4
- ORA #%00000010
+ PLA                    \ The sound on or off
  STA &FE07
 
- PLA                    \ Restore Y
+ PLA                    \ Restore Y and X
  TAY
-
- LDA &FE00              \ Return with A = the interrupt status
- RTS
-
-\ ******************************************************************************
-\
-\       Name: SND_START
-\       Type: Subroutine
-\   Category: Sound
-\    Summary: Start a sound (GCALL's entry FG_SOUND, from NO3)
-\       Area: bank 6
-\
-\ ------------------------------------------------------------------------------
-\
-\ The sound replaces the one on its voice, as the BBC's flush replaced the
-\ sound on its channel. (Electron Elite's priorities and minimum durations,
-\ its SFX2, chose which sounds its one channel played and which it dropped;
-\ with a voice for each of the BBC's channels and the voices played in turn,
-\ no sound is dropped, and they are not needed.)
-\
-\ ------------------------------------------------------------------------------
-\
-\ Arguments:
-\
-\   A                   The sound: its number in SFX / 8 (0 to 9)
-\
-\   XX16                The sound's block (NOS1), whose first byte holds its
-\                       BBC channel (0 to 3) in bits 0-1
-\
-\ ------------------------------------------------------------------------------
-\
-\ Returns:
-\
-\   A                   7
-\
-\ ******************************************************************************
-
-.SND_START
-
- PHP                    \ Keep the tick out while the voice changes
- SEI
-
- PHA                    \ Start the sound on voice X = its BBC channel
- LDA XX16
- AND #3
- TAX
  PLA
- JSR svs
+ TAX
 
- PLP                    \ Return with A = 7, as the original's OSWORD 7 left it
- LDA #7                 \ (MA14 stores A after EXNO2's sound in the ship's
- RTS                    \ energy byte)
-
-\ ******************************************************************************
-\
-\       Name: svs
-\       Type: Subroutine
-\   Category: Sound
-\    Summary: Start sound A on voice X
-\       Area: bank 6
-\
-\ ******************************************************************************
-
-.svs
-
- STA sveff,X            \ The sound, its length and its start divider (Y is
- TAY                    \ changed)
- LDA slen,Y
- STA svlen,X
- LDA sdiv,Y
- STA svdiv,X
  RTS
 
+.SND_BEND
+
+ ORG SND5D
+
 \ ******************************************************************************
 \
-\       Name: slen, sdiv, sdel, sflag
+\       Name: slen, sdiv, sdel, sflag, schan
 \       Type: Variable
 \   Category: Sound
-\    Summary: The sounds: length, start divider, step, noise mask
-\       Area: bank 6
+\    Summary: The sounds: length, start divider, step, noise mask, voice
+\       Area: bank 5 (SND5D, the loader's assembly)
 \
 \ ------------------------------------------------------------------------------
 \
 \ By sound (SFX's rows, the sound's number / 8): its length in ticks, its
 \ start divider (n plays 62500 / (n + 1) Hz), the step added to the divider
-\ each tick, and its noise mask (the divider's bits flipped at random each
-\ tick). E.C.M. off (sound 9) has length 0: it stops the voice, and has no
-\ other entries.
-\
-\ slen and sdiv are here; sdel and sflag, for want of room here, are in
-\ bank 6's other free bytes (gfx-bank6.asm: sflag after the engine's state,
-\ sdel after the dispatcher FJT).
+\ each tick, its noise mask (the divider's bits flipped at random each tick)
+\ and its voice (its BBC channel in SFX). E.C.M. off (sound 9) has length 0:
+\ it stops the voice.
 \
 \ ******************************************************************************
 
@@ -232,12 +237,25 @@
 \                    by   2    1    hi   beep ch   sp   on   off
 
 .slen  EQUB  11,  18,  30,  30,   5,  40,  30,  80,  18,   0
+.schan EQUB   2,   2,   1,   0,   3,   3,   0,   0,   3,   3
 .sdiv  EQUB  40, 120,  16,  64,  33, 210,  30, 250,  40
+.sdel  EQUB   9,  -6,   3,   6,   0,   0,   7,  -3,   2
+.sflag EQUB   0, &03,   0, &3F,   0,   0, &1F, &1F,   0
 
-MACRO SND_SDEL          \ (gfx-bank6.asm, after FJT)
- EQUB   9,  -6,   3,   6,   0,   0,   7,  -3,   2
-ENDMACRO
+\ ******************************************************************************
+\
+\       Name: svlen, svdiv, sveff, srnd, srr
+\       Type: Workspace
+\   Category: Sound
+\    Summary: The sound engine's state: the four voices, the LFSR, the turn
+\       Area: bank 5 (SND5D, the loader's assembly)
+\
+\ ******************************************************************************
 
-MACRO SND_SFLAG         \ (gfx-bank6.asm, after the engine's state)
- EQUB   0, &03,   0, &3F,   0,   0, &1F, &1F,   0
-ENDMACRO
+.svlen  EQUB 0, 0, 0, 0 \ Each voice's ticks left (0: idle)
+.svdiv  EQUB 0, 0, 0, 0 \ its divider
+.sveff  EQUB 0, 0, 0, 0 \ its sound
+.srnd   EQUB 1          \ The noise's LFSR (never 0)
+.srr    EQUB 0          \ The voice played last (bits 0-1)
+
+.SND_DEND

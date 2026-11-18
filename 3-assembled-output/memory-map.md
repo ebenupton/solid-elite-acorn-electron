@@ -47,12 +47,12 @@
 | bank 5 | `&B400-&BFC9` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 3018 | 0 |
 | bank 5 | `&BFCA-&BFFF` | `RJT`, the jump table | 45 | 9 |
 | bank 6 | `&8000-&8445` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 941 | 153 |
-| bank 6 | `&8446-&AA5D` | the frame layer's code (bank 6 passes) | 9752 | 0 |
-| bank 6 | `&AA5E-&AEDB` | the faces' and the lighting's tables | 1150 | 0 |
-| bank 6 | `&AEDC-&B1A9` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
-| bank 6 | `&B1AA-&B1FF` | (free: the page-aligned state that follows is placed as high as it goes) | 0 | 86 |
+| bank 6 | `&8446-&AAB2` | the frame layer's code (bank 6 passes) | 9837 | 0 |
+| bank 6 | `&AAB3-&AF30` | the faces' and the lighting's tables | 1150 | 0 |
+| bank 6 | `&AF31-&B1FE` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
+| bank 6 | `&B1FF-&B1FF` | (free: the page-aligned state that follows is placed as high as it goes) | 0 | 1 |
 | bank 6 | `&B200-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 24 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
-| bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher; the sound engine's `sdel`, and `SNDJ`, its tick's `JMP` (`&BFFD`) | 60 | 4 |
+| bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 4133, main RAM (flight) 13, main RAM (docked) 1328, bank 4 (flight) 40, bank 4 (docked) 2696, bank 7 (flight) 274, bank 7 (docked) 5022, bank 5 781, bank 6 279.
+Free, by place: main RAM 4133, main RAM (flight) 13, main RAM (docked) 1328, bank 4 (flight) 40, bank 4 (docked) 2696, bank 7 (flight) 274, bank 7 (docked) 5022, bank 5 781, bank 6 194.

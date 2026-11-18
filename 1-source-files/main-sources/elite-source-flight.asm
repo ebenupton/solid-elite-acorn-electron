@@ -28389,12 +28389,44 @@ ENDIF
  BNE KYTB               \ If DNOIZ is non-zero, then sound is disabled, so
                         \ return from the subroutine (as KYTB contains an RTS)
 
- INY                    \ Port: start the sound in the sound engine (bank 6,
- TYA                    \ gfx-sound.asm) through GCALL, with A = the sound's
- LSR A                  \ number / 8 (NOS1 leaves Y = the number / 2 - 1, and
- LSR A                  \ its BBC channel in XX16), in place of OSWORD 7 with
- LDX #FG_SOUND          \ the block in XX16, and return from the subroutine
- JMP GCALL              \ using a tail call (with A = 7, as OSWORD 7 left it)
+ INY                    \ Port: in place of OSWORD 7 with the block in XX16,
+ TYA                    \ ask the sound engine (bank 5, gfx-sound.asm) for the
+ LSR A                  \ sound: A = its number / 8 (NOS1 leaves Y = the number
+ LSR A                  \ / 2 - 1), and fall into SNDQ (in the cold bank) to
+                        \ queue it
+
+\ ******************************************************************************
+\
+\       Name: SNDQ
+\       Type: Subroutine
+\   Category: Sound
+\    Summary: Ask the sound engine for a sound
+\       Area: cold
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: the sound's number / 8, with bit 7 set, goes into SREQ (the older
+\ request into SREQ+1), and the engine's bank into SNDH+1, so that the
+\ interrupt calls the engine, which starts the sound at its next tick
+\ (gfx-sound.asm).
+\
+\ ------------------------------------------------------------------------------
+\
+\ Arguments:
+\
+\   A                   The sound: its number in SFX / 8 (0 to 9)
+\
+\ ******************************************************************************
+
+.SNDQ
+
+ ORA #%10000000
+ LDX SREQ
+ STX SREQ+1
+ STA SREQ
+ LDA BANK5
+ STA SNDH+1
+ RTS
 
 \ ******************************************************************************
 \

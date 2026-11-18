@@ -41,7 +41,7 @@ WINDOW7 = {"flight": ("gfx-raster_disc-bank7.asm", "gfx-raster_disc2-bank7.asm",
                                                         # bank 7 passes: elite-layout-flight.asm)
 NAMES = ("farC", "farCj", "farC6", "farH", "farHj", "BANK4", "BANK7", "BANK5", "BANK6", "PCLI",
          "IRQG", "NA%", "CHK2", "CHK", "BRBR1", "PANR", "GCALL", "dfsin", "dfsout", "pload",
-         "T_GETW", "T_TILT", "pcb_o")
+         "T_GETW", "T_TILT", "pcb_o", "SREQ")   # (SREQ: the sound engine's queue)
 
 sy = {}
 for m in re.finditer(r"'([^']+)':(\d+)", open(OUT + "loader-symbols.txt").read()):

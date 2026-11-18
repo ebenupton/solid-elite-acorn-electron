@@ -456,6 +456,31 @@ FOR I%, 0, 1            \ n = 256 * I% + X
 
 NEXT
 
+ LDA BANK5              \ Port: copy the sound engine into bank 5's three gaps
+ STA &F4                \ (gfx-sound.asm): R_INIT, which makes the row runs and
+ STA ROMSEL             \ the row tables around them, leaves them as they are
+
+ LDX #SND_AEND - SND5A - 1
+.snc1
+ LDA SNDcode,X
+ STA SND5A,X
+ DEX
+ BPL snc1
+
+ LDX #SND_BEND - SND5B - 1
+.snc2
+ LDA SNDcode + SND_AEND - SND5A,X
+ STA SND5B,X
+ DEX
+ BPL snc2
+
+ LDX #SND_DEND - SND5D - 1
+.snc3
+ LDA SNDcode + SND_AEND - SND5A + SND_BEND - SND5B,X
+ STA SND5D,X
+ DEX
+ BPL snc3
+
  PLA                    \ Page the ROM back in
  STA &F4
  STA ROMSEL
@@ -612,6 +637,9 @@ NEXT
  INX
  BNE ldp1
 
+ JSR b0fix              \ Make buffer 0 black, with a copy of buffer 1's last
+                        \ eight rows (the staging has been through it)
+
  LDX #SNDHSZ - 1        \ Port: copy the interrupt's hook into the sound
                         \ engine to SNDH
 .lsh
@@ -659,20 +687,28 @@ NEXT
 .sndh
 
                         \ Port: SNDH, the hook into the sound engine that IRQG
-                        \ calls, copied to SNDH above (it refers to no address
-                        \ of its own, so it runs there as assembled here): page
-                        \ bank 6 in and go to its tick, SND_TICK (through bank
-                        \ 6's JMP at SNDJ), which returns to IRQG, which pages
-                        \ the interrupted bank back in. ROM 12 is paged first:
-                        \ the ULA ignores a ROM 0 to 7 while ROM 8 (the
-                        \ keyboard) is paged, as it is while the MOS scans the
-                        \ keyboard
+                        \ calls first on every interrupt, copied to SNDH above
+                        \ (it refers to no address of its own, so it runs there
+                        \ as assembled here): if a sound plays or has been
+                        \ asked for, SNDH+1 holds the engine's bank (else 0, and
+                        \ it returns at once), which it pages in to call the
+                        \ engine's tick, SND_TICK, paging the interrupted bank
+                        \ back in from &F4 after. (The ULA would ignore a bank 0
+                        \ to 7 while the keyboard's ROM 8 is paged, but the game
+                        \ pages ROM 8 only with interrupts disabled, kbscan, and
+                        \ the MOS's own scan is in its interrupt handler, which
+                        \ runs after this)
 
- LDX #12
- STX ROMSEL
- LDX BANK6
- STX ROMSEL
- JMP SNDJ
+ LDA #0                 \ (SNDH+1: the engine's bank, or 0)
+ BEQ sndr               \ (a branch: as relocatable as the rest)
+ STA ROMSEL
+ JSR SND_TICK
+ LDA &F4
+ STA ROMSEL
+
+.sndr
+
+ RTS
 
  ASSERT P% - sndh = SNDHSZ
 
@@ -964,6 +1000,38 @@ NEXT
  COPYBLOCK &0400, &0800, RESAcode
 
  ORG RESAcode + &0400
+
+\ ******************************************************************************
+\
+\       Name: SNDcode
+\       Type: Variable
+\   Category: Sound
+\    Summary: The sound engine, bundled up in the loader so it can be copied
+\             into bank 5
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: the engine (gfx-sound.asm) is assembled at its places in bank 5, SND5A,
+\ SND5B and SND5D (elite-map.asm), and its three parts are carried here, one
+\ after the other, for the copy after PROBE.
+\
+\ ******************************************************************************
+
+.SNDcode
+
+ SNDP% = P%
+
+ INCLUDE "1-source-files/main-sources/gfx-sound.asm"
+
+ COPYBLOCK SND5A, SND_AEND, SNDP%
+ COPYBLOCK SND5B, SND_BEND, SNDP% + SND_AEND - SND5A
+ COPYBLOCK SND5D, SND_DEND, SNDP% + SND_AEND - SND5A + SND_BEND - SND5B
+
+ ORG SNDP% + SND_AEND - SND5A + SND_BEND - SND5B + SND_DEND - SND5D
+
+ ASSERT SND_AEND <= SND5A + SND5ASZ AND SND_BEND <= SND5B + SND5BSZ AND SND_DEND <= SND5D + SND5DSZ
+ ASSERT SND5ASZ <= 128 AND SND5BSZ <= 128 AND SND5DSZ <= 128   \ (the copy's loops)
+ PRINT "Sound engine (gfx-sound.asm, in bank 5): ", ~SND5A, "-", ~SND_AEND-1, ", ", ~SND5B, "-", ~SND_BEND-1, ", ", ~SND5D, "-", ~SND_DEND-1, " (", SND_AEND-SND5A+SND_BEND-SND5B+SND_DEND-SND5D, " bytes; free ", SND5A+SND5ASZ-SND_AEND, ", ", SND5B+SND5BSZ-SND_BEND, ", ", SND5D+SND5DSZ-SND_DEND, ")"
 
 \ ******************************************************************************
 \

@@ -136,3 +136,5 @@
  ASSERT COLD_END% <= DFSSAVE%      \ (Port: the end of the bank, DFSSAVE%)
 
  SAVE "3-assembled-output/T.CODEC.bin", &8000, COLD_END%, &8000
+
+ ASSERT ECMA = SND_ECMA   \ (the sound engine reads ECMA: gfx-sound.asm)

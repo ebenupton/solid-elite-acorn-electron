@@ -233,11 +233,8 @@
  FG_CLOUD    = 14
  FG_SETLD    = 15
  FG_PFHOLD   = 16
- FG_SOUND    = 17       \ (the sound engine's: gfx-sound.asm)
+ FG_DCHAR    = 17        \ (the game's direct-mode text: TT26, CHPR)
  FG_N        = 18
-
- SNDJ = &BFFD           \ Bank 6's JMP to the sound engine's tick (gfx-bank6.asm),
-                        \ which the interrupt handler's hook SNDH enters
 
                         \ The fixed colours of the frame layer's lines and dots
                         \ (indices into its F_CPE, gfx-frame.asm)
@@ -265,9 +262,22 @@
                         \ shared variables: SNDH, its hook into the sound
                         \ engine
 
- SNDH = RESH%           \ IRQG's hook into the sound engine (bank 6's SND_TICK
- SNDHSZ = 14            \ through SNDJ): SNDHSZ bytes of code, which the
-                        \ loader's LOAD copies here (elite-loader3.asm)
+ SNDH = RESH%           \ IRQG's hook into the sound engine (gfx-sound.asm):
+ SNDHSZ = 16            \ SNDHSZ bytes of code, which the loader's LOAD copies
+                        \ here (elite-loader3.asm); SNDH+1, the operand of its
+                        \ first instruction, is the engine's bank while a sound
+                        \ plays or has been asked for (NO3 sets it, the engine
+                        \ clears it), else 0, when SNDH returns at once
+
+ SND5A = &9090          \ The sound engine in bank 5, in three gaps that R_INIT
+ SND5ASZ = &70          \ leaves in the rasteriser's row tables' pages (not in
+ SND5B = &8EC0          \ R.BANK; the loader copies the engine there), each
+ SND5BSZ = &40          \ address and size: code, more code, then the tables
+ SND5D = &8FB7          \ and the state (gfx-sound.asm; gfx-bank5.asm checks
+ SND5DSZ = &49          \ that they are free, the loader that the engine fits)
+
+ SND_ECMA = &30         \ ECMA, which the engine reads (each program's layout
+                        \ checks it)
 
  GLUE% = &0724          \ The glue the game calls the frame layer through, and
                         \ the trampolines into bank 5 (gfx-glue.asm): at a

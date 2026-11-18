@@ -172,9 +172,10 @@ MACRO R_IN2 a, b        \ copy inputs a and b into this bank
   STA r_cole + (b - R_COLE)
 ENDMACRO
 
-RZB = &8EC0 - &06       \ this bank's copies of the inputs, and its scratch, in
-                        \ the room after r_ylo (gfx-raster.asm's bank 5 runs:
-                        \ r_zb), at RZB + the zero page address each had
+RZB = &8F90 - &06       \ this bank's copies of the inputs, and its scratch, in
+                        \ the room after the stars' records (gfx-raster.asm's
+                        \ bank 5 runs: r_zb), at RZB + the zero page address
+                        \ each had
 r_cole  = RZB + &06
 r_colo  = RZB + &07
 r_xl    = RZB + &08
@@ -820,7 +821,35 @@ ENDMACRO
 .fl_m1    SKIP 1
 .fl_m2    SKIP 1
  R_RUNEND 2
-FOR r, 3, 23
+ R_RUN 3
+.rl_lct  SKIP 8         \ R_LINE's: colour byte by row AND 7 (y-major), the
+.l_c     SKIP 1         \ row's colour byte, and the other row's EOR it
+.l_cx    SKIP 1         \ (x-major); the loops' character row's address; the
+.rl_bl   SKIP 1         \ buffer its DIRTY operands are patched for (&FF at
+.rl_bh   SKIP 1         \ start: none, R_INIT); rl_gen's major axis (0 = x, 2
+.rl_lbuf SKIP 1         \ = y: an offset into R_X0.., r_cl..), bit 7 the minor
+.rl_mo   SKIP 1         \ coordinate decreases, the major window lo, hi, the
+.rl_s    SKIP 1         \ minor window lo, hi
+.rl_lo   SKIP 1
+.rl_hi   SKIP 1
+.rl_nl   SKIP 1
+.rl_nh   SKIP 1
+ R_RUNEND 3
+ R_RUN 4
+.rl_dx   SKIP 2         \ rl_gen's (16-bit: lo, hi): P1 - P0, x, y (rl_dx + 2);
+.rl_dy   SKIP 2         \ |dx|, |dy| (rl_ax + 2); |d major|, |d minor|, d DIV
+.rl_ax   SKIP 2         \ 2; the left / top end: major, minor; the first pixel
+.rl_ay   SKIP 2         \ inside, the last; rl_mdq's signed addend
+.rl_d    SKIP 2
+.rl_a    SKIP 2
+.rl_h    SKIP 2
+.rl_m0   SKIP 2
+.rl_n0   SKIP 2
+.rl_i    SKIP 2
+.rl_j    SKIP 2
+.rl_t    SKIP 2
+ R_RUNEND 4
+FOR r, 5, 23
  R_RUN r
  R_RUNEND r
 NEXT
@@ -849,43 +878,17 @@ ALIGN &100
 .r_ypg0  SKIP 192         \ buffer 0's (BUF0) high bytes
 .r_s1y   SKIP 48          \ buffer 1's
 ALIGN &100
-.r_ylo   SKIP 192         \ the low bytes (both buffers)
-.r_zb    SKIP &22         \ the inputs' copies and the scratch (RZB + &06 on)
-ALIGN &100
+.r_ylo   SKIP 192         \ the low bytes (both buffers; then, to the page's end,
+ALIGN &100                \ the sound engine's SND5B: gfx-bank5.asm)
 .r_s0x   SKIP 48          \ buffer 0: the byte's high byte (bit 7: no second byte)
 .r_s0a   SKIP 48          \ buffer 0: the inverse mask in the byte
 .r_s0b   SKIP 48          \ buffer 0: the inverse mask in the next byte
-\ R_LINE's variables (gfx-raster_line.asm, gfx-raster_lcold.asm)
-.rl_lct SKIP 8          \ R_LINE: colour byte by row AND 7 (y-major), the row's
-.l_c    SKIP 1          \ colour byte, and the other row's EOR it (x-major)
-.l_cx   SKIP 1
-.rl_bl  SKIP 1          \ R_LINE's loops: the character row's address
-.rl_bh  SKIP 1
-.rl_lbuf SKIP 1          \ buffer R_LINE's DIRTY operands are patched for (&FF
-                        \ at start: none, R_INIT)
-\ rl_gen's variables (16-bit: lo, hi)
-.rl_dx SKIP 2            \ P1 - P0: x, y (rl_dx + 2)
-.rl_dy SKIP 2
-.rl_ax SKIP 2            \ |dx|, |dy| (rl_ax + 2)
-.rl_ay SKIP 2
-.rl_d  SKIP 2            \ |d major|
-.rl_a  SKIP 2            \ |d minor|
-.rl_h  SKIP 2            \ d DIV 2
-.rl_m0 SKIP 2            \ the left / top end: major, minor
-.rl_n0 SKIP 2
-.rl_i  SKIP 2            \ the first pixel inside, the last (i)
-.rl_j  SKIP 2
-.rl_t  SKIP 2            \ rl_mdq's signed addend
-.rl_mo SKIP 1            \ major axis: 0 = x, 2 = y (an offset into R_X0.., R_CL..)
-.rl_s  SKIP 1            \ bit 7: the minor coordinate decreases
-.rl_lo SKIP 1            \ major window lo, hi; minor window lo, hi
-.rl_hi SKIP 1
-.rl_nl SKIP 1
-.rl_nh SKIP 1
+.r_zb    SKIP &22         \ the inputs' copies and the scratch (RZB + &06 on;
+                          \ then the sound engine's SND5D)
 ALIGN &100
 .r_s1x   SKIP 48          \ buffer 1's
 .r_s1a   SKIP 48
-.r_s1b   SKIP 48
+.r_s1b   SKIP 48          \ (then the sound engine's SND5A)
 ALIGN &100
 ASSERT r_s1y = r_s0y + &100 AND r_s1x = r_s0x + &100
 ASSERT r_s1a = r_s0a + &100 AND r_s1b = r_s0b + &100

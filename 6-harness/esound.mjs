@@ -23,14 +23,18 @@ const sym = syms("docked-symbols.txt"), b6 = syms("bank6-symbols.txt"), ld = sym
 const log = `${out}/sound.log`;
 const e = new Clkh({ disc: `${B}/../5-compiled-game-discs/elite-electron.ssd`, shiftbreak: 1000000, extra: ["--soundlog", log] });
 const S = 2e6;
-e.run(8 * S);                                   // the game started (IRQG installed, banks loaded)
+e.run(8 * S);                                   // the banks found
 const bank4 = e.rb(ld.BANK4), bank6 = e.rb(ld.BANK6);
 if (argv.includes("--noglyph")) e.wr(b6.f_glyph, [0x60], bank6);
-e.run(4 * S);
+for (let t = 8; e.rb(ld.IRQMOS) === 0 && e.rb(ld.IRQMOS + 1) === 0; t += 0.5) {   // until LOAD has
+    if (t > 60) throw new Error("the game did not start");                          // installed IRQG
+    e.run(0.5 * S);
+}
+e.run(4 * S);                                   // (and the docked code is running)
 const idle = 0x1ff8, stub = 0x1fa0;             // (free main RAM: the circle engine's tail, unused docked)
 e.wr(idle, [0x4c, idle & 255, idle >> 8]);
 const site = ld.IRQG, orig = [...e.read(site, 3)];
-if (orig[0] !== 0xad) throw new Error("IRQG does not start with LDA abs");
+if (orig[0] !== 0xad && orig[0] !== 0x20) throw new Error("IRQG does not start with a 3-byte LDA or JSR");
 const seqs = [
     ["0-laser", [0], 1.5], ["1-hitbylaser", [8], 1.5], ["2-kill2", [16], 1.5], ["3-expl", [24], 1.5],
     ["4-beep", [32], 1.5], ["5-lowbeep", [40], 1.5], ["6-launch", [48], 1.5], ["7-hyper", [56], 1.5],

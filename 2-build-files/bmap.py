@@ -111,11 +111,13 @@ row("bank 7 (docked)", 0x8000, dfss, "the set's face lists, the cold pass, `QQ18
 
 rjt, img, st = B5["RJT"], B5["R_IMAGE"], B5["R_DIRTYL0"]
 run0, vars0 = B5["r_run0"], B5["r_ypg"]
-tailv = (B5["r7_i1"] + 1 - B5["rp_ov"]) + (B5["R_PRWB"] + 1 - B5["rp_m0"]) + (B5["fl_m2"] + 1 - B5["fl_ml"])
-row("bank 5", run0, vars0, "the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first three, variables", 24 * 98 + tailv)
-varsu = (B5["r_top"] + 1 - vars0) + (B5["r_s1y"] + 48 - B5["r_ypg0"]) + (B5["r_zb"] + 0x22 - B5["r_ylo"]) + \
-    (B5["rl_nh"] + 1 - B5["r_s0x"]) + (B5["r_s1b"] + 48 - B5["r_s1x"])
-row("bank 5", vars0, img, "the row tables (made at start by `R_INIT`), the stars' records, the bank's copies of its inputs and its scratch (`r_zb`), the variables, `R_LINE`'s (not in `R.BANK`)", varsu)
+tailv = (B5["r7_i1"] + 1 - B5["rp_ov"]) + (B5["R_PRWB"] + 1 - B5["rp_m0"]) + (B5["fl_m2"] + 1 - B5["fl_ml"]) + \
+    (B5["rl_nh"] + 1 - B5["rl_lct"]) + (B5["rl_t"] + 2 - B5["rl_dx"])
+row("bank 5", run0, vars0, "the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables", 24 * 98 + tailv)
+snd = C["SND5ASZ"] + C["SND5BSZ"] + C["SND5DSZ"]
+varsu = (B5["r_top"] + 1 - vars0) + (B5["r_s1y"] + 48 - B5["r_ypg0"]) + 192 + \
+    (B5["r_zb"] + 0x22 - B5["r_s0x"]) + (B5["r_s1b"] + 48 - B5["r_s1x"]) + snd
+row("bank 5", vars0, img, "the row tables (made at start by `R_INIT`), the stars' records, the bank's copies of its inputs and its scratch (`r_zb`), the variables (not in `R.BANK`); and the sound engine in three gaps (`gfx-sound.asm`, `SND5A`, `SND5B`, `SND5D`: copied there by the loader)", varsu)
 row("bank 5", img, st, "`R_POLY`, `R_LINE`, the lens flare", B5["R_LOEND"] - img)
 row("bank 5", st, st + 0x600, "the state: the dirty and written extents, `R_POLY`'s edge tables")
 row("bank 5", st + 0x600, B5["r_tfree"], "`R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic")
@@ -128,10 +130,10 @@ row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: c
 row("bank 6", B6["F_START"], B6["F_CODEEND"], "the frame layer's code (bank 6 passes)")
 row("bank 6", B6["F_CODEEND"], B6["F_TABEND"], "the faces' and the lighting's tables")
 row("bank 6", B6["F_TABEND"], B6["f_plm"] + 1, "the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept")
-row("bank 6", B6["f_plm"] + 1, B6["F_HW"], "the sound engine's code, `slen` and `sdiv` (`gfx-sound.asm`), in the page alignment of the state that follows", B6["SND_CODEEND"] - B6["SND_CODE"])
-row("bank 6", B6["F_HW"], fcslot, "the state, page aligned: the discs' half-widths, the text map, the discs' rows; the sound engine's state and `sflag`", B6["F_END"] - B6["F_HW"])
+row("bank 6", B6["f_plm"] + 1, B6["F_HW"], "(free: the page-aligned state that follows is placed as high as it goes)", 0)
+row("bank 6", B6["F_HW"], fcslot, "the state, page aligned: the discs' half-widths, the text map, the discs' rows", B6["F_END"] - B6["F_HW"])
 row("bank 6", fcslot, fjt, "`FCSLOT`: the face lists of the set loaded")
-row("bank 6", fjt, 0xC000, "`FJT`, the dispatcher; the sound engine's `sdel`, and `SNDJ`, its tick's `JMP` (`&BFFD`)", B6["sdel"] + 9 - fjt + 3)
+row("bank 6", fjt, 0xC000, "`FJT`, the dispatcher", B6["FJT_END"] - fjt)
 
 L = ["| Place | Addresses | Holds | Used | Free |", "|---|---|---|---:|---:|"]
 for space, s, e, what, u, f in rows:
