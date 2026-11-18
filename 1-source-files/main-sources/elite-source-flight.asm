@@ -3564,8 +3564,11 @@ ENDIF
                         \ screen gets drawn and the following palette change
                         \ won't kick in while the screen is still refreshing
 
- LDA #%00110000         \ Set the palette byte at SHEILA &21 to map logical
- STA VIA+&21            \ colour 0 to physical colour 7 (white), but with only
+ LDA #ULAPAL0 AND &EF    \ Port: make logical colour 0 white for a field (the
+ STA &FE08              \ display-end interrupt puts the palette back), the
+ LDA #ULAPAL1 AND &EE    \ Electron's flash for the original's, which set
+ STA &FE09              \ the palette byte at SHEILA &21 to map logical
+                        \ colour 0 to physical colour 7 (white), but with only
                         \ one mapping (rather than the 7 mappings required to
                         \ do the mapping properly). This makes the space screen
                         \ flash with black and white stripes. See page 382 of
@@ -27750,92 +27753,67 @@ ENDIF
 
 .RDKEY
 
-                        \ Port: the keyboard is scanned a column at a time, as
-                        \ the MOS does, rather than key by key through DKS4: the
-                        \ System VIA's CA2 flag is set when a key in rows 1 to 7
-                        \ of the selected column goes down, so only a column
-                        \ with a key down has its rows read. The result is the
-                        \ original's: the lowest internal key number from 16
-                        \ on that is being pressed, or 0, in A and X, with the
-                        \ flags from the TAX at Rd2, and Y unchanged
+                        \ Port: the Electron's keyboard is read through the MOS's
+                        \ KEYV (which pages the keyboard in and out); a scan
+                        \ from key 16 up returns the first key pressed. The
+                        \ Electron has no function keys: FUNC with a digit is
+                        \ the function key of that number, as in Acornsoft's
+                        \ Electron Elite, and RDKEY returns its BBC Micro key
+                        \ number (DKS4 the same: kbfk, kbdg)
 
  STY rdy+1              \ Store Y in the LDY at rdy, to restore it at the end
 
- LDA #&FF               \ Set the best key found so far, in the LDA at rdk, to
- STA rdk+1              \ &FF (none)
+ LDX #16                \ Scan the keyboard from key 16 ("Q") up: X = the first
+                        \ key pressed, or &FF for none
 
- LDA #%00000011         \ Set 6522 System VIA output register ORB (SHEILA &40)
- SEI                    \ to %00000011 to stop auto scan of the keyboard, with
- STA VIA+&40            \ interrupts disabled, as DKS4 does
+.rdk1
 
- LDA #%01111111         \ Set 6522 System VIA data direction register DDRA
- STA VIA+&43            \ (SHEILA &43) to %01111111, so bits 0-6 of port A are
-                        \ outputs and bit 7 an input, as DKS4 does
+ JSR kbscan
 
- LDX #0                 \ Set X = 0, to work through the keyboard's ten columns
+ CPX #&40               \ If that is FUNC (CAPS LK), it is a shift, not a key:
+ BNE rdk2               \ go on scanning from the key after it
+ LDX #&41
+ BNE rdk1
 
-.rdc
+.rdk2
 
- LDA #&0F               \ Select column 15, which has no keys, so CA2 goes low
- STA VIA+&4F
+ TXA                    \ If nothing is pressed, set A = %10000000, as the
+ BMI rdk5               \ original's loop leaves it
 
- LDA #%00000001         \ Clear the CA2 flag in the interrupt flag register
- STA VIA+&4D
+ LDY #9                 \ If the key is a digit, held with FUNC, it is the
+                        \ function key of its number
+.rdk3
 
- STX VIA+&4F            \ Select column X: CA2 goes high, and sets the flag, if
-                        \ a key in rows 1-7 of the column is down
+ CMP kbdg,Y
+ BEQ rdk4
+ DEY
+ BPL rdk3
+ BMI rdk6               \ (this BMI is effectively a JMP)
 
- LDA VIA+&4D            \ If the CA2 flag is clear, no key in this column is
- AND #%00000001         \ down, so jump to rdn for the next column
- BEQ rdn
+.rdk4
 
- TXA                    \ Set A to the column's key in row 1, the first row
- ORA #&10               \ above row 0 (whose keys are SHIFT, CTRL and the DIP
-                        \ switches)
+ STY rdk7+1             \ (the digit's index)
+ LDX #&40
+ JSR kbtest
+ TXA                    \ (A = the digit again, in case FUNC is not held)
+ BCC rdk6
+.rdk7
+ LDY #0                 \ FUNC is held: the function key (the index is patched
+ LDA kbfk,Y             \ above)
 
-.rdr
+.rdk6
 
- STA VIA+&4F            \ Read the key in A: bit 7 is set if it is pressed
- TAY
- LDA VIA+&4F
- BMI rdf
+ ORA #%10000000         \ Set bit 7, as DKS4 returns a pressed key
 
- TYA                    \ Move on to the next row, until we pass row 7
- CLC
- ADC #&10
- BPL rdr
+ BNE rdy                \ (this BNE is effectively a JMP)
 
- BMI rdn                \ No key turned up in this column after all, so jump to
-                        \ rdn (this BMI is effectively a JMP)
+.rdk5
 
-.rdf
-
- CPY rdk+1              \ The key in Y is the column's first: if its number is
- BCS rdn                \ lower than the best so far, it is the best so far
- STY rdk+1
-
-.rdn
-
- INX                    \ Move on to the next column, until we have done all
- CPX #10                \ ten
- BNE rdc
-
- LDA #%00001011         \ Set 6522 System VIA output register ORB (SHEILA &40)
- STA VIA+&40            \ to %00001011 to restart auto scan of the keyboard
-
- CLI                    \ Allow interrupts again
+ LDA #%10000000
 
 .rdy
 
  LDY #0                 \ Restore Y (the value is patched above)
-
-.rdk
-
- LDA #0                 \ Set A to the best key found (patched above), with bit
- ORA #%10000000         \ 7 set as DKS4 returns a pressed key, or to &FF if
- CMP #&FF               \ there is none, in which case set A to %10000000, as
- BNE Rd2                \ the original's loop leaves it
- LDA #%10000000
 
 .Rd2
 
@@ -28517,41 +28495,92 @@ ENDIF
 
 .DKS4
 
- LDA #%00000011         \ Set A to %00000011, so it's ready to send to SHEILA
-                        \ once interrupts have been disabled
+                        \ Port: the Electron's keyboard, through the MOS's KEYV
+                        \ (RDKEY): a function key of the BBC Micro (kbfk) is
+                        \ pressed when FUNC and its digit (kbdg) are
 
- SEI                    \ Disable interrupts so we can scan the keyboard
-                        \ without being hijacked
+ STY dksy+1             \ Store Y in the LDY at dksy, to restore it at the end
 
- STA VIA+&40            \ Set 6522 System VIA output register ORB (SHEILA &40)
-                        \ to %00000011 to stop auto scan of keyboard
+ TXA                    \ Keep the key in the LDA at dksk
+ STA dksk+1
 
- LDA #%01111111         \ Set 6522 System VIA data direction register DDRA
- STA VIA+&43            \ (SHEILA &43) to %01111111. This sets the A registers
-                        \ (IRA and ORA) so that:
-                        \
-                        \   * Bits 0-6 of ORA will be sent to the keyboard
-                        \
-                        \   * Bit 7 of IRA will be read from the keyboard
+ LDY #9                 \ If it is a function key, jump to dks3 with its index
+                        \ in Y
+.dks1
 
- STX VIA+&4F            \ Set 6522 System VIA output register ORA (SHEILA &4F)
-                        \ to X, the key we want to scan for; bits 0-6 will be
-                        \ sent to the keyboard, of which bits 0-3 determine the
-                        \ keyboard column, and bits 4-6 the keyboard row
+ CMP kbfk,Y
+ BEQ dks3
+ DEY
+ BPL dks1
 
- LDX VIA+&4F            \ Read 6522 System VIA output register IRA (SHEILA &4F)
-                        \ into X; bit 7 is the only bit that will have changed.
-                        \ If the key is pressed, then bit 7 will be set,
-                        \ otherwise it will be clear
+ JSR kbtest             \ Set the C flag if key X is pressed
 
- LDA #%00001011         \ Set 6522 System VIA output register ORB (SHEILA &40)
- STA VIA+&40            \ to %00001011 to restart auto scan of keyboard
+.dks2
 
- CLI                    \ Allow interrupts again
+.dksk
 
- TXA                    \ Transfer X into A
+ LDA #0                 \ Set X = the key (patched above), with bit 7 set if it
+ BCC P%+4               \ is pressed
+ ORA #%10000000
+ TAX
 
- RTS                    \ Return from the subroutine
+.dksy
+
+ LDY #0                 \ Restore Y (the value is patched above)
+
+.DKSX
+
+ TXA                    \ Transfer X into A, and return (the harness's point:
+                        \ X holds the result)
+
+ RTS
+
+.dks3
+
+ STY dks4+1             \ A function key: pressed if FUNC (CAPS LK) is, and
+ LDX #&40               \ its digit
+ JSR kbtest
+ BCC dks2
+.dks4
+ LDY #0                 \ (the index is patched above)
+ LDX kbdg,Y
+ JSR kbtest
+ JMP dks2
+
+.kbtest
+
+                        \ Port: set the C flag if key X (an internal key number,
+                        \ bit 7 clear) is pressed; A, X and Y are changed
+
+ TXA                    \ KEYV with C set, V clear and bit 7 of X set tests key
+ ORA #%10000000         \ X AND &7F, as OSBYTE 121 does, and returns X with
+ TAX                    \ bit 7 set if it is pressed
+
+.kbscan
+
+                        \ Port: with X < 128, scan from key X up: X = the first
+                        \ key pressed, or &FF for none (A and Y are changed)
+
+ SEC
+ CLV
+ SEI
+ JSR kbv
+ CLI
+ TXA                    \ Set the C flag from bit 7 of X
+ ASL A
+ RTS
+
+.kbv
+
+ JMP (&0228)            \ KEYV
+
+.kbfk
+
+ EQUB &20, &71, &72, &73, &14, &74, &75, &16, &76, &77   \ f0 to f9
+
+.kbdg
+
+ EQUB &27, &30, &31, &11, &12, &13, &34, &24, &15, &26   \ 0 to 9
 
 \ ******************************************************************************
 \
@@ -28718,7 +28747,8 @@ ENDIF
  INY                    \ Update the key logger for key 2 in the KYTB table, so
  JSR DKS1               \ KY2 will be &FF if Space (speed up) is being pressed
 
- LDA VIA+&40            \ Read 6522 System VIA input register IRB (SHEILA &40)
+ LDA #%00010000         \ Port: the Electron has no joystick: as the System
+                        \ VIA's IRB reads with joystick 1's fire button up
 
  TAX                    \ This instruction doesn't seem to have any effect, as
                         \ X is overwritten in a few instructions

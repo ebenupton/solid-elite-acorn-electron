@@ -21951,7 +21951,8 @@ ENDIF
 
  DEC MCNT               \ Decrement the main loop counter
 
- LDA VIA+&40            \ Read 6522 System VIA input register IRB (SHEILA &40)
+ LDA #%00010000         \ Port: the Electron has no joystick: as the System
+                        \ VIA's IRB reads with joystick 1's fire button up
 
  AND #%00010000         \ Bit 4 of IRB (PB4) is clear if joystick 1's fire
                         \ button is pressed, otherwise it is set, so AND'ing
@@ -22191,8 +22192,8 @@ ENDIF
 
 .MT26
 
- LDA #%10000001         \ Clear 6522 System VIA interrupt enable register IER
- STA VIA+&4E            \ (SHEILA &4E) bit 1 (i.e. enable the CA2 interrupt,
+ \ (Port: the original enabled the System VIA's CA2 interrupt here, which
+ \ the Electron does not have: its MOS reads the keyboard itself)
                         \ which comes from the keyboard)
 
  JSR FLKB               \ Call FLKB to flush the keyboard buffer
@@ -22210,8 +22211,8 @@ ENDIF
  LDY #0                 \ ESCAPE was pressed, so set Y = 0 (as the OSWORD call
                         \ returns the length of the entered string in Y)
 
- LDA #%00000001         \ Set 6522 System VIA interrupt enable register IER
- STA VIA+&4E            \ (SHEILA &4E) bit 1 (i.e. disable the CA2 interrupt,
+ \ (Port: the original enabled the System VIA's CA2 interrupt here, which
+ \ the Electron does not have: its MOS reads the keyboard itself)
                         \ which comes from the keyboard)
 
  JMP FEED               \ Jump to FEED to print a newline, returning from the
@@ -23345,25 +23346,67 @@ ENDIF
 
 .RDKEY
 
- LDX #16                \ Start the scan with internal key number 16 ("Q")
+                        \ Port: the Electron's keyboard is read through the MOS's
+                        \ KEYV (which pages the keyboard in and out); a scan
+                        \ from key 16 up returns the first key pressed. The
+                        \ Electron has no function keys: FUNC with a digit is
+                        \ the function key of that number, as in Acornsoft's
+                        \ Electron Elite, and RDKEY returns its BBC Micro key
+                        \ number (DKS4 the same: kbfk, kbdg)
 
-.Rd1
+ STY rdy+1              \ Store Y in the LDY at rdy, to restore it at the end
 
- JSR DKS4               \ Scan the keyboard to see if the key in X is currently
-                        \ being pressed, returning the result in A and X
+ LDX #16                \ Scan the keyboard from key 16 ("Q") up: X = the first
+                        \ key pressed, or &FF for none
 
- BMI Rd2                \ Jump to Rd2 if this key is being pressed (in which
-                        \ case DKS4 will have returned the key number with bit
-                        \ 7 set, which is negative)
+.rdk1
 
- INX                    \ Increment the key number, which was unchanged by the
-                        \ above call to DKS4
+ JSR kbscan
 
- BPL Rd1                \ Loop back to test the next key, ending the loop when
-                        \ X is negative (i.e. 128)
+ CPX #&40               \ If that is FUNC (CAPS LK), it is a shift, not a key:
+ BNE rdk2               \ go on scanning from the key after it
+ LDX #&41
+ BNE rdk1
 
- TXA                    \ If we get here, nothing is being pressed, so copy X
-                        \ into A so that X = A = 128 = %10000000
+.rdk2
+
+ TXA                    \ If nothing is pressed, set A = %10000000, as the
+ BMI rdk5               \ original's loop leaves it
+
+ LDY #9                 \ If the key is a digit, held with FUNC, it is the
+                        \ function key of its number
+.rdk3
+
+ CMP kbdg,Y
+ BEQ rdk4
+ DEY
+ BPL rdk3
+ BMI rdk6               \ (this BMI is effectively a JMP)
+
+.rdk4
+
+ STY rdk7+1             \ (the digit's index)
+ LDX #&40
+ JSR kbtest
+ TXA                    \ (A = the digit again, in case FUNC is not held)
+ BCC rdk6
+.rdk7
+ LDY #0                 \ FUNC is held: the function key (the index is patched
+ LDA kbfk,Y             \ above)
+
+.rdk6
+
+ ORA #%10000000         \ Set bit 7, as DKS4 returns a pressed key
+
+ BNE rdy                \ (this BNE is effectively a JMP)
+
+.rdk5
+
+ LDA #%10000000
+
+.rdy
+
+ LDY #0                 \ Restore Y (the value is patched above)
 
 .Rd2
 
@@ -23592,7 +23635,9 @@ ENDIF
 
  LDX DNOIZ              \ Set X to the DNOIZ configuration setting
 
- BNE NO1                \ If DNOIZ is non-zero, then sound is disabled, so
+ BEQ P%+3              \ If DNOIZ is non-zero, then sound is disabled, so
+ RTS                    \ return from the subroutine (Port: the keyboard's code
+                        \ before NO1 puts it out of a branch's reach)
                         \ return from the subroutine (as NO1 contains an RTS)
 
  LDX #LO(XX16)          \ Otherwise set (Y X) to point to the sound block in
@@ -23723,41 +23768,92 @@ ENDIF
 
 .DKS4
 
- LDA #%00000011         \ Set A to %00000011, so it's ready to send to SHEILA
-                        \ once interrupts have been disabled
+                        \ Port: the Electron's keyboard, through the MOS's KEYV
+                        \ (RDKEY): a function key of the BBC Micro (kbfk) is
+                        \ pressed when FUNC and its digit (kbdg) are
 
- SEI                    \ Disable interrupts so we can scan the keyboard
-                        \ without being hijacked
+ STY dksy+1             \ Store Y in the LDY at dksy, to restore it at the end
 
- STA VIA+&40            \ Set 6522 System VIA output register ORB (SHEILA &40)
-                        \ to %00000011 to stop auto scan of keyboard
+ TXA                    \ Keep the key in the LDA at dksk
+ STA dksk+1
 
- LDA #%01111111         \ Set 6522 System VIA data direction register DDRA
- STA VIA+&43            \ (SHEILA &43) to %01111111. This sets the A registers
-                        \ (IRA and ORA) so that:
-                        \
-                        \   * Bits 0-6 of ORA will be sent to the keyboard
-                        \
-                        \   * Bit 7 of IRA will be read from the keyboard
+ LDY #9                 \ If it is a function key, jump to dks3 with its index
+                        \ in Y
+.dks1
 
- STX VIA+&4F            \ Set 6522 System VIA output register ORA (SHEILA &4F)
-                        \ to X, the key we want to scan for; bits 0-6 will be
-                        \ sent to the keyboard, of which bits 0-3 determine the
-                        \ keyboard column, and bits 4-6 the keyboard row
+ CMP kbfk,Y
+ BEQ dks3
+ DEY
+ BPL dks1
 
- LDX VIA+&4F            \ Read 6522 System VIA output register IRA (SHEILA &4F)
-                        \ into X; bit 7 is the only bit that will have changed.
-                        \ If the key is pressed, then bit 7 will be set,
-                        \ otherwise it will be clear
+ JSR kbtest             \ Set the C flag if key X is pressed
 
- LDA #%00001011         \ Set 6522 System VIA output register ORB (SHEILA &40)
- STA VIA+&40            \ to %00001011 to restart auto scan of keyboard
+.dks2
 
- CLI                    \ Allow interrupts again
+.dksk
 
- TXA                    \ Transfer X into A
+ LDA #0                 \ Set X = the key (patched above), with bit 7 set if it
+ BCC P%+4               \ is pressed
+ ORA #%10000000
+ TAX
 
- RTS                    \ Return from the subroutine
+.dksy
+
+ LDY #0                 \ Restore Y (the value is patched above)
+
+.DKSX
+
+ TXA                    \ Transfer X into A, and return (the harness's point:
+                        \ X holds the result)
+
+ RTS
+
+.dks3
+
+ STY dks4+1             \ A function key: pressed if FUNC (CAPS LK) is, and
+ LDX #&40               \ its digit
+ JSR kbtest
+ BCC dks2
+.dks4
+ LDY #0                 \ (the index is patched above)
+ LDX kbdg,Y
+ JSR kbtest
+ JMP dks2
+
+.kbtest
+
+                        \ Port: set the C flag if key X (an internal key number,
+                        \ bit 7 clear) is pressed; A, X and Y are changed
+
+ TXA                    \ KEYV with C set, V clear and bit 7 of X set tests key
+ ORA #%10000000         \ X AND &7F, as OSBYTE 121 does, and returns X with
+ TAX                    \ bit 7 set if it is pressed
+
+.kbscan
+
+                        \ Port: with X < 128, scan from key X up: X = the first
+                        \ key pressed, or &FF for none (A and Y are changed)
+
+ SEC
+ CLV
+ SEI
+ JSR kbv
+ CLI
+ TXA                    \ Set the C flag from bit 7 of X
+ ASL A
+ RTS
+
+.kbv
+
+ JMP (&0228)            \ KEYV
+
+.kbfk
+
+ EQUB &20, &71, &72, &73, &14, &74, &75, &16, &76, &77   \ f0 to f9
+
+.kbdg
+
+ EQUB &27, &30, &31, &11, &12, &13, &34, &24, &15, &26   \ 0 to 9
 
 \ ******************************************************************************
 \
@@ -23915,7 +24011,8 @@ ENDIF
 
 .DKJ1
 
- LDA VIA+&40            \ Read 6522 System VIA input register IRB (SHEILA &40)
+ LDA #%00010000         \ Port: the Electron has no joystick: as the System
+                        \ VIA's IRB reads with joystick 1's fire button up
 
  TAX                    \ This instruction doesn't seem to have any effect, as
                         \ X is overwritten in a few instructions
@@ -24180,7 +24277,10 @@ ENDIF
  TAY                    \ Copy A to Y, so Y contains the internal key number
                         \ of the key pressed
 
- LDA (TRTB%),Y          \ The address in TRTB% points to the MOS key
+ LDA KTRAN-16,Y         \ Port: KTRAN is the BBC Micro MOS's key translation
+                        \ table (from key 16), which the original reached
+                        \ through TRTB% (the Electron's MOS has none)
+                        \ The address in TRTB% points to the MOS key
                         \ translation table, which is used to translate
                         \ internal key numbers to ASCII, so this fetches the
                         \ key's ASCII code into A
@@ -24192,6 +24292,26 @@ ENDIF
 .out
 
  RTS                    \ Return from the subroutine
+
+.KTRAN
+
+                        \ Port: the BBC Micro MOS 1.20's key translation table
+                        \ for keys 16 to 127 (the ASCII codes TT217 returns)
+
+ EQUB &71, &33, &34, &35, &84, &38, &87, &2D
+ EQUB &5E, &8C, &84, &EC, &86, &ED, &60, &00
+ EQUB &80, &77, &65, &74, &37, &69, &39, &30
+ EQUB &5F, &8E, &6C, &FE, &FD, &6C, &FA, &00
+ EQUB &31, &32, &64, &72, &36, &75, &6F, &70
+ EQUB &5B, &8F, &2C, &B7, &D9, &6C, &28, &02
+ EQUB &01, &61, &78, &66, &79, &6A, &6B, &40
+ EQUB &3A, &0D, &00, &FF, &01, &02, &09, &0A
+ EQUB &02, &73, &63, &67, &68, &6E, &6C, &3B
+ EQUB &5D, &7F, &AC, &44, &02, &A2, &00, &60
+ EQUB &00, &7A, &20, &76, &62, &6D, &2C, &2E
+ EQUB &2F, &8B, &AE, &41, &02, &4C, &AD, &E1
+ EQUB &1B, &81, &82, &83, &85, &86, &88, &89
+ EQUB &5C, &8D, &6C, &20, &02, &D0, &EB, &A2
 
 \ ******************************************************************************
 \

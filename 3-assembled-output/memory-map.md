@@ -12,7 +12,7 @@
 | main RAM | `&0D7A-&0D9D` | `CATD` | 36 | 0 |
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
-| main RAM (flight) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 1217 | 47 |
+| main RAM (flight) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 1248 | 16 |
 | main RAM (docked) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 16 | 1248 |
 | main RAM | `&1E00-&1E9F` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
 | main RAM | `&1EA0-&1F3F` | the missile's blueprint | 160 | 0 |
@@ -28,7 +28,7 @@
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 4 (docked) | `&8000-&AE0F` | `S%` and the hot pass | 8748 | 3044 |
+| bank 4 (docked) | `&8000-&AE0F` | `S%` and the hot pass | 8958 | 2834 |
 | bank 4 (docked) | `&AE10-&B2FF` | the main RAM part's image | 1264 | 0 |
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
@@ -55,4 +55,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 4229, main RAM (flight) 47, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3204, bank 7 (flight) 78, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.
+Free, by place: main RAM 4229, main RAM (flight) 16, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 2994, bank 7 (flight) 78, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.
