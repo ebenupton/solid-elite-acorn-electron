@@ -13,6 +13,7 @@ import { deflateSync } from "zlib";
 import { runElite, loadBuild, CAND_BUILD, WORK } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
 const args = parseArgs({ build: "value", at: "value", out: "value", after: "value" });
 const B = loadBuild(resolve(args.build || CAND_BUILD));
 const OUT = resolve(args.out || `${WORK}shots`);
@@ -20,6 +21,18 @@ const AT = (args.at || "200").split(",").map(Number);
 mkdirSync(OUT, { recursive: true });
 const frames = [];
 let sess = null;
+// (an Electron build runs on clkh: its shots are clkh's PNGs of the last
+// complete field, 640 x 256, written as they are)
+if (isElectron(B)) {
+    const r = await runEliteElectron({
+        build: B, pilot: makePilot(), iters: Math.max(...AT) + 1, maxSecs: 4 * Math.max(...AT) + 60, patch: patchCommander, keep: !!args.after,
+        onIter: (i, s) => { if (AT.includes(i)) frames.push([i, s.shot()]); },
+    });
+    if (args.after) { r.clkh.run(+args.after * 2e6); frames.push(["end", r.clkh.shot()]); r.clkh.kill(); }
+    for (const [i, png] of frames) { writeFileSync(`${OUT}/it-${i}.png`, png); console.log(`${OUT}/it-${i}.png (640x256)`); }
+    console.log(`iterations ${r.iters}${r.error ? ", stopped: " + r.error : ""}`);
+    process.exit(r.error ? 1 : 0);
+}
 const r = await runElite({
     build: B, pilot: makePilot(), iters: Math.max(...AT) + 1, maxSecs: 4 * Math.max(...AT) + 60, patch: patchCommander,
     onIter: (i, s) => {

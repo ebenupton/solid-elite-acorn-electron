@@ -9,11 +9,34 @@ import { BBC } from "./jsbeeb.mjs";
 import { loadBuild, bootModelB, progHooks, CAND_BUILD, WORK } from "./blib.mjs";
 import { writeFileSync, mkdirSync } from "fs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, ElkDriver } from "./elib.mjs";
 const a = parseArgs({ build: "value", out: "value", limit: "value" });
 const LIMIT = +(a.limit || 300);
 const b = loadBuild(a.build || CAND_BUILD);
 const sy = b.progs.flight.sy;
 const OUT = a.out || `${WORK}redock`; mkdirSync(OUT, { recursive: true });
+// (an Electron build: the same on clkh, elib.mjs's ElkDriver, its keys by
+// the BBC Micro's names, elkKey)
+if (isElectron(b)) {
+    const d = new ElkDriver(b);
+    const snap = n => writeFileSync(`${OUT}/${n}.png`, d.shot());
+    d.count("doe", "docked", "DOENTRY");
+    d.secs(40); d.key("N"); d.secs(3); d.key("SPACE"); d.secs(4);
+    snap("0-docked");
+    d.wr(sy.DKCMP, [0xff]);
+    let ok = true;
+    for (let n = 1; n <= 2; n++) {
+        d.key("F0", 0.2, 15); snap(`${n}-launched`);
+        d.key("C", 1, 1);
+        let t = 0; while (d.n.doe < n && t < LIMIT) { d.secs(1); t++; if (t === 10) snap(`${n}-docking`); }
+        console.log(`docking ${n}: ${d.n.doe >= n ? `docked after ${t} s` : `NOT DOCKED after ${LIMIT} s`}`);
+        if (d.n.doe < n) { ok = false; snap(`${n}-failed`); break; }
+        d.secs(10); d.key("SPACE", 0.2, 3); snap(`${n}-docked`);
+    }
+    d.kill();
+    console.log(ok ? "REDOCK PASS" : "REDOCK FAIL");
+    process.exit(ok ? 0 : 1);
+}
 const s = await bootModelB(b.disc);
 const cpu = s._machine.processor; const secs = n => s.runFor(2000000 * n);
 const key = async (k, hold = 0.2, after = 1) => { cpu.sysvia.keyDownRaw(BBC[k]); await secs(hold); cpu.sysvia.keyUpRaw(BBC[k]); await secs(after); };

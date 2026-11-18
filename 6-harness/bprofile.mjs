@@ -32,6 +32,10 @@ const args = parseArgs({ build: "value", iters: "value", out: "value", scenes: "
 const B = loadBuild(resolve(args.build || CAND_BUILD));
 const OUT = resolve(args.out || `${WORK}profile.json`);
 const ITERS = +(args.iters || 10000);
+if ((await import("./elib.mjs")).isElectron(B)) {
+    console.error("bprofile.mjs: an Electron build is profiled on clkh by eramacc.mjs (cycles and main-RAM traffic by label)");
+    process.exit(2);
+}
 const t0 = Date.now();
 // scenes.py's scene of a front-view flight iteration, from a bscenes.mjs row
 const sceneOf = a => {

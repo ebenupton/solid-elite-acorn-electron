@@ -12,7 +12,7 @@
 // are queued and sent with the next command that answers, or at run().
 // Memory reads go through a page cache (one round trip a page), dropped
 // whenever the machine runs.
-import { openSync, readSync, writeSync, closeSync, existsSync, mkdtempSync, unlinkSync, rmdirSync, constants } from "fs";
+import { openSync, readSync, writeSync, closeSync, existsSync, mkdtempSync, unlinkSync, rmdirSync, copyFileSync, constants } from "fs";
 import { execFileSync, spawn } from "child_process";
 import { tmpdir, homedir } from "os";
 import { join } from "path";
@@ -51,6 +51,9 @@ export class Clkh {
         this.dir = mkdtempSync(join(tmpdir(), "clkh-"));
         this.cmdPath = join(this.dir, "cmd"); this.repPath = join(this.dir, "rep");
         execFileSync("mkfifo", [this.cmdPath, this.repPath]);
+        // (the machine gets a copy of the disc: CLK writes a disc's changes
+        // back to its file; the copy, discPath, holds them)
+        if (disc) { this.discPath = join(this.dir, "disc.ssd"); copyFileSync(disc, this.discPath); disc = this.discPath; }
         // (the command FIFO opened read-write, so that opening it never
         // blocks, and clkh sees its end when this process ends; the answers'
         // FIFO first without blocking, to wait for clkh's greeting while
@@ -194,6 +197,7 @@ export class Clkh {
         try { closeSync(this.cfd); } catch { }
         try { closeSync(this.rfd); } catch { }
         try { process.kill(this.pid, "SIGTERM"); } catch { }
-        try { unlinkSync(this.cmdPath); unlinkSync(this.repPath); rmdirSync(this.dir); } catch { }
+        if (this.keepDir) return;
+        try { unlinkSync(this.cmdPath); unlinkSync(this.repPath); if (this.discPath) unlinkSync(this.discPath); rmdirSync(this.dir); } catch { }
     }
 }

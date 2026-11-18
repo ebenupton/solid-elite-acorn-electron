@@ -42,6 +42,7 @@
 import { runElite, loadBuild, regionsFor, physRead, progHooks, CAND_BUILD } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
 import { writeFileSync } from "fs";
 import { resolve } from "path";
 
@@ -168,7 +169,9 @@ opts.onIter = (i, s, res) => {
         }
     }
 };
-const r = await runElite(opts);
+// (an Electron build runs on clkh: elib.mjs; its cpu has blib's ramRomOs and
+// romOffset, so the scenes are put in as they are on the Model B)
+const r = await (isElectron(b) ? runEliteElectron : runElite)(opts);
 if (r.error) console.log(`error: ${r.error}`);
 if (a.out) writeFileSync(a.out, JSON.stringify({ build: BUILD, N, WARM, results }, null, 1));
 process.exit(Object.keys(results).length === which.length ? 0 : 1);

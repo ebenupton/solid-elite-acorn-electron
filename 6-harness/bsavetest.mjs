@@ -19,6 +19,7 @@ import { loadBuild, bootModelB, progHooks, CAND_BUILD, REF_BUILD, WORK } from ".
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
 import { createHash } from "crypto";
 import { parseArgs } from "./args.mjs";
+import { isElectron, ElkDriver } from "./elib.mjs";
 const a = parseArgs({ build: "value", ref: "value", out: "value" });
 const OUT = a.out || `${WORK}save`;
 mkdirSync(OUT, { recursive: true });
@@ -37,8 +38,56 @@ function files(img) {
     return out;
 }
 
+// The same session on clkh, for an Electron build (elib.mjs's ElkDriver):
+// keys by the BBC Micro's names (elkKey), the disc read back from clkh's copy
+async function elkSession(b, tag, full) {
+    const sy = b.progs.flight.sy;
+    const d = new ElkDriver(b);
+    const key = (k, hold = 0.15, after = 0.8) => d.key(k, hold, after);
+    const type = t => { for (const c of t) key(c === "." ? "PERIOD" : c, 0.1, 0.3); };
+    let shot = 0;
+    const snap = name => writeFileSync(`${OUT}/${tag}-${String(shot++).padStart(2, "0")}-${name}.png`, d.shot());
+    const cash = () => [0, 1, 2, 3].map(i => d.rb(sy.CASH + i));
+    const setCash = v => d.wr(sy.CASH, v);
+    d.count("flying", "flight", "TT100");
+    d.secs(40); snap("title");
+    key("N"); d.secs(3); key("SPACE"); d.secs(4); snap("docked");
+    const MARK = [0x00, 0x01, 0xe2, 0x40];
+    setCash(MARK);
+    key("AT", 0.15, 1.5); snap("menu");
+    key("K2", 0.15, 1.5);
+    type("TESTA"); key("RETURN", 0.1, 1.5);
+    key("K0", 0.15, 8); snap("saved");
+    d.secs(4);                                // (CLK writes the disc's changes back when the motor stops)
+    const img = readFileSync(d.e.discPath);
+    writeFileSync(`${OUT}/${tag}-disc-after.ssd`, img);
+    const fl = files(img);
+    const res = { saved: fl["E.TESTA"] ? Buffer.from(fl["E.TESTA"]) : null, files: Object.keys(fl) };
+    if (!full) { d.kill(); return res; }
+    key("SPACE", 0.15, 2);
+    setCash([0, 0, 0, 7]);
+    key("AT", 0.15, 1.5); key("K1", 0.15, 1.5);
+    type("TESTA"); key("RETURN", 0.1, 1.5);
+    key("K0", 0.15, 8); snap("loaded");
+    res.cashOk = cash().every((x, i) => x === MARK[i]);
+    console.log("CASH after load:", cash().map(x => x.toString(16)).join(" "), res.cashOk ? "matches" : "DOES NOT MATCH");
+    key("SPACE", 0.15, 2); key("F8", 0.15, 2);
+    key("AT", 0.15, 1.5); key("K1", 0.15, 1.5);
+    type("QQ"); key("RETURN", 0.1, 1.5);
+    key("K0", 0.15, 6); snap("error");
+    key("SPACE", 0.15, 2); key("F8", 0.15, 2); snap("after-error");
+    key("AT", 0.15, 1.5); key("K3", 0.15, 1.5); key("K0", 0.15, 6); snap("catalogue");
+    key("SPACE", 0.15, 2); key("F8", 0.15, 2);
+    key("F0", 0.2, 15); snap("launched");
+    res.flying = d.n.flying;
+    console.log("flight loop iterations after the launch:", res.flying);
+    d.kill();
+    return res;
+}
+
 async function session(buildFile, tag, full) {
     const b = loadBuild(buildFile);
+    if (isElectron(b)) return elkSession(b, tag, full);
     const sy = b.progs.flight.sy;
     const s = await bootModelB(b.disc);
     const cpu = s._machine.processor;

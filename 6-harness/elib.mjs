@@ -109,21 +109,8 @@ export async function runElite(opts) {
     const P = b.progs;
 
     const { hookOf } = progHooks(b, cpu);
-    // the bank number of a mapping role, from the loader's table (cached
-    // until clkh sees a write to the table)
-    const bankAddr = {};
-    for (const [r, v] of Object.entries(b.banks)) if (typeof v !== "number") bankAddr[r] = b.loader[v];
-    e.send(`watch ${Object.values(bankAddr).filter(a => a !== undefined).join(" ")}`);
-    let bankGen = -1, bankCache = {};
-    const bankOf = map => {
-        if (map === "m") return "m";
-        const v = b.banks[map];
-        if (v === undefined) throw new Error(`no bank for ${map}`);
-        if (typeof v === "number") return v;
-        if (e.reg.gen !== bankGen) { bankCache = {}; bankGen = e.reg.gen; }
-        return bankCache[map] ??= rb(bankAddr[map]);
-    };
-    const live = h => h && (h.map === "m" || (e.reg.rom & 15) === bankOf(h.map));
+    // (the bank numbers, from the loader's table: elkBanks)
+    const { bankOf, live } = elkBanks(b, e);
 
     const H = {};
     for (const p of [P.flight, P.docked]) {
@@ -384,4 +371,59 @@ export async function runElite(opts) {
     res.stops = e.stops; res.roundTrips = e.roundTrips;
     if (!opts.keep) e.kill(); else res.clkh = e;
     return res;
+}
+
+// A build's mapping roles' bank numbers on clkh, read from the loader's
+// table (cached until clkh sees it written), and whether a hook is live at
+// a stop (its bank paged: the signature is checked in clkh)
+export function elkBanks(b, e) {
+    const addr = {};
+    for (const [r, v] of Object.entries(b.banks)) if (typeof v !== "number") addr[r] = b.loader[v];
+    e.send(`watch ${Object.values(addr).filter(a => a !== undefined).join(" ")}`);
+    let gen = -1, cache = {};
+    const bankOf = map => {
+        if (map === "m") return "m";
+        const v = b.banks[map];
+        if (v === undefined) throw new Error(`no bank for ${map}`);
+        if (typeof v === "number") return v;
+        if (e.reg.gen !== gen) { cache = {}; gen = e.reg.gen; }
+        return cache[map] ??= e.rb(addr[map]);
+    };
+    return { bankOf, live: h => !!h && (h.map === "m" || (e.reg.rom & 15) === bankOf(h.map)) };
+}
+
+// For the tools that press real keys (bredock.mjs, bsavetest.mjs): an
+// Electron booted with a build's disc, its hooks counted as they run,
+// keys by the BBC Micro's names (elkKey), time in emulated seconds, PNG
+// screenshots.
+export class ElkDriver {
+    constructor(b) {
+        this.b = b;
+        this.e = bootElectron(b.disc);
+        this.ph = progHooks(b, elkCpu(this.e));
+        this.bk = elkBanks(b, this.e);
+        this.hooks = []; this.n = {};
+    }
+    // count the runs of a program's label (n[key])
+    count(key, prog, name) {
+        const h = this.ph.hookOf(prog, name);
+        if (!h) throw new Error(`${prog} ${name}: no such label`);
+        h.key = key; h.id = this.hooks.length; this.hooks.push(h); this.n[key] = 0;
+        this.e.bp(h.id, h.a, 0xffff, h.sig.filter(v => v !== undefined));
+    }
+    secs(s) {
+        const end = this.e.cycles + Math.round(s * 2e6);
+        while (this.e.cycles < end) {
+            const ev = this.e.run(end - this.e.cycles);
+            if (ev.kind === "B") for (const id of ev.ids) { const h = this.hooks[id]; if (this.bk.live(h)) this.n[h.key]++; }
+        }
+    }
+    key(name, hold = 0.2, after = 1) {
+        const k = elkKey(this.b, name);
+        this.e.key(k, true); this.secs(hold); this.e.key(k, false); this.secs(after);
+    }
+    shot() { return this.e.shot(); }
+    rb(a) { return this.e.rb(a); }
+    wr(a, bytes) { this.e.wr(a, bytes); }
+    kill() { this.e.kill(); }
 }
