@@ -57,6 +57,12 @@
                         \ instructions take it as absolute
 .f_fo   SKIP 1          \ f_ship's offset in the face list
 .PZB    SKIP &18        \ PC_ROWS' scratch (gfx-merid.asm), and f_hrec's
+.FHV                    \ the hangar's background's ways into this bank (it
+ JMP fh_col             \ is in the docked code's main RAM part, assembled
+ JMP fh_blk             \ before this: gfx-hangar.asm), at a fixed place
+ JMP fh_line
+ JMP f_lines
+ ASSERT FHV = FHV%
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"

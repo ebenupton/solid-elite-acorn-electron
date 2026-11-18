@@ -49,13 +49,15 @@
                         \ bank 4 (PROGI%)
 
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
- C6SZ = 70              \ (BANK6), before the frame layer, and its room (the
+ C6SZ = 0               \ (BANK6), before the frame layer, and its room (the
                         \ flight code's layout assembles it there and saves it
                         \ as C6.bin, which bank 6's assembly takes in; a far
                         \ call, farC6, reaches it: elite-far.asm, streams.py;
-                        \ it changes by 256 bytes at a time, so that the frame
-                        \ layer after it keeps its page offsets, and with
-                        \ them its branches' and indexed reads' cycles)
+                        \ no block is tagged for it now, and it has no room:
+                        \ the frame layer starts at C6%)
+ FHV% = C6% + C6SZ + 41 \ The hangar's background's four jumps into bank 6
+                        \ (gfx-bank6.asm's FHV, after the bank's scratch:
+                        \ gfx-hangar.asm)
 
  BPSLOT% = &B300        \ The blueprint set in each home bank, to BPSLOT_END%
  BPSLOT_END% = &BBA2    \ without their edge lists (the EDGE macro), then its

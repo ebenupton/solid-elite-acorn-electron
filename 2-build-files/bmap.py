@@ -128,7 +128,8 @@ row("bank 5", B5["r_tables"], rjt, "the per-x tables, the stars, `r_setup`, the 
 row("bank 5", rjt, 0xC000, "`RJT`, the jump table", B5["RJT_END"] - rjt)
 
 fcslot, fjt = C["FCSLOT"], C["FJT"]
-row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`)", FL["C6_END%"] - C["C6_P"])
+if B6["F_START"] > C["C6_P"]:
+    row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`)", FL["C6_END%"] - C["C6_P"])
 row("bank 6", B6["F_START"], B6["F_CODEEND"], "the frame layer's code (bank 6 passes)")
 row("bank 6", B6["F_CODEEND"], B6["F_TABEND"], "the faces' and the lighting's tables")
 row("bank 6", B6["F_TABEND"], B6["f_plm"] + 1, "the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept")

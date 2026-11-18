@@ -772,7 +772,13 @@ which returns at once there. Three screens are frames:
   Master port's: a darker tan wall and a light tan floor, each a 2x2
   dither, with `HANGER`'s lines in black) goes in between the discs and the
   ships, through `F_FRAME`'s `ff_lin`, so the ships hide it where
-  `HANGER`'s lines stopped at them.
+  `HANGER`'s lines stopped at them. Only the docked code draws it, so
+  the background's code (`f_hback`, `Area: docked main`) is in the docked
+  program's main RAM part, not in bank 6: it runs there with bank 6 paged
+  in, and reaches the bank's colour, line and beam routines through four
+  jumps at a fixed address after the bank's scratch (`FHV%`), as bank 6 is
+  assembled after the programs; bank 6 has its address from the docked
+  program's symbols (`bank6.py`).
 * **The briefings** (`BRIEF`, `PAUSE`, `PAS1`): `LL9B` sets `QQ11` = 0 for
   `LL9` and a frame (`LL9F`), and puts it back; the briefing's text,
   printed outside record mode while the frames run, goes into the text map,
