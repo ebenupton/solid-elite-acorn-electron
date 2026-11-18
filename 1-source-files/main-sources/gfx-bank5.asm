@@ -13,8 +13,8 @@
 \   &8C00-&90FF  the row tables (made at start too), with the stars'
 \                records and variables in the rest of their pages, and
 \                R_LINE's (not in the image)
-\   &9100-&A7FF  R_POLY (both phases) and R_LINE (gfx-raster_poly.asm,
-\                gfx-raster_line.asm)
+\   &9100-&A7FF  R_POLY (both phases), R_LINE and the lens flare
+\                (gfx-raster_poly.asm, gfx-raster_line.asm, gfx-flare.asm)
 \   &A800-&ADFF  the state: each buffer's dirty extents, this frame's written
 \                extents (R_WL, R_WR) and R_POLY's edge tables
 \   &AE00 on     the shared region (gfx-raster.asm): R_SETBUF and r_pgfix,
@@ -94,6 +94,7 @@
  JMP R_MARKBOX          \ RJT + 33
  JMP R_GETW             \ RJT + 36 (the disc layer's and the text's, gfx-raster_dq.asm)
  JMP pf_tilt            \ RJT + 39 (the planet's surface's, gfx-planet7.asm)
+ JMP R_FLARE            \ RJT + 42 (the lens flare, gfx-flare.asm)
 .RJT_END
  ASSERT HI(RJT) = HI(RJT_END - 1)   \ (the trampolines set only a JSR's low byte)
 
@@ -118,6 +119,7 @@
 .R_IMAGE                \ (for bank5.py: the image's start)
  INCLUDE "3-assembled-output/gfx-raster_poly-bank5.asm"
  INCLUDE "3-assembled-output/gfx-raster_line-bank5.asm"
+ INCLUDE "3-assembled-output/gfx-flare-bank5.asm"
 .R_LOEND
 
  PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), R_LINE's cold part, R_RESETBUF, r_wq and pf_tilt to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"

@@ -310,6 +310,8 @@ r_dr1 = R_DIRTYR1
   STA r_yp4+1
   STA r_yp5+1
   STA r_yp6+1
+  STA r_yp7+1
+  STA r_yp8+1
   LDA r_sbh_ypg,X
   STA r_yp1+2
   STA r_yp2+2
@@ -317,6 +319,8 @@ r_dr1 = R_DIRTYR1
   STA r_yp4+2
   STA r_yp5+2
   STA r_yp6+2
+  STA r_yp7+2
+  STA r_yp8+2
   LDA #&FF                \ no run checked for this buffer yet (r_pgfix)
   STA r_pglast
   JMP r_sbpoly             \ (phase B's operands)

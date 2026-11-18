@@ -61,6 +61,15 @@ R_PYE    = MBOX + &4E   \ polygons), CR + 1
 R_PXC    = MBOX + &4F
 R_PCR1   = MBOX + &50
 R_BY1    = MBOX + &51   \ R_MARKBOX: the last row
+FLM_DX   = MBOX + &52   \ R_FLARE (gfx-flare.asm, from the frame layer's f_flt):
+FLM_DY   = MBOX + &53   \ the sun's centre less (128, 96), signed (FLM_DY =
+FLM_BEH  = MBOX + &54   \ FLM_DX + 1); bit 7: the sun is behind the planet; the
+FLM_SUR  = MBOX + &55   \ sun's radius; the planet's centre (16-bit) and radius;
+FLM_PLX  = MBOX + &56   \ the sun's colour for even rows, and that EOR its
+FLM_PLY  = MBOX + &58   \ colour for odd rows (after the disc layer's batches,
+FLM_PLR  = MBOX + &5A   \ which use &00 to &65, and PC_TU, which f_bounds has
+FLM_SCE  = MBOX + &5B   \ read)
+FLM_SCX  = MBOX + &5C
 R_SCOL   = MBOX + &66   \ R_STARPLOT: the stars' colour byte
 R_SX     = MBOX + &67   \ R_STARPLOT: the stars' x, y and size (1..3), 19 each
 R_SY     = MBOX + &7A   \ (the game's hooks write stars 1 to NOST, 18)

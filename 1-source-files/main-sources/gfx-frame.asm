@@ -782,57 +782,59 @@ RPN = 4
 \ rasteriser state, disc layer and text notes still describe (direct mode
 \ never writes it), so it is left alone and repaired incrementally by its
 \ next frame; only the border is copied across (buffer 0 has none after a
-\ disc command: f_b0new). Called with GMODE bit 7 clear, or (GSTASH) when a
-\ disc command has used buffer 0 in space mode, when only buffer 0 starts
-\ afresh (f_b0new) and has the border copied.
+\ disc command: f_b0new): the window's line 0, and its MODE 5 pixels 0 and
+\ 127 (game x 0-1 and 254-255: pixel 0 of byte column 0, pixel 3 of column
+\ 31) on every line of character rows 0-23, merged into buffer 0's bytes.
+\ Called with GMODE bit 7 clear, or (GSTASH) when a disc command has used
+\ buffer 0 in space mode, when only buffer 0 starts afresh (f_b0new) and has
+\ the border copied.
 
 .f_enter
- LDA #HI(SCREEN%)       \ copy byte columns 0 and 63 of every line, and the
- STA fen1+2             \ whole of line 0, from buffer 1 to buffer 0
- LDA #HI(BUF0)
- STA fen2+2
- LDA #HI(SCREEN%)+1
- STA fen5+2
- LDA #HI(BUF0)+1
- STA fen6+2
-.fen0
- LDX #7
-.fen1
- LDA SCREEN%,X          \ (patched) column 0, lines 0-7 of a character row
-.fen2
- STA BUF0,X             \ (patched)
-.fen5
- LDA SCREEN%+&1F8,X     \ (patched) column 63
-.fen6
- STA BUF0+&1F8,X        \ (patched)
- DEX
- BPL fen1
- CLC                    \ the next character row, two pages on (no carry)
- LDA fen1+2
- ADC #2
+ LDA #LO(SCREEN% + 32)  \ character row 0's byte column 0 in each buffer
+ STA fen1+1
+ STA fen2+1
+ STA fen3+1
+ STA fen4+1
+ LDA #HI(SCREEN% + 32)
  STA fen1+2
- LDA fen2+2
- ADC #2
+ LDA #HI(BUF0 + 32)
  STA fen2+2
- LDA fen5+2
- ADC #2
- STA fen5+2
- LDA fen6+2
- ADC #2
- STA fen6+2
- CMP #HI(BUF0)+1+&30    \ (24 rows)
+ STA fen3+2
+ STA fen4+2
+.fen0
+ LDX #255               \ column 31's lines (X = 248 to 255), pixel 3
+ LDA #&11
+ JSR fenc
+ LDX #7                 \ column 0's (X = 0 to 7), pixel 0
+ LDA #&88
+ JSR fenc
+ CLC                    \ the next character row, 320 on (buffer 0's: buffer
+ LDA fen1+1             \ 1's - &2800)
+ ADC #LO(320)
+ STA fen1+1
+ STA fen2+1
+ STA fen3+1
+ STA fen4+1
+ LDA fen1+2
+ ADC #HI(320)
+ STA fen1+2
+ SEC
+ SBC #HI(SCREEN% - BUF0)
+ STA fen2+2
+ STA fen3+2
+ STA fen4+2
+ CMP #HI(BUF0 + 32 + 24 * 320)   \ (24 rows)
  BNE fen0
- LDX #0                 \ line 0: bytes 0, 8, 16, ... of the first two pages
+ LDX #248               \ line 0: its 32 bytes, 8 apart
 .fen7
- LDA SCREEN%,X
- STA BUF0,X
- LDA SCREEN%+&100,X
- STA BUF0+&100,X
+ LDA SCREEN%+32,X
+ STA BUF0+32,X
  TXA
- CLC
- ADC #8
+ SEC
+ SBC #8
  TAX
- BNE fen7
+ BCS fen7
+ LDX #0
  BIT GMODE              \ (a disc command in space mode: buffer 1 is the
  BMI fen9               \ frames', as it was)
  LDA #1                 \ buffer 1's state: empty (TTX66 blacked it)
@@ -851,6 +853,28 @@ RPN = 4
 .fen9
  RTS
  ASSERT (SCREEN% - BUF0) MOD &100 = 0 AND LO(BUF0) = 0
+ ASSERT LO(BUF0 + 32 + 24 * 320) = LO(BUF0 + 32)
+
+\ fenc: eight lines of a column (X its last's offset, down) in this
+\ character row: the pixels A of buffer 1's bytes into buffer 0's
+
+.fenc
+ STA fenm+1
+ LDY #8
+.fen1
+ LDA SCREEN%,X          \ (patched) buffer 1's byte
+.fen2
+ EOR BUF0,X             \ (patched) buffer 0's, with A's pixels from buffer
+.fenm                   \ 1's
+ AND #&FF               \ (patched)
+.fen3
+ EOR BUF0,X             \ (patched)
+.fen4
+ STA BUF0,X             \ (patched)
+ DEX
+ DEY
+ BNE fen1
+ RTS
 
 \ f_bufpatch: this frame's buffer's screen base (f_scr: the high byte of
 \ BUF0 or SCREEN%) into the code that writes the screen itself: the text
@@ -861,17 +885,17 @@ RPN = 4
  LDX F_BACK
  LDA fbp_scr,X
  STA f_scr
- CLC                    \ the sights' arms' bytes: &5304, &5500, &5B03 and
- ADC #&13               \ &5D00 in buffer 1 (SCREEN%), &3000 lower in buffer
- STA fsg4a+2            \ 0 (no carries)
+ CLC                    \ the sights' arms' bytes: base + &0BE4, + &0D20,
+ ADC #&0B               \ + &10E3 and + &1220 (no carries)
+ STA fsg4a+2
  STA fsg4b+2
- ADC #2
+ ADC #&0D - &0B
  STA fsg5a+2
  STA fsg5b+2
- ADC #6
+ ADC #&10 - &0D
  STA fsg6a+2
  STA fsg6b+2
- ADC #2
+ ADC #&12 - &10
  STA fsg6c+2
  STA fsg6d+2
  RTS
@@ -1994,23 +2018,19 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BEQ fdb4
  BCS fdb6
 .fdb4
- LDA R_NDISCL,Y
+ LDA R_NDISCL,Y         \ the span widened to whole MODE 5 pixels (L even, R
+ CMP #&FF               \ odd: f_snap)
+ BEQ fdb6
+ AND #&FE
  STA DB_NL,X
+ STA f_sl
  LDA R_NDISCR,Y
+ ORA #1
  STA DB_NR,X
  BIT f_d2c
  BPL fdb8
  BVC fdb7
- LDA R_NDN,Y
- STA DB_NN,X
- LDA R_NDX0,Y
- STA DB_X0,X
- LDA R_NDX1,Y
- STA DB_X1,X
- LDA R_NDX2,Y
- STA DB_X2,X
- LDA R_NDX3,Y
- STA DB_X3,X
+ JSR f_snap             \ and its boundaries
  JMP fdb8
 .fdb6
  LDA #&FF               \ an empty span
@@ -2050,6 +2070,73 @@ FC_PLLE = &5F : FC_PLLO = &AF
  JMP fdb1
 .fdb11
  RTS
+
+\ f_snap: row Y's boundaries (R_NDN, R_NDX0-3) into slot X, each on a MODE
+\ 5 pixel's left edge (x AND &FE), as the span is (f_dbat): one that lands
+\ on the span's left end (f_sl) is folded into the colour there (R_NDN bit
+\ 7), and two that land together go. So every edge of the layer's rows is
+\ between two MODE 5 pixels, and the painter, which writes the pixels whose
+\ colour changed, game x by game x, always writes whole MODE 5 pixels: a
+\ pixel is never half one colour. Keeps X and Y.
+
+.f_snap
+ STX f_sbx
+ LDA R_NDN,Y
+ AND #&80
+ STA f_sbc
+ LDA R_NDN,Y
+ AND #&7F
+ STA f_sbn
+ LDA #0
+ STA f_sbk
+FOR i, 0, 3
+ LDA f_sbn
+ CMP #i + 1
+ BCC fsn9
+ LDA R_NDX0 + 192 * i,Y
+ AND #&FE
+ JSR fsn1
+NEXT
+ ASSERT R_NDX1 = R_NDX0 + 192 AND R_NDX2 = R_NDX1 + 192 AND R_NDX3 = R_NDX2 + 192
+.fsn9
+ LDX f_sbx
+ LDA f_sbk
+ ORA f_sbc
+ STA DB_NN,X
+ LDA f_sbo
+ STA DB_X0,X
+ LDA f_sbo+1
+ STA DB_X1,X
+ LDA f_sbo+2
+ STA DB_X2,X
+ LDA f_sbo+3
+ STA DB_X3,X
+ RTS
+.fsn1                   \ boundary A (on a pixel's edge)
+ CMP f_sl
+ BNE fsn2
+ LDA f_sbc              \ at the span's left end: the colour there flips
+ EOR #&80
+ STA f_sbc
+ RTS
+.fsn2
+ LDX f_sbk
+ BEQ fsn3
+ CMP f_sbo-1,X
+ BNE fsn3
+ DEC f_sbk              \ with the last: both go
+ RTS
+.fsn3
+ STA f_sbo,X
+ INC f_sbk
+ RTS
+
+.f_sl    EQUB 0         \ f_snap's: the span's left end, the slot, the colour
+.f_sbx   EQUB 0         \ at the left end (bit 7), the boundaries in, out
+.f_sbc   EQUB 0
+.f_sbn   EQUB 0
+.f_sbk   EQUB 0
+.f_sbo   EQUB 0, 0, 0, 0
 
 .f_dpbegin              \ the painter's entries, in the flight code's bank 7
  JSR farC               \ (gfx-raster_disc.asm, gfx-raster_disc2.asm)
@@ -3182,52 +3269,55 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 .f_bits EQUB 1, 2, 4, 8, 16, 32, 64, 128
 
 \ f_glyph: draw character A at column Y, text row fz_i, ink F_TCOL, only on
-\ the glyph's pixels and only inside the clip window
+\ the glyph's pixels and only inside the clip window. A cell is one byte
+\ column (four MODE 5 pixels, eight game x) of a character row: buffer +
+\ 320 * row + 32 + 8 * column; a glyph is eight rows of four pixels, two
+\ rows a byte (F_FONT, gfx-font.asm), f_nib making each row's MODE 5 byte.
 
 .f_glyph
  SEC
- SBC #32                 \ glyph address = F_FONT + 8 * (char - 32)
- PHA
+ SBC #32                 \ glyph address = F_FONT + 4 * (char - 32)
+ LDX #HI(F_FONT)
  ASL A
  ASL A
- ASL A
- ASSERT LO(F_FONT) = 0
+ BCC P%+3
+ INX
+ CLC
+ ADC #LO(F_FONT)
+ BCC P%+3
+ INX
  STA fgl1+1
- STA fglr+1             \ (the second load of the same row, for the low nibble)
- PLA
- LSR A
- LSR A
- LSR A
- LSR A
+ STX fgl1+2
+ LDA fz_i                \ screen: base + 320 * row + 32 + 8 * col: the high
+ LSR A                   \ byte base + row + row DIV 4 (+ the carry below)
  LSR A
  CLC
- ADC #HI(F_FONT)
- STA fgl1+2
- STA fglr+2
- TYA                    \ screen: base + row*&200 + 16*col
- ASL A
- ASL A
- ASL A
- ASL A
- STA fz_nm               \ low byte (16*col, may carry)
- ORA #8                  \ fz_v3 = fz_nm + 8, the right byte of the cell (low
- STA fz_v3               \ nibble 0: no carry; ORA keeps C for the ROL)
- LDA fz_i                \ high byte = 2*row + carry + &40 (row <= 23, so
- ROL A                   \ ROL leaves C = 0 and the ADC cannot carry)
- ADC f_scr               \ (Port: the back buffer's base, f_bufpatch)
+ ADC fz_i
+ ADC f_scr               \ (the back buffer's base, f_bufpatch)
  STA fz_nm+1
- STA fz_v3+1
- LDA #&FF               \ masks for the border columns (patched into the loop)
- STA fglm+1
- STA fgrm+1
+ TYA                     \ 8 * col (C = 0: col < 32)
+ ASL A
+ ASL A
+ ASL A
+ STA fz_nm
+ LDA fz_i                \ + 64 * (row AND 3) + 32
+ AND #3
+ LSR A
+ ROR A
+ ROR A                   \ (C = 0)
+ ORA #32
+ ADC fz_nm
+ STA fz_nm
+ BCC P%+4
+ INC fz_nm+1
+ LDA #&FF               \ the mask for a border column (patched into the loop)
  CPY #0
- BNE P%+7
- LDA #&33               \ pixels 0-1 of column 0 are the border
- STA fglm+1
+ BNE P%+4
+ LDA #&77               \ pixel 0 of column 0 is the border
  CPY #31
- BNE P%+7
- LDA #&CC               \ pixels 254-255 are the border
- STA fgrm+1
+ BNE P%+4
+ LDA #&EE               \ pixel 3 of column 31 is the border
+ STA fglm+1
  ASSERT F_TCOL = &FF    \ ink is all-ones: (m AND ink) OR (NOT m AND s) = m OR s
  LDA fz_i               \ first line y = 8*row
  ASL A
@@ -3251,28 +3341,27 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  STA fgl4+1
  BNE fgl3
 .fgl0
+ TYA                    \ row Y: the high nibble of byte Y DIV 2 (Y even) or
+ LSR A                  \ the low one
+ TAX
 .fgl1
- LDA F_FONT,Y           \ patched
- BEQ fgl3
+ LDA F_FONT,X           \ patched
+ BCS fgl2
  LSR A
  LSR A
  LSR A
  LSR A
+ BPL fgl5               \ (always)
+.fgl2
+ AND #15
+.fgl5
  TAX
  LDA f_nib,X
+ BEQ fgl3
 .fglm
- AND #&FF               \ patched (left border mask)
+ AND #&FF               \ patched (a border column's mask)
  ORA (fz_nm),Y
  STA (fz_nm),Y
-.fglr
- LDA F_FONT,Y           \ patched (the same address as fgl1)
- AND #15
- TAX
- LDA f_nib,X
-.fgrm
- AND #&FF               \ patched (right border mask)
- ORA (fz_v3),Y
- STA (fz_v3),Y
 .fgl3
  INY
 .fgl4
@@ -3283,14 +3372,10 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 
 .f_gy EQUB 0
 
-.f_nib                  \ 4 font bits (bit 3 = leftmost) -> MODE 1 pixel mask
-FOR n, 0, 15
+.f_nib                  \ a font row's four pixels (bit 3 the leftmost) -> the
+FOR n, 0, 15            \ MODE 5 byte of those pixels in logical colour 3
  EQUB n * &11
 NEXT
-
-F_FONT = &C000          \ Port (Model B): the MOS's font (characters 32 to 127,
-                        \ eight bytes each), in the MOS ROM, which is always
-                        \ paged at &C000
 
 \ ------------------------------------------------------------------------------
 \ Laser sights: four short arms about (128, 96), drawn after everything else
@@ -3362,47 +3447,49 @@ SGOUT = 20
  STA R_XR
  LDY #SGY
  JSR T_SPAN
- LDA F_CPE+FC_SIGHT     \ vertical arms: pixel 0 of byte column 32
+ LDA F_CPE+FC_SIGHT     \ vertical arms: x = 128, pixel 0 of byte column 16
  AND #&88               \ (loop-invariant colour bits)
  STA fz_t
- ASSERT SGY-SGOUT = 76 AND SGY-SGIN = 85   \ byte = base + (y DIV 8)*&200 + &100 + (y MOD 8)
- ASSERT SGY+SGIN = 107 AND SGY+SGOUT = 116
- LDY #3                 \ rows 76..79: &5304..&5307 (in buffer 1: the high bytes
+ ASSERT SGX = 128 AND SGY-SGOUT = 76 AND SGY-SGIN = 85   \ byte = base + (y DIV 8) * 320
+ ASSERT SGY+SGIN = 107 AND SGY+SGOUT = 116   \ + 32 + 8 * 16 + (y MOD 8)
+ LDY #3                 \ rows 76..79: base + &0BE4..&0BE7 (the high bytes
 .fsg4                   \ are f_bufpatch's, for this frame's buffer)
 .fsg4a
- LDA &5304,Y
+ LDA SCREEN%+&0BE4,Y
  AND #&77
  ORA fz_t
 .fsg4b
- STA &5304,Y
+ STA SCREEN%+&0BE4,Y
  DEY
  BPL fsg4
- LDY #5                 \ rows 80..85: &5500..&5505
+ LDY #5                 \ rows 80..85: base + &0D20..&0D25
 .fsg5
 .fsg5a
- LDA &5500,Y
+ LDA SCREEN%+&0D20,Y
  AND #&77
  ORA fz_t
 .fsg5b
- STA &5500,Y
+ STA SCREEN%+&0D20,Y
  DEY
  BPL fsg5
- LDY #4                 \ rows 107..111: &5B03..&5B07, rows 112..116: &5D00..&5D04
-.fsg6
+ LDY #4                 \ rows 107..111: base + &10E3..&10E7, rows 112..116:
+.fsg6                   \ base + &1220..&1224
 .fsg6a
- LDA &5B03,Y
+ LDA SCREEN%+&10E3,Y
  AND #&77
  ORA fz_t
 .fsg6b
- STA &5B03,Y
+ STA SCREEN%+&10E3,Y
 .fsg6c
- LDA &5D00,Y
+ LDA SCREEN%+&1220,Y
  AND #&77
  ORA fz_t
 .fsg6d
- STA &5D00,Y
+ STA SCREEN%+&1220,Y
  DEY
  BPL fsg6
+ ASSERT 9 * 320 + 160 + 4 = &0BE4 AND 10 * 320 + 160 = &0D20
+ ASSERT 13 * 320 + 160 + 3 = &10E3 AND 14 * 320 + 160 = &1220
  SEC                    \ C = 1 on exit, as before
  RTS
 

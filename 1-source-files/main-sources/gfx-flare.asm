@@ -27,33 +27,34 @@
 \ 6) or 3 (1 to 3) more rungs of the ladder (fl_vred), on top of the level.
 \ About 1,250 cycles a flared frame.
 \
-\ Port (Model B): in bank 6, after the frame layer, which calls R_FLARE from
-\ f_flt (below). This bank writes the back buffer itself (main RAM,
-\ at f_scr: f_bufpatch), and as it cannot reach bank 5's dirty extents,
-\ each ghost's box (its rows by its columns, clipped) is marked dirty
-\ through T_MARKBOX (fl_box), so that the next frame on this buffer repairs
-\ it as after any shape: the flare keeps no state on the screen. (The
-\ Master port marks each row's span exactly; a box marks a little more.)
-\ When the sun is smaller than the planet, and so further away, a probe
-\ inside the planet's disc (its half-widths, F_HW, which f_discs builds
-\ each frame) is out of sight (FL_BEH), as the Master port's probes read
-\ the planet's span on the probe's row from its disc layer; this tests the
-\ disc itself, which the Model B draws under the sun when the sun is the
-\ smaller disc.
+\ Port (Electron): R_FLARE is in bank 5, the rasteriser's (as the Master
+\ port's is in its rasteriser's bank 7), in the room after R_POLY and
+\ R_LINE: it reads and ORs the back buffer through the rasteriser's row
+\ tables (R_SETBUF points them at the buffer) and its per-x masks (game x,
+\ MODE 5 pixel x DIV 2), and marks each ghost's box (its rows by its
+\ columns, clipped) dirty (R_MARKBOX), so that the next frame on this
+\ buffer repairs it as after any shape: the flare keeps no state on the
+\ screen. (The Master port marks each row's span exactly; a box marks a
+\ little more.) The frame layer's f_flt (bank 6, below) gives it the sun
+\ and the planet in the mailbox (FLM_*, gfx-rws.asm) and calls it through
+\ T_FLARE. When the sun is smaller than the planet, and so further away, a
+\ probe inside the planet's disc (dx^2 + dy^2 <= r^2, which is the frame
+\ layer's half-width test, |dx| <= floor(sqrt(r^2 - dy^2)), exactly) is out
+\ of sight (FLM_BEH), as the Master port's probes read the planet's span on
+\ the probe's row from its disc layer; this tests the disc itself, which
+\ the Electron draws under the sun when the sun is the smaller disc.
 \
-\       Area: bank 6
+\       Area: bank 5
 \
 \ ******************************************************************************
 
 \ Zero page: the rasteriser's scratch &10-&27, which F_FRAME saves and
 \ restores, and R_COLE, R_COLO and R_DCE (&06, &07, &0E: saved too, and set
-\ again before any use after the flare)
+\ again before any use after the flare); R_XL, R_XR for R_MARKBOX
 
 fl_lq   = &06           \ a span's first byte's mask (before the row's)
 fl_rq   = &07           \ its last byte's
 fl_t    = &0E
-fl_dx   = &10           \ the sun's x - 128 (signed)
-fl_dy   = &11           \ the sun's y - 96 (signed; fl_dx + 1)
 fl_u    = &12           \ the ghost's ink
 fl_i    = &13           \ the next ghost's number
 fl_gx   = &16           \ the ghost's centre (on the screen when the sun's
@@ -65,9 +66,7 @@ fl_d    = &1F           \ a disc's row offset d (a ring: the point's offset)
 fl_m    = &20           \ the row's mask (fl_or: the middle bytes')
 fl_sp   = &21           \ screen pointer (fl_or)
 fl_n    = &23           \ 8 * (bytes - 1) (fl_or)
-fl_ch   = &24           \ the back buffer's base + (a span's first byte's
-                        \ column >= 32)
-fl_cl   = &27           \ 8 x a span's first byte's column, low byte
+fl_cl   = &27           \ 8 x a span's first byte's column
 fl_vo   = &12           \ the probes (before the ghosts): offsets 0, a, b,
                         \ -b, -a (&12-&16)
 fl_vn   = &17           \ the probes in sight
@@ -80,21 +79,10 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
 
 
 \ R_FLARE: the flare over this frame (from f_flt, when the sun's centre is on
-\ the screen in the front view; fl_dx, fl_dy, FL_BEH set)
+\ the screen in the front view: the mailbox's FLM_* set)
 
 .R_FLARE
- LDA f_scr              \ this buffer's base, halved (fl_ch: + the column's
- LSR A                  \ bit 8)
- STA fl_s2
-                        \ how much of the sun is in sight: nine probes of
-                        \ the back buffer as drawn so far (the ships, the
-                        \ planet, the dots and the lasers on it; not the
-                        \ text, sights and stars, drawn after the flare),
-                        \ the centre and eight round it at about 0.62 R (R
-                        \ capped at 127): offsets 0, a, b, -b, -a with a =
-                        \ R/2 + R/8, b = R/2 - R/16 (the diagonals' b, b
-                        \ about a / sqrt 2)
- LDA F_SUR
+ LDA FLM_SUR
  BPL P%+4
  LDA #127
  LSR A
@@ -124,7 +112,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  LDX #8                 \ probe X: (sx, sy) + (fl_vo[fl_pxi], fl_vo[fl_pyi])
 .flv1
  LDY fl_pxi,X           \ x: (sx - 128) + offset, signed, in -126..125 (x
- LDA fl_dx              \ 2..253, the clip window), else out of sight
+ LDA FLM_DX             \ 2..253, the clip window), else out of sight
  CLC
  ADC fl_vo,Y
  BVS flv8
@@ -135,7 +123,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  BCS flv8
  STA fl_vx
  LDY fl_pyi,X           \ y: (sy - 96) + offset in -95..95 (y 1..191)
- LDA fl_dy
+ LDA FLM_DY
  CLC
  ADC fl_vo,Y
  BVS flv8
@@ -145,37 +133,31 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  BCS flv8
  TAY                    \ (NMOS: TAY, INY for INC A, TAY)
  INY
- BIT FL_BEH             \ the sun behind the planet (smaller, so further):
+ BIT FLM_BEH            \ the sun behind the planet (smaller, so further):
  BPL flv2               \ a probe inside the planet's disc is out of sight
  JSR fl_inpl
  BCS flv8
 .flv2
- TYA                    \ the byte: base + (y DIV 8) * &200 + 8 * (x DIV
- AND #&F8               \ 4) + y MOD 8 (Port: base + 2 * (y DIV 8), added:
- LSR A                  \ the shifts leave C = 0)
- LSR A
- ADC f_scr
- STA fl_sp+1
- LDA fl_vx
- AND #&FC
- ASL A
+ LDA fl_vx              \ the byte: the row's address (the buffer's row
+ AND #&F8               \ tables) + 8 * (x DIV 8)
+ CLC
+ ADC r_ylo,Y
  STA fl_sp
- BCC P%+4
- INC fl_sp+1
+.^r_yp7
+ LDA r_ypg,Y
+ ADC #0
+ STA fl_sp+1
  TYA
  LSR A                  \ C: y odd (the sun's odd rows' colour)
- TYA
- AND #7
- TAY
+ LDY #0
  LDA (fl_sp),Y          \ the probe's pixel still the sun's colour for the
- EOR #FC_SUNE           \ row (a dithered row compares with its own byte)?
- BCC P%+4
- EOR #FC_SUNE EOR FC_SUNO
+ EOR FLM_SCE            \ row (a dithered row compares with its own byte)?
+ BCC P%+5
+ EOR FLM_SCX
  STA fl_vy
- LDA fl_vx
- AND #3
- TAY
- LDA fl_pxm,Y
+ LDY fl_vx
+ LDA r_lm,Y             \ (the probe's pixel)
+ AND r_rm,Y
  AND fl_vy
  BNE flv8
  INC fl_vn
@@ -189,10 +171,10 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  CLC                    \ (NMOS: C = 0 for fl_abs) the flare turned down by
  LDX fl_vred,Y          \ the probes in
 .flm1                   \ sight: 0 for all 9, else -1, -2 or -3
- LDA fl_dx              \ level 3 if |dx| + |dy| < 96, 2 if < 192, else 1:
+ LDA FLM_DX             \ level 3 if |dx| + |dy| < 96, 2 if < 192, else 1:
  JSR fl_abs             \ fl_lev = level - 3 + that
  STA fl_t
- LDA fl_dy
+ LDA FLM_DY
  JSR fl_abs             \ (C = 0)
  ADC fl_t
  CMP #96
@@ -208,7 +190,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  STY fl_sl+1
  LDX #1                 \ the centres' sums (x, then y): S = 32 k D, k = 8
 .flm0                   \ to start (S = 256 D), stepped down by 32 D (|S| <
- LDA fl_dx,X            \ 2^15: the centre's offset k D / 8, floored, is S's
+ LDA FLM_DX,X           \ 2^15: the centre's offset k D / 8, floored, is S's
  STA fl_sh,X            \ high byte)
  CMP #&80               \ 32 D: D >> 3 (arithmetic), (D AND 7) << 5
  ROR A
@@ -217,7 +199,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  CMP #&80
  ROR A
  STA fl_mh,X
- LDA fl_dx,X
+ LDA FLM_DX,X
  AND #7
  LSR A
  ROR A
@@ -256,7 +238,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  INC fl_i
  TXA                    \ k = 8: the ring round the sun, if the sun is small
  BNE flm8
- LDA F_SUR
+ LDA FLM_SUR
  CMP #FLHMAX+1
  BCS flm3
 .flm4
@@ -388,7 +370,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  JMP fl_box
 
 \ fl_box: rows fl_gy - A .. fl_gy + A by columns fl_gx - A .. fl_gx + A,
-\ within the clip window (x 2..253, y 1..191), marked dirty (T_MARKBOX)
+\ within the clip window (x 2..253, y 1..191), marked dirty (R_MARKBOX)
 
 .fl_box
  STA fl_t
@@ -435,47 +417,101 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  LDA R_XR
  CMP R_XL
  BCC fbx9
- JMP T_MARKBOX
+ JMP R_MARKBOX
 .fbx9
  RTS
 
 \ fl_inpl: C set if the probe (fl_vx, row Y) is inside the planet's disc
-\ (F_PLX, F_PLY, F_PLR, its half-widths F_HW); Y kept
+\ (FLM_PLX, FLM_PLY, FLM_PLR): dx^2 + dy^2 <= r^2, |dx| and |dy| < 256 and
+\ |dy| <= r; X and Y kept
 
 .fl_inpl
  STY fl_py
+ STX fl_px
  TYA                    \ |y - py|, 16-bit
  SEC
- SBC F_PLY
- STA fz_t
+ SBC FLM_PLY
+ TAY
  LDA #0
- SBC F_PLY+1
- JSR f_abs16
- BCS fip9               \ (256 or more apart: outside, C clear below)
- CMP F_PLR
+ SBC FLM_PLY+1
+ JSR fl_ab16
+ BNE fip8               \ (256 or more apart: outside)
+ CMP FLM_PLR
  BEQ P%+4
  BCS fip8
- TAY
- LDA F_HW,Y
- STA fl_ph
+ JSR fl_sq              \ r^2 - dy^2 (>= 0) into fl_q
+ STA fl_q+1
+ STX fl_q
+ LDA FLM_PLR
+ JSR fl_sq
+ STA fl_vy
+ TXA
+ SEC
+ SBC fl_q
+ STA fl_q
+ LDA fl_vy
+ SBC fl_q+1
+ STA fl_q+1
  LDA fl_vx              \ |x - px|, 16-bit
  SEC
- SBC F_PLX
- STA fz_t
+ SBC FLM_PLX
+ TAY
  LDA #0
- SBC F_PLX+1
- JSR f_abs16
- BCS fip8
- CMP fl_ph
- BEQ fip7
- BCS fip8
-.fip7
+ SBC FLM_PLX+1
+ JSR fl_ab16
+ BNE fip8
+ JSR fl_sq              \ inside if dx^2 <= r^2 - dy^2 (C: no borrow)
+ STA fl_vy
+ LDA fl_q
  SEC
- BCS fip9
+ SBC fl_m1              \ (dx^2's low byte, as fl_sq leaves it)
+ LDA fl_q+1
+ SBC fl_vy
+ JMP fip9
 .fip8
  CLC
 .fip9
  LDY fl_py
+ LDX fl_px
+ RTS
+
+\ fl_ab16: the 16-bit value A (high), Y (low), in -255..255 or not: A = its
+\ magnitude's low byte, Z clear if its magnitude is 256 or more
+
+.fl_ab16
+ BPL fab1
+ STA fl_vy              \ negate
+ TYA
+ EOR #&FF
+ CLC
+ ADC #1
+ TAY
+ LDA fl_vy
+ EOR #&FF
+ ADC #0
+.fab1
+ STA fl_vy
+ TYA
+ LDY fl_vy              \ (Z: the high byte is 0)
+ RTS
+
+\ fl_sq: A^2: A its high byte, X its low byte
+
+.fl_sq
+ STA fl_m1
+ STA fl_m2
+ LDA #0
+ LDX #8
+ LSR fl_m1
+.fsq1
+ BCC P%+6
+ CLC
+ ADC fl_m2
+ ROR A
+ ROR fl_m1
+ DEX
+ BNE fsq1
+ LDX fl_m1
  RTS
 
 \ The tables (2-build-files/flare.py --tables, from its GHOSTS, LADDER, BAYER,
@@ -538,28 +574,19 @@ fl_mt = P% - 4          \ row masks of densities 1, 2, 4, 6, 8 / 16 (4x4
  STA R_XR
  CMP R_XL
  BCC fsd8
- AND #3                 \ the last byte's mask, the first's, the first's
- TAX                    \ column (x 8) and 8 x (bytes - 1), shared by the
- LDA fl_rmt,X           \ two rows
- STA fl_rq
- LDA R_XL
- AND #3
- TAX
- LDA fl_lmt,X
+ TAX                    \ the last byte's mask, the first's, the first's
+ LDA r_rm,X             \ column (x 8) and 8 x (bytes - 1), shared by the
+ STA fl_rq              \ two rows (the rasteriser's per-x tables)
+ LDX R_XL
+ LDA r_lm,X
  STA fl_lq
- LDA R_XL
- AND #&FC
- STA fl_t
- ASL A
+ TXA
+ AND #&F8
  STA fl_cl
- LDA fl_s2              \ (the base + C)
- ROL A
- STA fl_ch
  LDA R_XR
- AND #&FC
+ AND #&F8
  SEC
- SBC fl_t
- ASL A
+ SBC fl_cl
  STA fl_n
  BNE fsd2
  LDA fl_lq              \ one byte: both masks
@@ -596,16 +623,10 @@ fl_mt = P% - 4          \ row masks of densities 1, 2, 4, 6, 8 / 16 (4x4
  STA R_XL
  STA R_XR
  TAY
- AND #&FC               \ its byte's column (fl_cl, fl_ch), pixel mask
- ASL A
+ AND #&F8               \ its byte's column (fl_cl), pixel mask
  STA fl_cl
- LDA fl_s2              \ (the base + C)
- ROL A
- STA fl_ch
- TYA
- AND #3
- TAX
- LDA fl_pxm,X
+ LDA r_lm,Y
+ AND r_rm,Y
  AND fl_u
  STA fl_lq
  LDA fl_gy              \ (gy + dy <= 191 + 30: no carry)
@@ -628,7 +649,7 @@ fl_mt = P% - 4          \ row masks of densities 1, 2, 4, 6, 8 / 16 (4x4
  RTS
 
 \ fl_row: row A (inside the clip window), if its mask (fl_pat) is not zero:
-\ point fl_sp at its first byte (column fl_cl / fl_ch) and OR the bytes
+\ point fl_sp at its first byte (column fl_cl) and OR the bytes
 \ (fl_or, with the row's mask fl_m). Clobbers A, X, Y.
 
 .fl_row
@@ -639,15 +660,13 @@ fl_mt = P% - 4          \ row masks of densities 1, 2, 4, 6, 8 / 16 (4x4
  BEQ fsc9
  STA fl_m
 .fl_row1                \ (Y = row, fl_m = its mask)
- TYA                    \ base + (y DIV 8) * &200 + (y MOD 8) + 8 * (XL DIV 4)
- AND #7
- ORA fl_cl
+ LDA r_ylo,Y            \ the row's address (the buffer's row tables) + 8 *
+ CLC                    \ (XL DIV 8)
+ ADC fl_cl
  STA fl_sp
- TYA                    \ (Port: base + 2 * (y DIV 8), added: the shifts leave
- AND #&F8               \ C = 0)
- LSR A
- LSR A
- ADC fl_ch
+.^r_yp8
+ LDA r_ypg,Y
+ ADC #0
  STA fl_sp+1
                         \ (and on into fl_or)
 
@@ -683,9 +702,6 @@ fl_mt = P% - 4          \ row masks of densities 1, 2, 4, 6, 8 / 16 (4x4
 
 .fl_dk  EQUB 0, 3, 2, 4, 2, 1, 2, 2 \ the k steps 8 -> 5 -> 3 -> -1 -> -3 ->
                                     \ -4 -> -6 -> -8, by ghost
-.fl_lmt EQUB &FF, &77, &33, &11     \ pixels x AND 3..3 of a byte
-.fl_rmt EQUB &88, &CC, &EE, &FF     \ pixels 0..x AND 3
-.fl_pxm EQUB &88, &44, &22, &11     \ pixel x AND 3
 .fl_pxi EQUB 0, 1, 4, 0, 0, 2, 2, 3, 3 \ the probes' offsets (fl_vo): the
 .fl_pyi EQUB 0, 0, 0, 1, 4, 2, 3, 2, 3 \ centre, right, left, down, up and
                                        \ the four diagonals
@@ -716,23 +732,28 @@ ASSERT HI(fl_htab) = HI(P% - 1)
 .fl_sl  SKIP 2          \ the centres' sums S (x, y)
 .fl_sh  SKIP 2
 .fl_lev SKIP 1          \ the level less 3, turned down by the probes (-5..0)
-.fl_s2  SKIP 1          \ the back buffer's base, halved
-.fl_py  SKIP 1          \ fl_inpl's row and half-width
-.fl_ph  SKIP 1
+.fl_py  SKIP 1          \ fl_inpl's row, X, and its arithmetic's
+.fl_px  SKIP 1
+.fl_q   SKIP 2
+.fl_m1  SKIP 1
+.fl_m2  SKIP 1
 
 \ ******************************************************************************
 \
-\ The lens flare's step in the frame, F_FRAME's f_flt (R_FLARE is in this
-\ bank too, called directly)
+\ The lens flare's step in the frame, F_FRAME's f_flt (R_FLARE is in bank 5,
+\ through T_FLARE)
+\
+\       Area: bank 6
 \
 \ ******************************************************************************
 
 \ f_flt: F_FRAME's text step, after the flare (in place of JSR f_text2).
 \ Without the sun (F_SUON = 0) it costs a test. With it: when the view is the
 \ front one and the sun's centre is on the screen (x 1..255, y 0..191), the
-\ flare (R_FLARE) with fl_dx and fl_dy (the centre less (128, 96)), and
-\ FL_BEH bit 7 if the sun is smaller than the planet, so further: behind it
-\ (R_FLARE's probes then test the planet's disc).
+\ flare (R_FLARE, T_FLARE) with FLM_DX and FLM_DY (the centre less (128,
+\ 96)), the sun's radius and colours, and FLM_BEH bit 7 if the sun is
+\ smaller than the planet, so further: behind it (R_FLARE's probes then
+\ test the planet's disc, FLM_PLX, FLM_PLY, FLM_PLR).
 
 .f_flt
  LDA F_SUON
@@ -744,13 +765,13 @@ ASSERT HI(fl_htab) = HI(P% - 1)
  LDA F_SUX
  BEQ flt9
  EOR #&80
- STA fl_dx
+ STA FLM_DX
  LDA F_SUY
  CMP #192
  BCS flt9
  SBC #95                \ (C = 0: - 96)
- STA fl_dy
- LDA #0                 \ FL_BEH bit 7: the sun is smaller than the planet
+ STA FLM_DY
+ LDA #0                 \ FLM_BEH bit 7: the sun is smaller than the planet
  LDX F_PLON
  BEQ flt1
  LDX F_SUR
@@ -758,9 +779,21 @@ ASSERT HI(fl_htab) = HI(P% - 1)
  ROR A                  \ (C clear: smaller)
  EOR #&80
 .flt1
- STA FL_BEH
- JSR R_FLARE
+ STA FLM_BEH
+ LDX #4                 \ the planet's disc (F_PLX, F_PLY, F_PLR)
+.flt2
+ LDA F_PLX,X
+ STA FLM_PLX,X
+ DEX
+ BPL flt2
+ ASSERT F_PLY = F_PLX + 2 AND F_PLR = F_PLX + 4
+ ASSERT FLM_PLY = FLM_PLX + 2 AND FLM_PLR = FLM_PLX + 4
+ LDA F_SUR
+ STA FLM_SUR
+ LDA #FC_SUNE
+ STA FLM_SCE
+ LDA #FC_SUNE EOR FC_SUNO
+ STA FLM_SCX
+ JSR T_FLARE
 .flt9
  JMP f_text2
-
-.FL_BEH EQUB 0          \ bit 7: the sun is behind the planet (R_FLARE's probes)

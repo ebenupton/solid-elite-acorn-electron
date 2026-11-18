@@ -26,8 +26,8 @@
 \   * X rows (0 to 16) from row DB_PY: DB_WL, DB_WR into R_WL, R_WR, and
 \     into the rows of R_WL/R_WR that may be non-empty (R_PRWT .. R_PRWB);
 \
-\   * A AND &1F rows (0 to 16) from row Y: their dirty extents into DB_WL,
-\     DB_WR, and emptied (A bit 7 clear: the disc layer's rows), or (A bit 7
+\   * A AND &1F rows (0 to 16) from row Y: their dirty extents (widened to
+\     whole MODE 5 pixels) into DB_WL, DB_WR, and emptied (A bit 7 clear: the disc layer's rows), or (A bit 7
 \     set: the second disc's) their written extents.
 
 r_gm = &24              \ (bank 5's zero page, the rasteriser's scratch)
@@ -81,11 +81,18 @@ r_gx = &26
   BIT r_gm
   BMI gw
 .gd
-.^r_pt601 LDA r_dl,Y              \ (patched: this buffer's)
+.^r_pt601 LDA r_dl,Y              \ (patched: this buffer's) widened to whole
+  CMP #&FF                \ MODE 5 pixels (L even, R odd), as the painter
+  BEQ gd1                 \ writes its rows (none: 255, 0)
+  AND #&FE
+.gd1
   STA DB_WL,X
   LDA #&FF
 .^r_pt602 STA r_dl,Y
 .^r_pt603 LDA r_dr,Y
+  BEQ gd2
+  ORA #1
+.gd2
   STA DB_WR,X
   LDA #0
 .^r_pt604 STA r_dr,Y
@@ -152,7 +159,8 @@ r_gx = &26
 \ text row r in the mask, MBOX + 2r and + 2r + 1 = the leftmost and
 \ rightmost pixel of the union of both extents over its lines 8r..8r+7 (the
 \ rightmost 0: none); MBOX+&34 bit 7 set if the sights are covered: on row 96,
-\ an extent meeting x = 108..148, or on rows 76..116 one containing x = 128
+\ an extent meeting x = 108..149, or on rows 76..116 one meeting x = 128..129
+\ (the arms' MODE 5 pixels)
 
 QSGX = 128
 QSGY = 96
@@ -244,7 +252,7 @@ QSGIN = 20
   CMP #QSGX-QSGIN
   BCC s2
   LDA R_WL,Y
-  CMP #QSGX+QSGIN+1
+  CMP #QSGX+QSGIN+2       \ (x <= 149: a MODE 5 pixel of the arm)
   BCC hit
 .s2
 .dr2
@@ -254,15 +262,15 @@ QSGIN = 20
   BCC s3
 .dl2
   LDA R_DIRTYL0,Y         \ (patched)
-  CMP #QSGX+QSGIN+1
+  CMP #QSGX+QSGIN+2
   BCC hit
 .s3
-  LDY #QSGY-QSGIN         \ rows 76..116: an extent containing 128
+  LDY #QSGY-QSGIN         \ rows 76..116: an extent meeting 128..129
 .col
-  LDA R_WR,Y              \ (WR >= 128: bit 7; then WL <= 128)
+  LDA R_WR,Y              \ (WR >= 128: bit 7; then WL <= 129)
   BPL c2
   LDA R_WL,Y
-  CMP #QSGX+1
+  CMP #QSGX+2             \ (x <= 129: the arm's MODE 5 pixel)
   BCC hit
 .c2
 .sr1
@@ -270,7 +278,7 @@ QSGIN = 20
   BPL c3
 .sl1
   LDA R_DIRTYL0,Y         \ (patched)
-  CMP #QSGX+1
+  CMP #QSGX+2
   BCC hit
 .c3
   INY

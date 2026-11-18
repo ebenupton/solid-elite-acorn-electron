@@ -95,7 +95,9 @@ bank back. A, X and Y are passed through; nothing is returned in them.
 | 27 | `R_STARERASE`: black what the last `R_STARPLOT` on this buffer set | |
 | 30 | `R_STARPLOT`: the stars (last in a frame) | mailbox `R_SN` (0..19), `R_SX`, `R_SY`, `R_SS` (19 each), `R_SCOL` |
 | 33 | `R_MARKBOX`: mark rows Y to `R_BY1` dirty from `R_XL` to `R_XR` (the lens flare's boxes) | Y; `R_BY1`, `R_XL`, `R_XR` |
-| 36 | `R_GETW`: the disc layer's batch transfer (below, "The discs"): first the `DB_QN` bytes of spans queued at `DB_Q` (row, left, right, colour byte each) drawn through the row runs, not marked (`R_DRAINQ`); then X rows from row `DB_PY`: the slots' `DB_WL`, `DB_WR` into `R_WL`, `R_WR` (and `R_PRWT`..`R_PRWB`); then A AND `&1F` rows from row Y: their dirty extents into `DB_WL`, `DB_WR`, emptied (A bit 7 clear), or their written extents (A bit 7 set). With A = `&40`, the frame layer's query (`r_wq`): for each text row whose bit is set in the mask at `MBOX + &30` to `+&32`, the union over its eight lines of this frame's written extents and the next buffer's dirty extents into `MBOX + 2r`, and whether anything covers the sights (`MBOX + &33` asks, bit 7 of `MBOX + &34` answers) | A, X, Y; the mailbox |
+| 36 | `R_GETW`: the disc layer's batch transfer (below, "The discs"): first the `DB_QN` bytes of spans queued at `DB_Q` (row, left, right, colour byte each) drawn through the row runs, not marked (`R_DRAINQ`); then X rows from row `DB_PY`: the slots' `DB_WL`, `DB_WR` into `R_WL`, `R_WR` (and `R_PRWT`..`R_PRWB`); then A AND `&1F` rows from row Y: their dirty extents, widened to whole MODE 5 pixels, into `DB_WL`, `DB_WR`, emptied (A bit 7 clear), or their written extents (A bit 7 set). With A = `&40`, the frame layer's query (`r_wq`): for each text row whose bit is set in the mask at `MBOX + &30` to `+&32`, the union over its eight lines of this frame's written extents and the next buffer's dirty extents into `MBOX + 2r`, and whether anything covers the sights' MODE 5 pixels (`MBOX + &33` asks, bit 7 of `MBOX + &34` answers) | A, X, Y; the mailbox |
+| 39 | `pf_tilt`: the planet's surface's (`gfx-planet7.asm`, from the game's `PF_HOOK` through `T_TILT`) | |
+| 42 | `R_FLARE`: the lens flare over this frame (below, "The lens flare") | mailbox `FLM_DX` .. `FLM_SCX` (`&52` to `&5C`) |
 
 The clip window is `R_CL`, `R_CR`, `R_CT`, `R_CB` in zero page (`&0A-&0D`).
 The mailbox's offsets are in `gfx-rws.asm`: vertices at `&00`, `&10`, `&20`
@@ -118,7 +120,6 @@ else, such as a disc or text), then `R_STARPLOT`.
   code (the painter) and its arrays are in the flight code's bank 7 (below,
   "The discs"), and bank 5 hands it its rows' dirty or written extents,
   takes back what it wrote and draws the long spans it queues (`R_GETW`).
-* **The lens flare** (`R_FLARE`) is in bank 6, with the frame layer (below).
 * **The kept solid rows** (`KF`, the station close): bank 5 has no room for
   them; the Model B keeps only the discs.
 * The page-crossing alignments of the Master port's arrays are not kept:
@@ -166,12 +167,18 @@ writes `BANK6.bin` (the 16K bank), `GLUE.bin` (the glue, below) and
 
 What differs from the Master port's frame layer:
 
-* **The buffers.** Both are in main RAM, buffer 0 at `BUF0` (`&1000`) and
-  buffer 1 at `SCREEN%` (`&4000`, the direct-mode screen), so there is no
-  ACCCON paging: what bank 6 writes to the screen itself (the text's
-  glyphs, the sights' vertical arms, the lens flare, the border at
-  `f_enter`) takes the back buffer's base, which `f_bufpatch` sets each
-  frame (`f_scr`, and the sights' addresses).
+* **The buffers.** Both are in main RAM, buffer 0 at `BUF0` and buffer 1
+  at `SCREEN%` (the direct-mode screen), whole MODE 5 screens (bank 5's
+  "The screen"), so there is no ACCCON paging: what bank 6 writes to the
+  screen itself (the text's glyphs, the sights' vertical arms, the border
+  at `f_enter`) takes the back buffer's base, which `f_bufpatch` sets each
+  frame (`f_scr`, and the sights' addresses). `f_enter` copies the border
+  across as the window's line 0 and its MODE 5 pixels 0 and 127, merged
+  into buffer 0's bytes; `f_b0new` clears buffer 0's window rows (0 to 23),
+  not its dashboard.
+* **The text** is drawn from the 4 x 8 font (`F_FONT`, `gfx-font.asm`, made
+  by `2-build-files/font4.py`: its one copy), a character cell one byte
+  (four MODE 5 pixels, eight game x) by eight rows (`f_glyph`).
 * **The rasteriser's state is in bank 5,** which bank 6 cannot see: it is
   reached only through the trampolines in main RAM (`T_INIT` to `T_GETW`,
   `gfx-glue.asm`), with the inputs in the mailbox and the zero page. What
@@ -202,12 +209,15 @@ What differs from the Master port's frame layer:
   given the faces' levels in `XX2`. Its face lists, loaded with the
   blueprint set into `FCSLOT` ([memory-map.md](memory-map.md), "Per-set
   renderer data"), hold no normals.
-* **The lens flare** is in bank 6 with the frame layer (the Master port's
-  `R_FLARE` is in its bank 7): it writes the back buffer itself, and marks
-  each ghost's box dirty (`T_MARKBOX`) where the Master port writes each
+* **The lens flare** is in bank 5 with the rasteriser (the Master port's
+  `R_FLARE` is in its rasteriser's bank 7), which `f_flt` calls through
+  `T_FLARE` with the sun and the planet in the mailbox (`FLM_*`): it reads
+  and ORs the back buffer through bank 5's row tables and masks, and marks
+  each ghost's box dirty (`R_MARKBOX`) where the Master port writes each
   row's dirty extent. Its probes see the planet in front of a smaller sun by
-  the planet's disc (`fl_inpl`, `F_HW`), where the Master port reads the
-  disc layer's spans (in bank 7 here).
+  the planet's disc (`fl_inpl`: dx^2 + dy^2 <= r^2, which is the frame
+  layer's half-width test exactly), where the Master port reads the disc
+  layer's spans (in bank 7 here).
 * **Not here**, as the Model B has no use for them: the energy bomb's bolt
   (`F_BOMB`: disc Elite's bomb flashes the screen and draws no bolt), the
   notes of stars drawn directly (`F_DSTAR`, `f_unstar`: on the Model B the
@@ -386,6 +396,16 @@ the player's own turn since. The mailbox holds the records only until the frame'
   arrays, its rows (old, `R_S2T`..`R_S2B`, and new) in batches to
   `DP_DISC2`, with the rows' written extents instead (what the layer and
   the repair wrote on them), and a last `T_GETW` for the last batch.
+* **Whole MODE 5 pixels.** The painter compares and writes each row's
+  edges game x by game x (the pixels whose colour changed), and a MODE 5
+  pixel is two game x, so every edge it is given is between two MODE 5
+  pixels: `f_dbat` widens each span to an even left end and an odd right
+  end, and puts each boundary on a pixel's left edge (`f_snap`: x AND
+  `&FE`, one landing on the span's left end folded into the colour there,
+  two landing together gone), and bank 5 widens the dirty extents it hands
+  over the same way. A strip then always covers whole pixels, and a pixel
+  is never half one colour and half another. `PC_ROWS`' rows are the
+  circle engine's own, before this.
 * **The batches** are in the mailbox (`gfx-rws.asm`, `DB_*`), `&00` to `&65`:
   16 rows (one colour: the new span, `DB_NL`, `DB_NR`, and the dirty or
   written extent in, what was written out, `DB_WL`, `DB_WR`) or 8 (with the
@@ -433,17 +453,17 @@ fresh frames of records made at the new centre.
 ### The lens flare
 
 The Master port's lens flare with its probes (`gfx-flare.asm`),
-in bank 6: `f_flt` runs it after the beams, when the sun
+in bank 5: bank 6's `f_flt` runs it after the beams, when the sun
 is recorded, the view is the front one and the sun's centre is on the
 screen. `R_FLARE` probes the back buffer as drawn so far at nine points of
 the sun's disc (its centre, and eight round it at about 0.62 R): a probe
 outside the clip window, or, when the sun is smaller than the planet and so
-behind it, inside the planet's disc (`FL_BEH`, `fl_inpl`), is out of sight;
+behind it, inside the planet's disc (`FLM_BEH`, `fl_inpl`), is out of sight;
 one inside is in sight if its pixel is still the sun's colour for its row.
 None in sight: no flare. Otherwise eight ghosts along the line from the sun
 through the screen's centre, six dithered discs and two dotted rings, ORed
 into the back buffer, every ghost's density stepped down by the probes not
-in sight (`fl_vred`), each ghost's box marked dirty (`T_MARKBOX`) so that
+in sight (`fl_vred`), each ghost's box marked dirty (`R_MARKBOX`) so that
 the next frame on the buffer repairs it.
 
 ### The test

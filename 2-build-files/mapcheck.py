@@ -169,19 +169,19 @@ nlab += inside(DK, OUT + "elite-docked-cold.asm", 0x8000, DK["COLD_END%"], "the 
 
 # bank 5
 rjt, img, st = B5["RJT"], B5["R_IMAGE"], B5["R_DIRTYL0"]
-order("bank 5", [("the row runs (made at start) and their tails", B5["r_run0"], img), ("R_POLY and R_LINE", img, B5["R_LOEND"]),
+order("bank 5", [("the row runs and row tables (made at start), the stars' records and variables", B5["r_run0"], img), ("R_POLY and R_LINE", img, B5["R_LOEND"]),
                  ("the state", st, st + 0x600), ("the shared region", st + 0x600, B5["r_tfree"]),
                  ("the room below the per-x tables", B5["r_tfree"], B5["R_GAPEND"]),
                  ("the per-x tables, the row pages, the stars ...", B5["r_tables"], rjt), ("the jump table", rjt, B5["RJT_END"])])
-if B5["r_run0"] != 0x8000 or img != B5["r_run0"] + 24 * 0x100:
-    errors.append("bank 5: the row runs are not the bank's first 24 pages")
+if B5["r_run0"] != 0x8000 or B5["r_ypg"] != B5["r_run0"] + 24 * 0x80 or img < B5["r_ypg"]:
+    errors.append("bank 5: the row runs are not the bank's first 12 pages, the row tables after them")
 if B5["R_HIEND"] != B5["RJT_END"]:
     errors.append("bank 5: the jump table does not end its high region")
 if B5["R_LOEND"] > st or B5["R_GAPEND"] > B5["r_tables"] or B5["RJT_END"] > 0xC000:
     errors.append("bank 5: a region overflows")
 if os.path.getsize(OUT + "BANK5.bin") != 0xC000 - img:
     errors.append("bank 5: its image is not R_POLY on (the row runs are made at start)")
-nlab += inside(B5, OUT + "gfx-raster-bank5runs.asm", B5["r_run0"], img, "bank 5's row runs' pages")
+nlab += inside(B5, OUT + "gfx-raster-bank5runs.asm", B5["r_run0"], img, "bank 5's row runs' and row tables' pages")
 for f in ("gfx-raster_poly", "gfx-raster_line"):
     nlab += inside(B5, OUT + "%s-bank5.asm" % f, img, st, "bank 5's R_POLY and R_LINE")
 for f in ("gfx-raster", "gfx-raster_init", "gfx-raster_rep", "gfx-raster_dq"):

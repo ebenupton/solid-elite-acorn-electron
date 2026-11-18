@@ -32,8 +32,9 @@
 \   * DP_DISC2: the second disc (gfx-raster_disc2.asm).
 \
 \ The screen is main RAM, so this writes it itself: a row's address worked
-\ out (r_rowp), the pixels' byte offsets and masks from four-byte tables
-\ (r_sw). A span of 16 whole bytes or more is queued in the mailbox for bank
+\ out (r_rowp: the Electron's MODE 5 buffer, its 32 bytes from one pointer),
+\ the pixels' byte offsets (game x DIV 8) and masks (MODE 5 pixel (x DIV
+\ 2) AND 3) from four-byte tables (r_sw). A span of 16 whole bytes or more is queued in the mailbox for bank
 \ 5's row runs (r_sq), which bank 5 draws at the next batch's R_GETW, while
 \ there is room: the layer's writes on a row never overlap, so the order is
 \ the pixels' own.
@@ -96,9 +97,8 @@ R_CT    = &0C
 R_CB    = &0D
 R_DCE   = &0E
 R_DCO   = &0F
-RZ_PA   = &10           \ ... and this code's scratch (lo = y AND 7, hi = row
-RZ_PB   = &12           \ page) bytes of columns 0..31, then 32..63
-RZ_PP   = &14
+RZ_PP   = &14           \ ... and this code's scratch: the row's address
+                        \ (its byte in column 0, r_rowp)
 RZ_COL  = &16           \ this row's colour byte
 RZ_Y    = &17           \ current row
 RZ_SA   = &18
@@ -581,58 +581,23 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 
 \ ******************************************************************************
 \
-\ r_sw: pixels X .. Y (X <= Y) of the row (r_rowp: RZ_Y, RZ_PA, RZ_PB set)
+\ r_sw: pixels X .. Y (X <= Y, game x) of the row (r_rowp: RZ_Y, RZ_PP set)
 \ in colour A, each end's byte masked.  Clobbers A, X, Y, RZ_COL, RZ_SA,
-\ RZ_SA+1, RZ_PP+1, RZ_T7.  With r_qok bit 7 set, a span of 16 whole bytes or
-\ more is queued for bank 5's row runs while the queue has room (r_sq).
+\ RZ_SA+1, RZ_T7.  With r_qok bit 7 set, a span of 16 whole bytes or more is
+\ queued for bank 5's row runs while the queue has room (r_sq).
 \
-\ Port (Model B): the Master port's, with the byte offsets worked out and
-\ the masks from four-byte tables (r_lm4, r_rm4), and the row's two pages
-\ (columns 0..31 and 32..63) as one pointer, RZ_PP, to the half that the
-\ pixels are in: a span across the halves is written as two.
+\ Port: the Master port's, with the byte offsets worked out (8 x (x DIV 8)
+\ from the row's address) and the masks from four-byte tables (r_lm4, r_rm4,
+\ by MODE 5 pixel (x DIV 2) AND 3).
 \
 \ ******************************************************************************
 {
-.cross                    \ X in columns 0..31, Y in 32..63: queued, or the
-  BIT r_qok               \ two halves
-  BPL c1
-  LDA RZ_SA               \ (whole bytes: Y DIV 4 - X DIV 4 - 1 >= 16, as
-  LSR A                   \ (Y DIV 4) - (X DIV 4) >= 17)
-  LSR A
-  STA RZ_T7
-  TXA
-  LSR A
-  LSR A
-  EOR #&FF
-  SEC
-  ADC RZ_T7
-  CMP #17
-  BCC c1
-  JSR r_sq
-  BCC c9                  \ (queued)
-.c1
-  LDA RZ_SA
-  STA r_sws
-  LDA #127
-  STA RZ_SA
-  JSR hf
-  LDX #128
-  LDA r_sws
-  STA RZ_SA
-  BNE hf                  \ (always)
-
 .^r_sw
   STA RZ_COL
   STY RZ_SA
-.hf                       \ (X .. RZ_SA in RZ_COL)
-  LDA RZ_PA+1             \ the half's page: RZ_PA's, or RZ_PB's for X >= 128
-  CPX #&80
-  ADC #0
-  STA RZ_PP+1
   TXA
   EOR RZ_SA
-  BMI cross               \ X in columns 0..31, Y in 32..63
-  CMP #4
+  CMP #8
   BCC one                 \ one byte (the rarer case: the commoner multi-byte
                           \ case falls through)
   BIT r_qok               \ long and queued?
@@ -641,14 +606,13 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   BCC c9
 .m1
   LDA RZ_SA               \ the last byte's offset
-  ASL A
   AND #&F8
   STA RZ_SA+1
   TXA                     \ the first byte
+  LSR A
   AND #3
   STA RZ_T7
   TXA
-  ASL A
   AND #&F8
   TAY
   LDX RZ_T7
@@ -675,6 +639,7 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   BCC la
 .ls
   LDA RZ_SA               \ the last byte
+  LSR A
   AND #3
   TAX
   LDA RZ_COL
@@ -687,18 +652,19 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 
 .one
   LDA RZ_SA               \ one byte: both masks
+  LSR A
   AND #3
   TAY
   LDA r_rm4,Y
   STA RZ_T7
   TXA
+  LSR A
   AND #3
   TAY
   LDA r_lm4,Y
   AND RZ_T7
   STA RZ_T7
   TXA
-  ASL A
   AND #&F8
   TAY
   LDA RZ_COL
@@ -709,7 +675,7 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   RTS
 }
 
-\ r_sql: pixels X .. RZ_SA in one half of the row, in RZ_COL: queued (C
+\ r_sql: pixels X .. RZ_SA of the row, in RZ_COL: queued (C
 \ clear) if 16 whole bytes or more lie between the ends and the queue has
 \ room, else C set (X kept). r_sq: queued if there is room (C clear), else C
 \ set (X kept)
@@ -718,14 +684,16 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   LDA RZ_SA
   SEC
   STX RZ_T7
-  SBC RZ_T7               \ Y - X >= 68 pixels: perhaps; the exact test below
-  CMP #68
+  SBC RZ_T7               \ Y - X >= 129 pixels: perhaps; the exact test below
+  CMP #129
   BCC no
-  LDA RZ_SA
+  LDA RZ_SA               \ (whole bytes: Y DIV 8 - X DIV 8 - 1 >= 16)
+  LSR A
   LSR A
   LSR A
   STA RZ_T7
   TXA
+  LSR A
   LSR A
   LSR A
   EOR #&FF
@@ -757,29 +725,38 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   RTS
 }
 
-.r_lm4  EQUB &FF, &77, &33, &11   \ pixels (x AND 3) .. 3 of a byte
-.r_rm4  EQUB &88, &CC, &EE, &FF   \ pixels 0 .. (x AND 3)
+.r_lm4  EQUB &FF, &77, &33, &11   \ MODE 5 pixels p .. 3 of a byte
+.r_rm4  EQUB &88, &CC, &EE, &FF   \ pixels 0 .. p
 
-\ r_rowp: X = row: RZ_Y, and RZ_PA, RZ_PB its screen address in the buffer
-\ (columns 0..31 and 32..63; the row's page &10 or &40 + 2 (row DIV 8), its
-\ line row AND 7).  Keeps X and Y.
+\ r_rowp: X = row: RZ_Y, and RZ_PP its screen address in the buffer, its
+\ byte in column 0: the buffer + 320 (row DIV 8) + 32 + (row AND 7), the low
+\ byte 64 ((row DIV 8) AND 3) + 32 + (row AND 7) (no carry), the high byte
+\ the buffer's + row DIV 8 + row DIV 32.  Keeps X and Y.
 .r_rowp
   STX RZ_Y
   TXA
+  AND #&18
+  ASL A
+  ASL A
+  ASL A
+  ORA #32
+  STA RZ_PP
+  TXA
   AND #7
-  STA RZ_PA
-  STA RZ_PB
-  STA RZ_PP               \ (r_sw's pointer to either half)
+  ORA RZ_PP
+  STA RZ_PP
   TXA
   LSR A
   LSR A
-  AND #&FE
+  LSR A
+  STA RZ_PP+1
+  LSR A
+  LSR A
   CLC
+  ADC RZ_PP+1
 .^dp_scr
   ADC #HI(SCREEN%)        \ (patched: the buffer's screen)
-  STA RZ_PA+1
-  ADC #1
-  STA RZ_PB+1
+  STA RZ_PP+1
   RTS
 
 \ ============================================================================
@@ -1064,10 +1041,10 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   DEY
   CPY RZ_T3
   BCS jboth
-  AND #&FC                \ grown: nL .. oL-1 in the disc colour
+  AND #&F8                \ grown: nL .. oL-1 in the disc colour
   STA r_wmin
   TYA
-  ORA #3
+  ORA #7
   STA rw_r                \ rw_r: the left end's bytes (the right end's strip, if
   TXA                     \ any, overwrites it) (X = RZ_Y; the row's disc colour:
                           \ R_DCE / R_DCO by parity)
@@ -1084,8 +1061,8 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 .empd                     \ new empty (A = oR): old empty too: onew0, else
   CMP RZ_T0               \ the old span black
   BCC jonew
-  LDA RZ_T0               \ (as oblk: X = oL, r_wmin = oL AND &FC, then
-  BCS rqs1                \ .rshr2: Y = oR, rw_r = oR OR 3, black; always)
+  LDA RZ_T0               \ (as oblk: X = oL, r_wmin = oL AND &F8, then
+  BCS rqs1                \ .rshr2: Y = oR, rw_r = oR OR 7, black; always)
 .emp
   LDA #&FF                \ empty new span: (255, 0)
   STA RZ_T2
@@ -1097,27 +1074,27 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   CMP RZ_T1
   BEQ none                \ same span: nothing written (X = RZ_Y)
   BCC rqs
-  LDA RZ_T1               \ grown: r_wmin = (oR + 1) AND &FC
+  LDA RZ_T1               \ grown: r_wmin = (oR + 1) AND &F8
   ADC #0                  \ (C set: + 1)
-  AND #&FC
+  AND #&F8
   STA r_wmin
   LDA RZ_T3
   BNE rgr                 \ (always: nR > oR)
-.rqs                      \ shrunk: r_wmin = (nR + 1) AND &FC, X = nR + 1
+.rqs                      \ shrunk: r_wmin = (nR + 1) AND &F8, X = nR + 1
   ADC #1                  \ (C clear)
 .rqs1                     \ (entered here from .empd with A = oL)
   TAX
-  AND #&FC
+  AND #&F8
   STA r_wmin
   JMP rshr2               \ (NMOS: no BRA)
 .lshr
   SBC #1                  \ shrunk: oL .. nL-1 black (C set)
   TAY
-  ORA #3
+  ORA #7
   STA rw_r
   LDA RZ_T0
   TAX
-  AND #&FC
+  AND #&F8
   STA r_wmin
   LDA #0                  \ (black: NMOS has no STZ, so through r_sw's
   JSR r_sw                \ STA RZ_COL)
@@ -1135,13 +1112,13 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   JSR r_sw
   LDX RZ_Y
   LDA RZ_T1               \ rw_r: the bytes written
-  ORA #3
+  ORA #7
 .wr
   STA rw_r
   BNE fin2                \ (always: A >= 3)
 .rgr
   TAY                     \ (Y = nR for r_sw)
-  ORA #3                  \ grown: oR+1 .. nR in the disc colour
+  ORA #7                  \ grown: oR+1 .. nR in the disc colour
   STA rw_r                \ rw_r: the bytes written (the right end's strip is the max)
   LDA RZ_Y                \ the row's disc colour
   AND #1
@@ -1190,13 +1167,13 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   LDY RZ_T1
 .put                      \ pixels X .. Y in colour RZ_COL (X <= Y), noted
   TXA
-  AND #&FC
+  AND #&F8
   CMP r_wmin
   BCS p1
   STA r_wmin
 .p1
   TYA
-  ORA #3
+  ORA #7
   CMP r_wmax
   BCC p2
   STA r_wmax

@@ -62,6 +62,7 @@
 .F_CODEEND
  INCLUDE "1-source-files/main-sources/gfx-faces.asm"
  INCLUDE "1-source-files/main-sources/gfx-light6.asm"
+ INCLUDE "1-source-files/main-sources/gfx-font.asm"
 .F_TABEND
 .F_RP   SKIP 29 * MAXSH \ the ship records (F_SHIP): INWK 0-8, XX16, XX0, each
 F_SZL = F_RP + 6 * MAXSH  \ a field to an array of MAXSH (the ship's z, INWK

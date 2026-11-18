@@ -76,7 +76,7 @@ FJT = &BFC0             \ bank 6's dispatcher (gfx-bank6.asm)
  LDA rtA
  RTS
 
- ASSERT HI(RJT) = HI(RJT + 3 * 13)
+ ASSERT HI(RJT) = HI(RJT + 3 * 14)
 
 MACRO RTRAMP n
  JSR rtgo
@@ -98,6 +98,7 @@ ENDMACRO
 .T_GETW       RTRAMP 12 \ (the disc layer's and the text's, gfx-raster_dq.asm)
 .T_TILT       RTRAMP 13 \ (the planet's surface's pf_tilt, gfx-planet7.asm: from
                         \ the game's PF_HOOK, in the home bank)
+.T_FLARE      RTRAMP 14 \ (the lens flare, gfx-flare.asm)
 .rtramp_end
 
 .GCALL

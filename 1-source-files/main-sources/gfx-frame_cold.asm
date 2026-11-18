@@ -349,12 +349,13 @@
  STA GSTASH
  TAX
 .fbn1
- STA BUF0,X             \ (patched) clear &1000-&3FFF
- INX
- BNE fbn1
+ STA BUF0,X             \ (patched) clear character rows 0-23 (the window's,
+ INX                    \ 24 x 320 bytes: 30 pages; the dashboard's rows
+ BNE fbn1               \ after them are left as they are)
  INY                    \ (Y: the page, as patched)
  STY fbn1+2
- CPY #HI(BUF0) + &30
+ CPY #HI(BUF0) + HI(24 * 320)
+ ASSERT 24 * 320 = &1E00
  BNE fbn1
  STA F_SGS              \ no sights drawn in it (NMOS: A = 0)
  STA f_mkn              \ and no cells to erase: its text shows nothing,

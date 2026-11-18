@@ -10,7 +10,8 @@ code's images) and runs them on py65's NMOS 6502 (the Model B's) with:
   * main RAM: the resident block A (the far calls, from the loader's
     image), the glue (GLUE.bin at GLUE%: the trampolines and GCALL), the
     loader's bank numbers and the game's variables;
-  * &8000-&BFFF paged by writes to ROMSEL (&FE30): the flight code's home
+  * &8000-&BFFF paged by writes to ROMSEL (elite-map.asm's: the Electron's
+    &FE05): the flight code's home
     bank (D.CODEH, with a blueprint set, D.MOx, in its slot), bank 5,
     bank 6, or the flight code's cold bank (D.CODEC, with the disc layer's
     painter in its window);
@@ -61,6 +62,7 @@ BEEBASM = os.environ.get('BEEBASM', 'beebasm')
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(REPO, '2-build-files'))
 
+ROMSEL = 0xFE30                                  # (main() sets elite-map.asm's)
 HOME = 4                                         # the banks (the loader finds
 RBANK, FBANK, COLD = 5, 6, 7                     # them; any distinct numbers)
 BPSLOT = SETF = None                             # (elite-map.asm: Mem sets them)
@@ -139,7 +141,7 @@ class Mem:
         os_rom = os.path.join(HERE, 'node_modules', 'jsbeeb', 'public', 'roms', 'os.rom')
         self.main[0xC000:0x10000] = open(os_rom, 'rb').read()[:0x4000]
         miss = open(os.path.join(OUT, 'MISSILE.bin'), 'rb').read()
-        self.main[0x7F00:0x7F00 + len(miss)] = miss
+        self.main[S['MISSILE%']:S['MISSILE%'] + len(miss)] = miss
         for n in range(512):                     # (the quarter squares, as the
             q = n * n // 4                       # loader makes them)
             self.banks[HOME][mc['QSL'] - 0x8000 + n] = q & 255
@@ -153,8 +155,8 @@ class Mem:
         g = open(os.path.join(OUT, 'GLUE.bin'), 'rb').read()
         self.main[S['GLUE%']:S['GLUE%'] + len(g)] = g
         ok = bytearray(0x10000)                  # the write guard's allowed bytes
-        for lo, hi in ((0x06, 0x28), (0xD2, 0xE2), (0xF4, 0xF5), (0x100, 0x200), (0x1000, 0x7000),
-                       (S['MBOX'], S['MBOX'] + 0xA0), (S['GVARS'], 0x7FFE), (S['rtA'], S['rtA'] + 3), (S['rtl'] + 1, S['rtl'] + 3), (S['rtj'] + 1, S['rtj'] + 2),
+        for lo, hi in ((0x06, 0x28), (0xD2, 0xE2), (0xF4, 0xF5), (0x100, 0x200), (S['BUF0'], S['BUF0'] + 2 * SCRSZ),
+                       (S['MBOX'], S['MBOX'] + 0xA0), (S['GVARS'], S['VEC']), (S['rtA'], S['rtA'] + 3), (S['rtl'] + 1, S['rtl'] + 3), (S['rtj'] + 1, S['rtj'] + 2),
                        (ld['fA'], ld['fA'] + 5), (ld['fpc'] + 1, ld['fpc'] + 3), (ld['fpj'] + 1, ld['fpj'] + 3)):
             ok[lo:hi] = b'\1' * (hi - lo)
         self.ok = ok
@@ -187,7 +189,7 @@ class Mem:
         if 0x8000 <= a < 0xC000:
             self.banks[self.sel][a - 0x8000] = v
             return
-        if a == 0xFE30:
+        if a == ROMSEL:
             self.sel = v & 15
             return
         if not self.guard[a]:
@@ -313,19 +315,24 @@ class Machine:
 
     def buffer(self, b):
         base = self.S['BUF0'] if b == 0 else self.S['SCREEN%']
-        return bytes(self.mem.main[base:base + 0x3000])
+        return bytes(self.mem.main[base:base + SCRSZ])
 
 
 # ---------------------------------------------------------------------------
 # Screens
 
+SCRSZ = 0x2800                                   # a buffer: a whole MODE 5 screen
+
+
 def addr(x, y):
-    return (y >> 3) * 0x200 + (y & 7) + (x >> 2) * 8
+    """game pixel (x, y)'s byte in a buffer: MODE 5 pixel x >> 1, in cells 4-35
+    of character rows 0-23 (raster_model.py's geometry)"""
+    return (y >> 3) * 320 + 32 + (y & 7) + (x >> 3) * 8
 
 
 def pixel(buf, x, y):
     b = buf[addr(x, y)]
-    p = x & 3
+    p = (x >> 1) & 3
     return ((b >> (7 - p)) & 1) << 1 | ((b >> (3 - p)) & 1)
 
 
@@ -349,14 +356,14 @@ def border(m):
     import random
     rnd = random.Random(7)
     base0, base1 = m.S['BUF0'], m.S['SCREEN%']
-    for a in range(0x3000):
+    for a in range(24 * 320):                    # (the window's character rows)
         m.mem.main[base0 + a] = rnd.randrange(256)
         m.mem.main[base1 + a] = 0
-    for x in range(64):
-        m.mem.main[base1 + addr(4 * x, 0)] = 0xFF
+    for x in range(32):
+        m.mem.main[base1 + addr(8 * x, 0)] = 0xFF
     for y in range(192):
-        m.mem.main[base1 + addr(0, y)] |= 0xCC
-        m.mem.main[base1 + addr(252, y)] |= 0x33
+        m.mem.main[base1 + addr(0, y)] |= 0x88   # (MODE 5 pixels 0 and 127)
+        m.mem.main[base1 + addr(255, y)] |= 0x11
 
 
 # ---------------------------------------------------------------------------
@@ -604,8 +611,25 @@ def surface_rows(cx, cy, r, surf):
 
 def put_pixel(buf, x, y, byte):
     a = addr(x, y)
-    m = 0x88 >> (x & 3)
+    m = 0x88 >> ((x >> 1) & 3)
     buf[a] = (buf[a] & ~m & 255) | (byte & m)
+
+
+def snap_row(xl, p, xs):
+    """a row's colour at its left end and boundaries as f_dbat's f_snap gives
+    them to the painter: each boundary on a MODE 5 pixel's left edge (x AND
+    &FE), folded into the left end's colour if it lands on the span's left
+    end (xl AND &FE), two landing together gone"""
+    out = []
+    for v in xs:
+        v &= 0xFE
+        if v == xl & 0xFE:
+            p ^= 1
+        elif out and out[-1] == v:
+            out.pop()
+        else:
+            out.append(v)
+    return p, out
 
 
 def model_discs(S, discs):
@@ -613,8 +637,9 @@ def model_discs(S, discs):
     [(kind, cx, cy, r, surf)] (surf: surface()'s, a planet's circles, or
     None) with nothing else: the bigger (the sun if not smaller) as the
     layer, with its surface (a planet's, in its colours A and B), the other
-    behind it, plain"""
-    buf = bytearray(0x3000)
+    behind it, plain; every span and boundary on whole MODE 5 pixels (the
+    span's ends widened, the boundaries snapped: snap_row)"""
+    buf = bytearray(SCRSZ)
     sun = [d for d in discs if d[0] == 'sun']
     pl = [d for d in discs if d[0] == 'planet']
     lay = pl[0] if pl and (not sun or sun[0][3] < pl[0][3]) else sun[0] if sun else None
@@ -627,9 +652,10 @@ def model_discs(S, discs):
         ce, co = (S['FC_SUNE'], S['FC_SUNO']) if kind == 'sun' else (S['FC_PLANE'], S['FC_PLANO'])
         rows = surface_rows(cx, cy, r, surf) if d is lay and kind == 'planet' and surf and surf[0] & 0x80 else {}
         for y, (xl, xr) in disc_spans(cx, cy, r).items():
-            p, xs = rows.get(y, (0, []))
+            p, xs = snap_row(xl, *rows.get(y, (0, [])))
+            xl, xr = xl & 0xFE, xr | 1          # (whole MODE 5 pixels: f_dbat)
             for x in range(xl, xr + 1):
-                if d is not lay and y in lspans and lspans[y][0] <= x <= lspans[y][1]:
+                if d is not lay and y in lspans and lspans[y][0] & 0xFE <= x <= lspans[y][1] | 1:
                     continue                     # (behind the layer)
                 b = (p + sum(1 for v in xs if v <= x)) & 1
                 c = (cb[0], cb[1]) if b else (ce, co)
@@ -787,7 +813,7 @@ def disc_tests(png_dir):
         b, _ = frame(m)
         got = m.buffer(b)
         _, want = fresh(discs, shp, lns, b)
-        diff = [a for a in range(0x3000) if got[a] != want[a]]
+        diff = [a for a in range(SCRSZ) if got[a] != want[a]]
         check(not diff, 'sequence frame %d (buffer %d): as a fresh frame%s' % (f, b, '' if not diff else ' (%d bytes differ, first at offset &%04X)' % (len(diff), diff[0])))
         if diff:
             png(got, os.path.join(png_dir, 'seq-%d-got.png' % f))
@@ -848,12 +874,43 @@ def hold_tests(png_dir):
         b, _ = frame(m)
         got = m.buffer(b)
         _, want = fresh([('planet', cx, cy, r, surf)], buf=b)
-        diff = [a for a in range(0x3000) if got[a] != want[a]]
+        diff = [a for a in range(SCRSZ) if got[a] != want[a]]
         check(not diff, 'kept records, frame %d (%s): as a fresh frame of them made there%s' % (
             f, 'made' if made else 'kept', '' if not diff else ' (%d bytes differ, first at offset &%04X)' % (len(diff), diff[0])))
         if diff:
             png(got, os.path.join(png_dir, 'hold-%d-got.png' % f))
             png(want, os.path.join(png_dir, 'hold-%d-want.png' % f))
+
+
+def flare_tests():
+    """the lens flare's probe test (gfx-flare.asm's fl_inpl, in bank 5): the
+    probe (fl_vx, row Y) is inside the planet's disc when dx^2 + dy^2 <= r^2,
+    the frame layer's half-width test (|dx| <= floor(sqrt(r^2 - dy^2)), F_HW)
+    exactly, for random probes and discs"""
+    import random
+    print('the lens flare\'s probes')
+    m = Machine()
+    b5 = syms_of('bank5')
+    mem = m.mem
+    rnd = random.Random(5)
+    bad, cy = [], []
+    for i in range(3000):
+        px, py, r = rnd.randrange(-300, 560), rnd.randrange(-300, 500), rnd.randrange(256)
+        x, y = rnd.randrange(2, 254), rnd.randrange(1, 192)
+        for k, v in enumerate((px & 0xFFFF, py & 0xFFFF)):
+            m.put16('FLM_PLX', v, 2 * k)
+        m['FLM_PLR'] = r
+        mem.main[0x18] = x                       # (fl_vx, gfx-flare.asm's zero page)
+        mem.sel = RBANK
+        mem.main[STUB:STUB + 5] = bytes([0xA0, y, 0x20, b5['fl_inpl'] & 255, b5['fl_inpl'] >> 8])
+        cy.append(m.gcall_at(STUB, 5))
+        dx, dy = abs(x - px), abs(y - py)
+        want = dy <= r and dx < 256 and dx <= math.isqrt(r * r - dy * dy)
+        if bool(m.mpu.p & 1) != want or m.mpu.y != y:
+            bad.append((x, y, px, py, r))
+    mem.sel = HOME
+    check(not bad, 'fl_inpl: inside the planet\'s disc as its half-widths have it (%.0f cycles)%s' % (
+        sum(cy) / len(cy), ' (wrong for %r)' % bad[:3] if bad else ''))
 
 
 def pmath_tests(quick=False):
@@ -957,6 +1014,8 @@ def main():
         png_dir = args[args.index('--png') + 1]
     if '--nobuild' not in args:
         build()
+    global ROMSEL
+    ROMSEL = consts().get('ROMSEL', 0xFE30)
     m = Machine()
     S = m.S
     print('F_INIT, F_DIRECT')
@@ -978,9 +1037,9 @@ def main():
     b, cyc1 = frame(m, png_dir, 'frame-1.png')
     buf0, buf1 = m.buffer(0), m.buffer(1)
     check(b == 0 and m['GMODE'] & 0x80, 'the first frame entered space mode and drew buffer 0')
-    border_ok = all(buf0[addr(4 * x, 0)] == b1_before[addr(4 * x, 0)] for x in range(64)) and \
-        all(buf0[addr(0, y)] & 0xCC == b1_before[addr(0, y)] & 0xCC and
-            buf0[addr(252, y)] & 0x33 == b1_before[addr(252, y)] & 0x33 for y in range(192))
+    border_ok = all(buf0[addr(8 * x, 0)] == b1_before[addr(8 * x, 0)] for x in range(32)) and \
+        all(buf0[addr(0, y)] & 0x88 == b1_before[addr(0, y)] & 0x88 and
+            buf0[addr(255, y)] & 0x11 == b1_before[addr(255, y)] & 0x11 for y in range(192))
     check(border_ok, "buffer 1's border copied to buffer 0")
     check(buf1 == b1_before, "buffer 1 (TTX66's) left as it was")
     cx, cy = look['cloud']
@@ -1031,7 +1090,7 @@ def main():
     scene(m2, 2)
     frame(m2)
     want = m2.buffer(0)
-    diff = [a for a in range(0x3000) if got[a] != want[a]]
+    diff = [a for a in range(SCRSZ) if got[a] != want[a]]
     check(not diff, 'the repair: buffer 0 after scene A then C is buffer 0 after C alone%s' % (
         '' if not diff else ' (%d bytes differ, first at offset &%04X)' % (len(diff), diff[0])))
     if diff:
@@ -1054,7 +1113,7 @@ def main():
     scene(m3, 4)
     frame(m3)
     want = m3.buffer(0)
-    diff = [a for a in range(0x3000) if got[a] != want[a]]
+    diff = [a for a in range(SCRSZ) if got[a] != want[a]]
     check(b == 0 and not diff, 'the incremental disc: buffer 0 after scenes A, C and E is buffer 0 after E alone%s' % (
         '' if not diff else ' (%d bytes differ, first at offset &%04X)' % (len(diff), diff[0])))
     if diff:
@@ -1065,6 +1124,7 @@ def main():
 
     disc_tests(png_dir)
     hold_tests(png_dir)
+    flare_tests()
     pmath_tests('--quick' in args)
 
     print('cycles: F_FRAME %s (frame 1 includes clearing buffer 0); F_CHAR %d' % (
