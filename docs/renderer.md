@@ -200,9 +200,10 @@ What differs from the Master port's frame layer:
   frame layer writes and banks 5 and 7 read), `DP_BEGIN`'s colour B pair
   (`&20-&21`), the mailbox, the shared variables and the glue. The frame
   layer's scratch (`fz_*`, once `&D2-&E1`, the game's `XX2`, `K3`, `K4`) is
-  in bank 6 (`FZB`), `PC_ROWS`' in bank 6 too (`PZB`), the rasteriser's in
-  bank 5 (`r_zb`) and the painter's in bank 7 (`P7Z`), each at its bank's
-  base + its old zero page address; their `(zp),Y` pointers are
+  in bank 6 (`FZB`), `PC_ROWS`' in bank 6 too (`PZB`, and the operands of
+  its loop's own instructions), the rasteriser's in bank 5 (`r_zb`) and the
+  painter's in bank 7 (`P7Z`), each (but `PC_ROWS`') at its bank's base +
+  its old zero page address; their `(zp),Y` pointers are
   self-modified `abs,Y` operands (a ship's face lists, `f_shpat`, read at an
   offset in Y; the text map's row, `f_rowptr`; the painter's row, `r_rowp`,
   once a character row). The game's zero page overlaps the rasteriser's
@@ -352,6 +353,11 @@ The text map (`F_TM`, `F_TMR`, `F_TCH`, and the notes of direct text `f_dlog`
 ...) is the Master port's, with its `EOR` undo (`f_eor`, so the hyperspace
 countdown counts down) and its hand-over of the text drawn directly
 (`f_sync`, `f_drule`): docs of the Master port's renderer, "The text map".
+The frame's text steps look only at the rows that have a character or have
+changed (`f_tlo` to `f_thi`, which `f_tchs` widens with every change and
+`f_text2` narrows to the rows with characters once neither buffer has a
+row changed, `f_tany`), and a glyph's row is one read and one write of its
+cell.
 
 ### The discs
 
@@ -384,7 +390,10 @@ unclamped ones `pc_circ` leaves in `PC_TU`), exactly as if made at the new
 centre with the planet as it was. The game turns the planet by a half step
 on every iteration (`MVS5`, below), so a kept frame lacks one half step and
 the player's own turn since. The mailbox holds the records only until the frame's batches, so
-`f_hrec` keeps each iteration's records with the disc's centre, in bank 6.
+`f_hrec` takes each iteration's records (as many as there are, each byte
+read once) into bank 6 with the disc's centre (`f_hcb`), where `PC_ROWS`
+reads them, and moves the kept ones there, in place, by the centre's move
+since the last frame.
 
 * **`f_dprep`** (before the wait): which disc is the layer (`f_lay`) and
   which the second (`f_sec`); the layer's spans, clipped to the window
@@ -396,10 +405,13 @@ the player's own turn since. The mailbox holds the records only until the frame'
   row is empty or clamped to the window's side, and its rows made in pairs,
   cy - k and cy + k from one half-width, `fkl`, then the rest of one side,
   `fks`), and the planet's boundaries (`f_bounds`: `PC_ROWS`, which reads
-  the records where `PF_HOOK` left them, in the mailbox: `PCB`, `PC_N`,
-  `pc_inv`, before the frame uses the mailbox for anything else, or where
-  `f_hrec` put back the ones kept, moved with the disc; a disc command in
-  the iteration, which takes the mailbox, drops them: `f_b0new`).
+  the records in bank 6, `f_hcb`, where `f_hrec` has taken them from the
+  mailbox, `PCB`, `PC_N`, `pc_inv`, before the frame uses the mailbox for
+  anything else, or has moved the ones kept with the disc; a disc command
+  in the iteration, which takes the mailbox, drops them: `f_b0new`. A row
+  of `PC_ROWS`' loop is in line, with no call: each row and each of its two
+  crossings is switched on or off for a run of rows at its head, two
+  bytes that do nothing or branch to the next head).
 * **`f_ddraw`** (after the wait, in place of `T_REPAIR`): the band of rows
   (the layer's on this buffer last time, `f_dlt`, `f_dlb`, and this frame's);
   `T_REPAIR` repairs the dirty rows outside it; the painter's frame

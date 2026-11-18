@@ -217,6 +217,30 @@ DLMAX = 3               \ (TTX66's ee3: TT11, three digits)
 
 .f_row  EQUB 0
 .f_tbit EQUB 0          \ this frame's buffer's bit in F_TCH (1 or 2)
+.f_tany EQUB 0          \ bit b (as F_TCH's): a row has changed for buffer b
+                        \ (both set with any F_TCH, f_tchs; b's cleared by
+                        \ its frame, which leaves no row changed for it)
+.f_tlo  EQUB &FF        \ the rows the text steps look at, f_tlo to f_thi
+.f_thi  EQUB 0          \ (none: &FF, 0): every row with a character or
+.f_thn  EQUB 0          \ changed (f_tchs widens them; a frame after which
+                        \ no row is changed for either buffer narrows them
+                        \ to the rows with characters: f_text2, f_thn the
+                        \ topmost it saw)
+
+\ f_tchs: text row X has changed, for both buffers (F_TCH): their text
+\ steps have work, and look at the row. A = 3; X, Y kept
+
+.f_tchs
+ LDA #3
+ STA F_TCH,X
+ STA f_tany
+ CPX f_tlo
+ BCS P%+5
+ STX f_tlo
+ CPX f_thi
+ BCC P%+5
+ STX f_thi
+ RTS
 .f_obit EQUB 0          \ and the other buffer's
 
 \ f_char1 (F_CHAR, frame_cold.asm; f_sync): character A into the cell at
@@ -260,8 +284,7 @@ DLMAX = 3               \ (TTX66's ee3: TT11, three digits)
  DEC F_TMR,X
 .fch8
  LDX f_row
- LDA #3
- STA F_TCH,X
+ JMP f_tchs
 .fch9
  RTS
 
@@ -408,8 +431,7 @@ RPN = 4
  JSR f_tmclr
  LDX f_row
  DEC F_TMR,X
- LDA #3
- STA F_TCH,X
+ JSR f_tchs
 .fdc9
  LDY f_ysav
  RTS
@@ -448,8 +470,7 @@ RPN = 4
  LDX f_row
  LDA #0
  STA F_TMR,X
- LDA #3
- STA F_TCH,X
+ JSR f_tchs
 .fct6
  INX
  CPX #24
@@ -679,7 +700,7 @@ RPN = 4
                         \ copy is the game's between frames)
  LDA F_BACK
  JSR T_SETBUF
- JSR f_dprep            \ the discs' rows (first: PC_ROWS reads the mailbox)
+ JSR f_dprep            \ the discs' rows (first: f_hrec reads the mailbox)
  JSR f_text1            \ text cells to be erased: background them (old dirty)
  JSR f_sight1           \ and the sights, if they have gone
  LDA F_NSHIP            \ the ships in their order, the first one projected
@@ -915,8 +936,8 @@ RPN = 4
 
 \ f_dprep: which disc is the layer (f_lay: 1 the sun, 2 the planet, 0 none)
 \ and which the second (f_sec), and the layer's rows (F_FRAME, before the
-\ wait, and before anything of the frame uses the mailbox: f_bounds' PC_ROWS
-\ reads the planet's records there, PCB)
+\ wait, and before anything of the frame uses the mailbox: f_hrec takes the
+\ planet's records from it, PCB, for f_bounds' PC_ROWS)
 
 .f_dprep
 IF _CIRCLES             \ (only PF_HOOK makes records: a build with _CIRCLES)
@@ -1714,20 +1735,21 @@ f_cx = fpr_cx + 1       \ (the operand of ADC # in the slow disc loop)
  CLC
  RTS
 
-\ f_hrec: the planet's records for f_bounds. PF_HOOK makes them only on some
-\ iterations (F_PFHOLD); on those (PF_CLS bit 7, not bit
-\ 6) the mailbox's records and their unclamped thresholds (&00 to PC_TU's
-\ end) are kept here, with the disc's centre; on the others (PF_CLS bits 7
-\ and 6) the kept records are put back in the mailbox moved with the disc's
-\ centre since (dx, dy: their centre lines C0, centre rows Yc and thresholds
-\ T1, T2, clamped to 0..192 again, exactly as if made at the new centre with
-\ the planet as it was), or if none are kept (a disc command used the
-\ mailbox after they were made, frame_cold.asm) the planet is drawn plain
-\ (PF_CLS bits 7 and 6 cleared). Without records (PF_CLS bit 7 clear) the
-\ copy is forgotten.
+\ f_hrec: the planet's records for f_bounds, in this bank (f_hcb: PC_ROWS
+\ reads them there). PF_HOOK makes them only on some iterations (F_PFHOLD);
+\ on those (PF_CLS bit 7, not bit 6) the mailbox's records, their count and
+\ base colour and their unclamped thresholds (PC_TU), as many as there are,
+\ are taken into f_hcb, each byte read once, with the disc's centre; on the
+\ others (PF_CLS bits 7 and 6) the records kept are moved in place with the
+\ disc's centre since the last frame (dx, dy: their centre lines C0, centre
+\ rows Yc and unclamped thresholds, and from those T1, T2, clamped to 0..192
+\ again: exactly as if made at the new centre with the planet as it was), or
+\ if none are kept (a disc command used the mailbox after they were made,
+\ frame_cold.asm) the planet is drawn plain (PF_CLS bits 7 and 6 cleared).
+\ Without records (PF_CLS bit 7 clear) the copy is forgotten.
 
-fh_d = &10              \ (dx, dy: the rasteriser's scratch zero page, which
-fh_k = &14              \ F_FRAME has kept)
+fh_d = PZB + 13         \ (dx, dy and the record: PC_ROWS' scratch's last
+fh_k = PZB + 17         \ bytes, which it does not use)
 
 .fhr8
  LSR f_hval             \ (bit 7 clear: none kept)
@@ -1736,12 +1758,27 @@ fh_k = &14              \ F_FRAME has kept)
  BIT PF_CLS
  BPL fhr8
  BVS fhr2
- LDX #PCX_END-MBOX-1    \ this iteration's: kept
+ LDX PC_N               \ this iteration's: taken
+ STX f_hcn
+ LDA pc_inv
+ STA f_hci
+ LDY pcb_o,X
+ BEQ fhr1b              \ (no record: a base colour)
 .fhr1
- LDA MBOX,X
- STA f_hcb,X
+ LDA PCB-1,Y
+ STA f_hcb-1,Y
+ DEY
+ BNE fhr1
+ TXA
+ ASL A
+ ASL A
+ TAX
+.fhr1c
+ LDA PC_TU-1,X
+ STA f_hct-1,X
  DEX
- BPL fhr1
+ BNE fhr1c
+.fhr1b
  LDX #3
 .fhr1a
  LDA F_PLX,X
@@ -1758,7 +1795,7 @@ fh_k = &14              \ F_FRAME has kept)
 .fhr2
  BIT f_hval
  BPL fhr9
- LDX #2                 \ (dx, dy) = the centre's move since they were made
+ LDX #2                 \ (dx, dy) = the centre's move since the last frame
 .fhr3
  SEC
  LDA F_PLX,X
@@ -1767,35 +1804,33 @@ fh_k = &14              \ F_FRAME has kept)
  LDA F_PLX+1,X
  SBC f_hcx+1,X
  STA fh_d+1,X
+ LDA F_PLX,X
+ STA f_hcx,X
+ LDA F_PLX+1,X
+ STA f_hcx+1,X
  DEX
  DEX
  BPL fhr3
- LDX #pc_inv-MBOX       \ the records, their count and base colour, into the
-.fhr4                   \ mailbox for f_bounds' PC_ROWS
- LDA f_hcb,X
- STA MBOX,X
- DEX
- BPL fhr4
- INX                    \ each record (X) moved
+ LDX #0                 \ each record (X) moved
 .fhr5
- CPX PC_N
+ CPX f_hcn
  BCS fhr7
  STX fh_k
  LDY pcb_o,X
  CLC
- LDA PCB+R_C0,Y
+ LDA f_hcb+R_C0,Y
  ADC fh_d
- STA PCB+R_C0,Y
- LDA PCB+R_C0+1,Y
+ STA f_hcb+R_C0,Y
+ LDA f_hcb+R_C0+1,Y
  ADC fh_d+1
- STA PCB+R_C0+1,Y
+ STA f_hcb+R_C0+1,Y
  CLC
- LDA PCB+R_YC,Y
+ LDA f_hcb+R_YC,Y
  ADC fh_d+2
- STA PCB+R_YC,Y
- LDA PCB+R_YC+1,Y
+ STA f_hcb+R_YC,Y
+ LDA f_hcb+R_YC+1,Y
  ADC fh_d+3
- STA PCB+R_YC+1,Y
+ STA f_hcb+R_YC+1,Y
  TXA
  ASL A
  ASL A
@@ -1810,29 +1845,26 @@ fh_k = &14              \ F_FRAME has kept)
  BNE fhr5               \ (always: X is at most 3)
 .fhr7
  RTS
-.fhr_t                  \ a threshold (X: its unclamped word, at PC_TU's place)
- CLC                    \ moved by dy, clamped to 0..192 into the record's
- LDA f_hcb+PC_TU-MBOX,X \ T1 or T2 (Y)
+.fhr_t                  \ a threshold (X: its unclamped word, in f_hct) moved
+ CLC                    \ by dy, and clamped to 0..192 into the record's T1
+ LDA f_hct,X            \ or T2 (Y)
  ADC fh_d+2
- PHA
- LDA f_hcb+PC_TU-MBOX+1,X
+ STA f_hct,X
+ LDA f_hct+1,X
  ADC fh_d+3
+ STA f_hct+1,X
  BMI fht2
  BNE fht3
- PLA
+ LDA f_hct,X
  CMP #193
  BCC fht4
- BCS fht3a
 .fht3
- PLA
-.fht3a
  LDA #192
  BNE fht4
 .fht2
- PLA
  LDA #0
 .fht4
- STA PCB+R_T1,Y
+ STA f_hcb+R_T1,Y
  RTS
 
 \ The planet's colours, every style's the beach ball's (pairs of bytes, even
@@ -2395,10 +2427,10 @@ PB_RESET = &80
 \ slivers less than a pixel wide, which the rasteriser does not draw: so from
 \ z_hi = FC_DOTZ[type] out (gfx-faces.asm: nearer, the faces cover the dot)
 \ the dot is drawn too; and a ship f_ship does not fill (FC_MINVIS) is drawn
-\ as the dot alone. LL10 has left |x| and |y| less than z. The rasteriser's
-\ scratch &20-&25 is free here
+\ as the dot alone. LL10 has left |x| and |y| less than z. Its scratch is
+\ the frame layer's (FZB, free between a ship's faces)
 
-fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
+fsd_zl = fz_p : fsd_zh = fz_p+1 : fsd_rl = fz_q : fsd_q = fz_q+1 : fsd_x = fz_u
 
 .f_sdot
  LDA F_SZL,X            \ (fsd_zh fsd_zl) = z
@@ -2555,7 +2587,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  CPY f_nf
  BCC P%+5
  JMP fsh_done
- LDA f_lv,Y            \ visibility (the levels: f_shpat)
+.^flv_0
+ LDA &FFFF,Y            \ visibility (the levels: f_shpat)
  BEQ fsh_skip
  STA fz_t
  LDY f_fo
@@ -2630,10 +2663,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  BEQ fdt8
  STA f_cnt
  INC fz_q
-.fdt1
- JSR f_item
- DEC f_cnt
- BNE fdt1
+ JMP f_item             \ (each detail, then back at fdt8)
 .fdt8
 .^fsh_t2
  LDA &FFFF              \ the other fins: one face visible, then both (the
@@ -2647,7 +2677,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
 
 \ f_item: draw the detail at offset fz_q in the ship's list if it is within
 \ its visibility distance and face1 or face2 is visible: n = 2 a line, else a
-\ polygon (culled by its winding if XX2 = 255). Then fz_q -> the next item.
+\ polygon (culled by its winding if XX2 = 255). Then fz_q -> the next item,
+\ for each of the f_cnt details (f_ship's loop, in line: it goes on at fdt8).
 
 .f_item
  LDY fz_q
@@ -2659,7 +2690,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LDA &FFFF,Y            \ face1 + 16 * face2 (the list + 1)
  AND #15
  TAY
- LDA f_lv,Y            \ (the levels)
+.^flv_1
+ LDA &FFFF,Y            \ (the levels)
  BNE fit1
  LDY fz_q
 .^fit_q2
@@ -2669,7 +2701,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LSR A
  LSR A
  TAY
- LDA f_lv,Y
+.^flv_2
+ LDA &FFFF,Y
  BEQ fit8
 .fit1
  STA fz_t
@@ -2711,7 +2744,10 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  ADC #4
  ADC fz_q
  STA fz_q
- RTS
+ DEC f_cnt
+ BEQ P%+5
+ JMP f_item
+ JMP fdt8
 
 \ f_itemv: the item at offset fz_q: its colour (lit at the brighter of its two
 \ faces' levels, or unlit), fz_n = n, R_PX/R_PY[0..n-1]
@@ -2720,19 +2756,21 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LDY fz_q               \ face1 + 16 * face2: the brighter level (a hidden
 .^fiv_q1
  LDA &FFFF,Y            \ face's is 0) (the list + 1)
- PHA                    \ keep the byte for face2
+ TAX                    \ keep the byte for face2
  AND #15
  TAY
- LDA f_lv,Y            \ (the levels)
+.^flv_3
+ LDA &FFFF,Y            \ (the levels)
  AND #31
  STA fz_u
- PLA                    \ face1 + 16 * face2 again
+ TXA                    \ face1 + 16 * face2 again
  LSR A
  LSR A
  LSR A
  LSR A
  TAY
- LDA f_lv,Y
+.^flv_4
+ LDA &FFFF,Y
  AND #31
  CMP fz_u
  BCS P%+5
@@ -2791,7 +2829,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LDA &FFFF,Y            \ (the list + 1)
  AND #15
  TAY
- LDA f_lv,Y            \ (the levels)
+.^flv_5
+ LDA &FFFF,Y            \ (the levels)
  BEQ P%+3
  INX
  LDY fz_q
@@ -2802,7 +2841,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LSR A
  LSR A
  TAY
- LDA f_lv,Y
+.^flv_6
+ LDA &FFFF,Y
  BEQ P%+3
  INX
  CPX f_k
@@ -2820,72 +2860,94 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  BNE ffi1
  RTS
 
-\ f_shpat: the ship's faces' levels (fz_dl, in F_SR) into f_lv, and its
-\ face list (fz_ft) and fins and details (fz_dt) into the operands that read
-\ them (each list is shorter than 256 bytes, faces.py: they are read at an
-\ offset in Y, f_fo for the faces, fz_q for the details; a list's byte k
-\ through an operand of the list + k): the operands' values (fsp_vl, fsp_vh,
-\ by kind) then each operand (fsp_al, fsp_ah: its address; fsp_c: its kind)
+\ f_shpat: the ship's faces' levels (fz_dl, in F_SR), its face list (fz_ft)
+\ and its fins and details (fz_dt) into the operands that read them (each
+\ list is shorter than 256 bytes, faces.py: they are read at an offset in Y,
+\ the face's number for the levels, f_fo for the faces, fz_q for the
+\ details; a list's byte k through an operand of the list + k), each
+\ operand stored in line (X Y: the list + k)
 
 .f_shpat
- LDA fz_dl
- STA fsl1+1
- LDA fz_dl+1
- STA fsl1+2
- LDY #15 - 1                \ (the most faces: F_SRN = MAXSH * 15)
-.fsl1
- LDA &FFFF,Y
- STA f_lv,Y
- DEY
- BPL fsl1
- LDX #6                 \ the kinds' values: the face list + 0, 1; the fins
-.fsp1                   \ and details + 0 .. 4
- LDY fsp_kb,X
- LDA fz_ft,Y
- CLC
- ADC fsp_ka,X
- STA fsp_vl,X
- LDA fz_ft+1,Y
- ADC #0
- STA fsp_vh,X
- DEX
- BPL fsp1
- ASSERT fz_dt = fz_ft + 2
- LDX #FSPN - 1          \ each operand
-.fsp2
- LDA fsp_al,X
- STA fsp3+1
- STA fsp4+1
- LDA fsp_ah,X
- STA fsp3+2
- STA fsp4+2
- LDY fsp_c,X
- LDA fsp_vh,Y
- STA fz_t
- LDA fsp_vl,Y
- LDY #0
-.fsp3
- STA &FFFF,Y            \ (its low byte)
+ LDX fz_dl              \ the levels
+ LDY fz_dl+1
+ STX flv_0+1
+ STY flv_0+2
+ STX flv_1+1
+ STY flv_1+2
+ STX flv_2+1
+ STY flv_2+2
+ STX flv_3+1
+ STY flv_3+2
+ STX flv_4+1
+ STY flv_4+2
+ STX flv_5+1
+ STY flv_5+2
+ STX flv_6+1
+ STY flv_6+2
+ STX flv_7+1
+ STY flv_7+2
+ LDX fz_ft              \ the face list + 0, + 1
+ LDY fz_ft+1
+ STX fsh_l1+1
+ STY fsh_l1+2
+ STX fsh_l2+1
+ STY fsh_l2+2
+ STX fsh_l3+1
+ STY fsh_l3+2
+ STX fbh_l1+1
+ STY fbh_l1+2
+ INX
+ BNE P%+3
  INY
- LDA fz_t
-.fsp4
- STA &FFFF,Y            \ (its high byte)
- DEX
- BPL fsp2
+ STX fbh_l2+1
+ STY fbh_l2+2
+ LDX fz_dt              \ the fins and details + 0 to + 4
+ LDY fz_dt+1
+ STX fsh_t1+1
+ STY fsh_t1+2
+ STX fsh_t2+1
+ STY fsh_t2+2
+ STX ffi_t1+1
+ STY ffi_t1+2
+ STX fsh_q0+1
+ STY fsh_q0+2
+ STX fit_q0+1
+ STY fit_q0+2
+ STX ffi_q0+1
+ STY ffi_q0+2
+ INX
+ BNE P%+3
+ INY
+ STX fit_q1+1
+ STY fit_q1+2
+ STX fit_q2+1
+ STY fit_q2+2
+ STX fiv_q1+1
+ STY fiv_q1+2
+ STX ffi_q1+1
+ STY ffi_q1+2
+ STX ffi_q2+1
+ STY ffi_q2+2
+ INX
+ BNE P%+3
+ INY
+ STX fiv_q2+1
+ STY fiv_q2+2
+ STX fpo_q2+1
+ STY fpo_q2+2
+ INX
+ BNE P%+3
+ INY
+ STX fit_q3+1
+ STY fit_q3+2
+ STX fiv_q3+1
+ STY fiv_q3+2
+ INX
+ BNE P%+3
+ INY
+ STX fiv_q4+1
+ STY fiv_q4+2
  RTS
-
-.fsp_kb EQUB 0, 0, 2, 2, 2, 2, 2  \ by kind: the list (0 faces, 2 fins and
-.fsp_ka EQUB 0, 1, 0, 1, 2, 3, 4  \ details) and k
-.fsp_vl SKIP 7
-.fsp_vh SKIP 7
-FSPN = 21
-.fsp_al
- EQUB LO(fsh_l1+1), LO(fsh_l2+1), LO(fsh_l3+1), LO(fbh_l1+1), LO(fbh_l2+1), LO(fsh_t1+1), LO(fsh_t2+1), LO(ffi_t1+1), LO(fsh_q0+1), LO(fit_q0+1), LO(ffi_q0+1), LO(fit_q1+1), LO(fit_q2+1), LO(fiv_q1+1), LO(ffi_q1+1), LO(ffi_q2+1), LO(fiv_q2+1), LO(fpo_q2+1), LO(fit_q3+1), LO(fiv_q3+1), LO(fiv_q4+1)
-.fsp_ah
- EQUB HI(fsh_l1+1), HI(fsh_l2+1), HI(fsh_l3+1), HI(fbh_l1+1), HI(fbh_l2+1), HI(fsh_t1+1), HI(fsh_t2+1), HI(ffi_t1+1), HI(fsh_q0+1), HI(fit_q0+1), HI(ffi_q0+1), HI(fit_q1+1), HI(fit_q2+1), HI(fiv_q1+1), HI(ffi_q1+1), HI(ffi_q2+1), HI(fiv_q2+1), HI(fpo_q2+1), HI(fit_q3+1), HI(fiv_q3+1), HI(fiv_q4+1)
-.fsp_c
- EQUB 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 5, 5, 6
-.f_lv   SKIP 15            \ the ship's faces' levels
 
 \ f_col: A = a face's or item's colour byte, X = the level (0..31): the
 \ colour R_COLE, R_COLO, R_COL2, R_COL3 (rows y AND 3 = 0..3). A = 0..8: entry
@@ -3104,7 +3166,11 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  STA f_tbit
  EOR #3
  STA f_obit
- LDX #23                \ rows 23..0 (each row is independent)
+ LDA f_tany             \ (no row has changed for this buffer)
+ AND f_tbit
+ BNE P%+3
+ RTS
+ LDX f_thi              \ rows f_thi..f_tlo (each row is independent)
 .ft11
  LDA F_TCH,X
  AND f_tbit
@@ -3155,8 +3221,10 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  EOR f_tbit
  STA F_TCH,X
 .ft18x
+ CPX f_tlo
+ BEQ P%+5
  DEX
- BPL ft11
+ BPL ft11               \ (always)
  RTS
 
 \ f_tmark: buffer X's cells that f_mark noted, row by row, marked dirty
@@ -3241,15 +3309,34 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 
 .f_text2
  JSR f_wq               \ the written extents, and the sights' (f_sight2)
- LDX #23                \ rows 23..0 (each row is independent)
+ LDX #&FF               \ (fz_i: the last row with a character, if any)
+ STX fz_i
+ BIT f_tlo              \ (no row to look at)
+ BMI ft2z
+ LDX f_thi              \ rows f_thi..f_tlo (each row is independent)
 .ft21
  LDA F_TMR,X            \ skip empty rows in a tight loop
  BNE ft2r
 .ft29
+ CPX f_tlo
+ BEQ P%+5
  DEX
- BPL ft21
+ BPL ft21               \ (always)
+ LDA f_tany             \ no row is changed for this buffer now; with none
+ AND f_obit             \ for the other either, the rows to look at are
+ STA f_tany             \ those with characters (none: &FF, 0)
+ BNE ft2z
+ LDX fz_i
+ STX f_tlo
+ BMI P%+5
+ LDA f_thn
+ STA f_thi
+.ft2z
  RTS
 .ft2r
+ BIT fz_i               \ (the first seen is the topmost)
+ BPL P%+5
+ STX f_thn
  STX fz_i
  JSR f_rowptr
  LDA F_TCH,X            \ changed for this buffer: the whole row (then it is
@@ -3310,7 +3397,9 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  STA MBOX+&30
  STA MBOX+&31
  STA MBOX+&32
- LDX #23
+ BIT f_tlo              \ (no row to look at)
+ BMI fwq3
+ LDX f_thi
 .fwq1
  LDA F_TMR,X            \ a row with characters and no change for this buffer
  BEQ fwq2
@@ -3331,8 +3420,11 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  STA MBOX+&30,Y
  LDX fz_t
 .fwq2
+ CPX f_tlo
+ BEQ fwq3
  DEX
- BPL fwq1
+ BPL fwq1               \ (always)
+.fwq3
  LDX F_BACK             \ the sights, if they are drawn in this buffer and to
  LDA GSIGHT             \ stay (f_sight2)
  BEQ P%+5
@@ -3432,11 +3524,15 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  LDA f_nib,X
  BEQ fgl3
  AND fglm+1             \ (not over a border pixel)
- EOR #&FF               \ blacked first
-.fgla
+ EOR #&FF               \ blacked, and the glyph's pixels set, in one read
+.fgla                   \ and one write of the cell
  AND &FFFF,Y            \ (patched: the cell's address)
-.fglb
- STA &FFFF,Y            \ (patched: the cell's address)
+ STA f_gq
+ LDX f_gn
+ LDA f_nib,X
+ AND fglm+1
+ ORA f_gq
+ JMP fgls
 .fgl6
  LDX f_gn
  LDA f_nib,X
@@ -3488,7 +3584,6 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  STA fglo+2
  STA fgls+2
  STA fgla+2
- STA fglb+2
  TXA                     \ 8 * col (C = 0: col < 32)
  ASL A
  ASL A
@@ -3504,12 +3599,10 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  STA fglo+1
  STA fgls+1
  STA fgla+1
- STA fglb+1
  BCC fgc9
  INC fglo+2
  INC fgls+2
  INC fgla+2
- INC fglb+2
 .fgc9
  RTS
 
@@ -3717,7 +3810,8 @@ SGOUT = 20
  LDY f_f
  CPY f_nf
  BCS fbh8
- LDA f_lv,Y            \ (the levels: f_shpat)
+.^flv_7
+ LDA &FFFF,Y            \ (the levels: f_shpat)
  BNE fbh2
  LDY fz_p               \ skip this face's list entry (n + 16 * its hue ramp,
 .^fbh_l1

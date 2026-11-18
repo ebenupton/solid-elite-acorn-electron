@@ -48,13 +48,13 @@
 | bank 5 | `&B15D-&B3FF` | the room below the per-x tables: `R_DOT`, `r_wq`, `pf_tilt` | 556 | 119 |
 | bank 5 | `&B400-&BFC9` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 3018 | 0 |
 | bank 5 | `&BFCA-&BFFF` | `RJT`, the jump table | 45 | 9 |
-| bank 6 | `&8000-&8145` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 0 | 326 |
-| bank 6 | `&8146-&AA3E` | the frame layer's code (bank 6 passes) | 10489 | 0 |
-| bank 6 | `&AA3F-&AEBC` | the faces' and the lighting's tables | 1150 | 0 |
-| bank 6 | `&AEBD-&B18A` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
-| bank 6 | `&B18B-&B1FF` | (free: the page-aligned state that follows is placed as high as it goes) | 0 | 117 |
+| bank 6 | `&8000-&8045` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 0 | 70 |
+| bank 6 | `&8046-&A9F0` | the frame layer's code (bank 6 passes) | 10667 | 0 |
+| bank 6 | `&A9F1-&AE6E` | the faces' and the lighting's tables | 1150 | 0 |
+| bank 6 | `&AE6F-&B13C` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
+| bank 6 | `&B13D-&B1FF` | (free: the page-aligned state that follows is placed as high as it goes) | 0 | 195 |
 | bank 6 | `&B200-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 24 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 3167, main RAM (flight) 24, main RAM (docked) 1228, bank 4 (flight) 521, bank 4 (docked) 2696, bank 7 (flight) 775, bank 7 (docked) 5022, bank 5 781, bank 6 483.
+Free, by place: main RAM 3167, main RAM (flight) 24, main RAM (docked) 1228, bank 4 (flight) 521, bank 4 (docked) 2696, bank 7 (flight) 775, bank 7 (docked) 5022, bank 5 781, bank 6 305.

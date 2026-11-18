@@ -1326,12 +1326,13 @@ ENDMACRO
 
 \ ******************************************************************************
 \
-\ PC_ROWS (the planet: slots 0 .. PC_N - 1, base colour pc_inv): the disc
-\ layer's boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). Every
-\ row starts with no boundary and the base colour; then each record in turn:
-\ its left limb's toggles flip the start colour of the rows from T1 or T2
-\ down, and, unless every row is wholly outside its region, its rows from Yc
-\ out, down and up.
+\ PC_ROWS (the planet's records as the frame's f_hrec has them, in this
+\ bank: f_hcb, slots 0 .. f_hcn - 1, base colour f_hci): the disc layer's
+\ boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). Every row
+\ starts with no boundary and the base colour; then each record in turn: its
+\ left limb's toggles flip the start colour of the rows from T1 or T2 down,
+\ and, unless every row is wholly outside its region, its rows from Yc out,
+\ down and up.
 \ Called by f_bounds (bank 6; the Master port's through T_CAPS), during
 \ the frame, with this bank paged; its scratch is this bank's (PZB,
 \ gfx-bank6.asm).
@@ -1368,14 +1369,14 @@ ZS  = PZB + 12          \ s = round(sqrt(D(k))), the half-chord; 0 once past
 \ to the next head (PR_HEADS), so that a row tests no flag. The whole of a row is in line: no call
 \ is made and nothing is pushed for a row or a crossing.
 
-\ PR_LT: the left limb toggle of the record's half at PCB + X, if it has one,
-\ to pr_lt + Y (in line in PC_ROWS, twice)
+\ PR_LT: the left limb toggle of the record's half at f_hcb + X, if it has
+\ one, to pr_lt + Y (in line in PC_ROWS, twice)
 
 MACRO PR_LT
- LDA PCB+R_M1,X
+ LDA f_hcb+R_M1,X
  LSR A
  BCC n
- LDA PCB+R_T1,X
+ LDA f_hcb+R_T1,X
  STA pr_lt,Y
  INY
 .n
@@ -1574,7 +1575,7 @@ ENDMACRO
 
 .PC_ROWS
  LDX #0
- LDY PC_N
+ LDY f_hcn
  STX pr_n
  STY pr_end
  LDY #0                 \ the records' left limb toggles: the start colour of
@@ -1592,7 +1593,7 @@ ENDMACRO
  BNE pcr1
 .pcr4
  STY pr_lc
- LDA pc_inv             \ every row: no boundary, the base colour (bit 0, to
+ LDA f_hci              \ every row: no boundary, the base colour (bit 0, to
  LSR A                  \ bit 7: R_NDN's) EOR the toggles so far
  LDA #0
  ROR A
@@ -1651,7 +1652,7 @@ ENDMACRO
  LDX #RSZ-1
 .prc1
  DEY
- LDA PCB,Y
+ LDA f_hcb,Y
  STA pr_c,X
  DEX
  BPL prc1

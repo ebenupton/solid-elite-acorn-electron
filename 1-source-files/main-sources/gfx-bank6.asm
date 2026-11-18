@@ -56,7 +56,7 @@
                         \ the zero page's &D2-&E1), first, as the code's
                         \ instructions take it as absolute
 .f_fo   SKIP 1          \ f_ship's offset in the face list
-.PZB    SKIP &18        \ PC_ROWS' scratch (gfx-merid.asm: once &10-&27)
+.PZB    SKIP &18        \ PC_ROWS' scratch (gfx-merid.asm), and f_hrec's
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"
@@ -78,9 +78,12 @@ F_SRN = MAXSH * 15      \ (the most faces is 15)
 .F_SLV  SKIP 52         \ the docking slot's vertices, as R_PXL .. R_PYH + 3
                         \ (f_poly2, f_slot: gfx-frame_cold.asm; x high of
                         \ vertex 0, F_SLV+16, &80: none)
-.f_hcb  SKIP PCX_END-MBOX \ f_hrec's: the planet's records kept (the mailbox's
-.f_hcx  SKIP 4          \ &00 to PC_TU's end), the disc's centre then, and
-.f_hval SKIP 1          \ whether there are any (bit 7)
+.f_hcb  SKIP PCX_END-MBOX \ f_hrec's: the planet's records kept, for PC_ROWS
+f_hcn = f_hcb + PC_N - MBOX     \ (as the mailbox's &00 to PC_TU's end: how
+f_hci = f_hcb + pc_inv - MBOX   \ many, the base colour, the unclamped
+f_hct = f_hcb + PC_TU - MBOX    \ thresholds), the disc's centre then, and
+.f_hcx  SKIP 4          \ whether there are any (bit 7)
+.f_hval SKIP 1
 .f_pph  SKIP 1          \ F_PFHOLD's: bit 7, records were made; the radius,
 .f_plr  SKIP 1          \ TYPE, VIEW and MCNT of its last call
 .f_plt  SKIP 1
