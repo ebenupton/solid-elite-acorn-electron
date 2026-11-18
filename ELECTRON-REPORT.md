@@ -76,6 +76,41 @@ row (`y AND 3`), which is the form the rasteriser already takes its colours
 in (`R_COLE`, `R_COLO`, `R_COL2`, `R_COL3`). The tables are made by a
 checked-in generator (`2-build-files/lightramps.py`).
 
+## The Electron's differences, and what was redesigned
+
+* **No 6522 VIA.** The Model B port's mid-line ULA clock switches (the
+  "rupture" between a 2 MHz screen and the 1 MHz dashboard, timed by the
+  user VIA's timer 1) are gone with the CRTC: the whole screen is MODE 5,
+  and each of the two buffers holds its own copy of the dashboard
+  (decided with the user: two full 10K screens, flipped whole, the
+  dashboard drawn into both). The interrupt handler (`IRQG`, resident block
+  A) runs on the ULA's display-end interrupt, once a field after line 256:
+  it sets `DL` for `WSCAN`, decrements `LASCT`, writes the CMYK palette back
+  (the energy bomb's flash turns colour 0 white for a field) and carries out
+  the frame layer's flip through the screen start address (`&FE03`, latched
+  by the ULA at the next field's start), with the 25 frames a second cap of
+  the Model B port; then it passes the interrupt on to the MOS, which clears
+  it. No game code touches the System VIA's old addresses (on the Electron
+  they mirror the ULA's registers): the joystick's fire button reads as up
+  and `MT26` no longer enables the VIA's CA2 interrupt.
+* **Paging** is through `&FE05` (`ROMSEL` in `elite-map.asm`); bank numbers
+  12-15 or 0-7 clear no interrupts when written there. `PROBE` skips the
+  keyboard and BASIC slots (8-11) and pages slot 12 before testing a slot
+  from 0 to 7 (the ULA ignores a write of 0-7 while 8-11 is paged).
+* **Keyboard.** `DKS4` and `RDKEY` read the keyboard through the MOS's
+  `KEYV` (a single key, or a scan from key 16), which pages the keyboard ROM
+  in and out itself. The Electron has no function keys: FUNC (CAPS LK) with
+  a digit is the BBC Micro's function key of that number, as in Acornsoft's
+  Electron Elite, so the game sees the BBC Micro's key numbers throughout.
+  `TT217` translates keys through a copy of the BBC MOS 1.20's table
+  (`KTRAN`, in the docked code's home bank), as the Electron's MOS has none.
+* **Disc.** The ACP 1770 DFS behaves as the Model B's DFS for the game's
+  purposes: `OSWORD &7F` reads sectors (`CATD`), and its NMI code stays
+  below `&0D7A`. Two differences: it takes `*L.` for another command, so the
+  loader says `LOAD P.DIALS` in full; and its workspace, `&0E00-&18FF`, is
+  below the screens, so `dfsin` and `dfsout` (which on the Model B kept
+  DFS's page out of buffer 0) have nothing to do.
+
 ## Memory map (being built)
 
 Main RAM is 1 MHz on the Electron (and stalls behind the ULA), sideways RAM
