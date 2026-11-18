@@ -21053,6 +21053,11 @@ ENDMACRO
  LSR A                  \ of the dashboard's rows 24 to 30
  TAX
 
+ CPX #31                \ Port: draw nothing outside the dashboard's rows (the
+ BCS cpx9               \ scanner can ask for a row beyond them, which the
+ CPX #24                \ original's screen, with the dashboard last, absorbed:
+ BCC cpx9               \ here DROWL would give an address outside the screen)
+
  LDA X1                 \ Each character block contains 8 pixel rows, so to get
  AND #%11111000         \ the address of the first byte in the character block
                         \ that we need to draw into, as an offset from the start
@@ -21133,6 +21138,8 @@ ENDMACRO
  EOR (SC),Y             \ Draw the dash's right pixel according to the mask in
  STA (SC),Y             \ A, with the colour in COL, using EOR logic, just as
  STA (SC0),Y            \ above (Port: in both buffers)
+
+.cpx9
 
  RTS                    \ Return from the subroutine
 

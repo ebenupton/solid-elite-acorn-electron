@@ -332,6 +332,7 @@ public:
 				break;
 				case 0xfe05:
 					if(!is_read(operation)) {
+						if(fe05_hook) fe05_hook(*value);
 						const uint8_t interruptDisable = (*value)&0xf0;
 						if( interruptDisable ) {
 							if( interruptDisable&0x10 ) interrupt_status_ &= ~Interrupt::DisplayEnd;
@@ -821,6 +822,7 @@ private:
 	std::function<void(uint8_t, uint16_t, uint8_t)> swram_write_hook;	// a store into sideways RAM: slot, address, value
 	std::function<void(uint16_t, bool, bool, int)> ram_access_hook;		// every main-RAM bus cycle: address, write, opcode fetch, its cycles
 	std::function<void(uint64_t, int, uint8_t)> sound_hook;	// clkh: a write to &FE06 or &FE07: the cycle (2 MHz), 6 or 7, the value
+	std::function<void(uint8_t)> fe05_hook;	// clkh: a write to &FE05 (the value)
 	std::function<void(uint16_t, uint8_t)> ram_write_hook;			// a store into main RAM: address, value
 	int count_from_line = 200;
 	bool rom_image_[16] = {};	// clkh: the slots that hold a ROM's image (the others: sideways RAM, or empty)

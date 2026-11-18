@@ -43,7 +43,7 @@ function files(img) {
 async function elkSession(b, tag, full) {
     const sy = b.progs.flight.sy;
     const d = new ElkDriver(b);
-    const key = (k, hold = 0.15, after = 0.8) => d.key(k, hold, after);
+    const key = (k, hold = 0.6, after = 0.8) => d.key(k, hold, after);   // (held long enough for a slow frame's key read)
     const type = t => { for (const c of t) key(c === "." ? "PERIOD" : c, 0.1, 0.3); };
     let shot = 0;
     const snap = name => writeFileSync(`${OUT}/${tag}-${String(shot++).padStart(2, "0")}-${name}.png`, d.shot());
@@ -54,31 +54,31 @@ async function elkSession(b, tag, full) {
     key("N"); d.secs(3); key("SPACE"); d.secs(4); snap("docked");
     const MARK = [0x00, 0x01, 0xe2, 0x40];
     setCash(MARK);
-    key("AT", 0.15, 1.5); snap("menu");
-    key("K2", 0.15, 1.5);
+    key("AT", 0.6, 1.5); snap("menu");
+    key("K2", 0.6, 1.5);
     type("TESTA"); key("RETURN", 0.1, 1.5);
-    key("K0", 0.15, 8); snap("saved");
+    key("K0", 0.6, 8); snap("saved");
     d.secs(4);                                // (CLK writes the disc's changes back when the motor stops)
     const img = readFileSync(d.e.discPath);
     writeFileSync(`${OUT}/${tag}-disc-after.ssd`, img);
     const fl = files(img);
     const res = { saved: fl["E.TESTA"] ? Buffer.from(fl["E.TESTA"]) : null, files: Object.keys(fl) };
     if (!full) { d.kill(); return res; }
-    key("SPACE", 0.15, 2);
+    key("SPACE", 0.6, 2);
     setCash([0, 0, 0, 7]);
-    key("AT", 0.15, 1.5); key("K1", 0.15, 1.5);
+    key("AT", 0.6, 1.5); key("K1", 0.6, 1.5);
     type("TESTA"); key("RETURN", 0.1, 1.5);
-    key("K0", 0.15, 8); snap("loaded");
+    key("K0", 0.6, 8); snap("loaded");
     res.cashOk = cash().every((x, i) => x === MARK[i]);
     console.log("CASH after load:", cash().map(x => x.toString(16)).join(" "), res.cashOk ? "matches" : "DOES NOT MATCH");
-    key("SPACE", 0.15, 2); key("F8", 0.15, 2);
-    key("AT", 0.15, 1.5); key("K1", 0.15, 1.5);
+    key("SPACE", 0.6, 2); key("F8", 0.6, 2);
+    key("AT", 0.6, 1.5); key("K1", 0.6, 1.5);
     type("QQ"); key("RETURN", 0.1, 1.5);
-    key("K0", 0.15, 6); snap("error");
-    key("SPACE", 0.15, 2); key("F8", 0.15, 2); snap("after-error");
-    key("AT", 0.15, 1.5); key("K3", 0.15, 1.5); key("K0", 0.15, 6); snap("catalogue");
-    key("SPACE", 0.15, 2); key("F8", 0.15, 2);
-    key("F0", 0.2, 30); snap("launched");     // (the Electron's launch: the
+    key("K0", 0.6, 6); snap("error");
+    key("SPACE", 0.6, 2); key("F8", 0.6, 2); snap("after-error");
+    key("AT", 0.6, 1.5); key("K3", 0.6, 1.5); key("K0", 0.6, 6); snap("catalogue");
+    key("SPACE", 0.6, 2); key("F8", 0.6, 2);
+    key("F0", 0.6, 30); snap("launched");     // (the Electron's launch: the
     res.flying = d.n.flying;                  // flight code's load and the
                                               // tunnel take longer)
     console.log("flight loop iterations after the launch:", res.flying);

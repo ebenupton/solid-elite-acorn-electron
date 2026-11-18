@@ -55,6 +55,7 @@ struct Server {
 	// wlog: writes to logged addresses, with the writer's PC and slot (a text list)
 	std::vector<uint8_t> wlogm = std::vector<uint8_t>(32768, 0);
 	std::string wlogtxt;
+	bool swl_on = false; unsigned swl_slot = 0, swl_addr = 0;
 	// hist: the last 4096 opcode fetches (pc, slot)
 	uint32_t histv[4096] = {}; uint32_t histp = 0;
 
@@ -239,6 +240,8 @@ struct Server {
 	void install() {
 		m.opcode_hook = [this](uint16_t pc, uint8_t rom, uint8_t) { on_opcode(pc, rom); };
 		m.ram_write_hook = [this](uint16_t a, uint8_t v) { on_write(a, v); };
+		m.swram_write_hook = [this](uint8_t rom, uint16_t a, uint8_t v) { if(swl_on && rom == swl_slot && a == swl_addr && wlogtxt.size() < 200000) { char b[80]; std::snprintf(b, sizeof b, "sw %u:%04x=%02x pc=%04x slot=%u\n", rom, a, v, lpc, unsigned(lrom)); wlogtxt += b; } };
+		m.fe05_hook = [this](uint8_t v) { histv[histp++ & 4095] = 0xFE050000u | uint32_t(lpc); histv[histp++ & 4095] = 0xFE060000u | v; };
 		m.ram_access_hook = nullptr;
 	}
 	// serve commands until a "run" (or quit); called at top level and from a stop
@@ -299,7 +302,8 @@ struct Server {
 		if(c == "cyc") { send(std::to_string(m.total_cycles)); return false; }
 		if(c == "fields") { send(std::to_string(m.video_.fields_completed)); return false; }
 		if(c == "wlog") { for(size_t i = 1; i < a.size(); i++) wlogm[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
-		if(c == "hist") { std::string t; char b[32]; for(uint32_t k = 0; k < 4096; k++) { const uint32_t v = histv[(histp + k) & 4095]; std::snprintf(b, sizeof b, "%04x %u\n", v & 0xffff, v >> 16); t += b; } send(t); return false; }
+		if(c == "hist") { std::string t; char b[32]; for(uint32_t k = 0; k < 4096; k++) { const uint32_t v = histv[(histp + k) & 4095]; if((v >> 16) == 0xFE05) std::snprintf(b, sizeof b, "W05pc %04x\n", v & 0xffff); else if((v >> 16) == 0xFE06) std::snprintf(b, sizeof b, "W05v %02x\n", v & 0xff); else std::snprintf(b, sizeof b, "%04x %u\n", v & 0xffff, v >> 16); t += b; } send(t); return false; }
+		if(c == "swlog") { swl_on = true; swl_slot = unsigned(num(1)); swl_addr = unsigned(num(2)); return false; }
 		if(c == "wlogget") { send(wlogtxt); wlogtxt.clear(); return false; }
 		if(c == "watch") { for(size_t i = 1; i < a.size(); i++) watch[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
 		if(c == "dump") { dump(m, a.size() > 1 ? a[1] : "dump"); send("ok"); return false; }

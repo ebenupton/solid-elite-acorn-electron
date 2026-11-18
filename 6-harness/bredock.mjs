@@ -21,17 +21,17 @@ if (isElectron(b)) {
     const d = new ElkDriver(b);
     const snap = n => writeFileSync(`${OUT}/${n}.png`, d.shot());
     d.count("doe", "docked", "DOENTRY");
-    d.secs(40); d.key("N"); d.secs(3); d.key("SPACE"); d.secs(4);
+    d.secs(40); d.key("N", 1); d.secs(3); d.key("SPACE", 1); d.secs(4);   // (held a second: the title draws a few frames a second, reading the keys once each)
     snap("0-docked");
     d.wr(sy.DKCMP, [0xff]);
     let ok = true;
     for (let n = 1; n <= 2; n++) {
-        d.key("F0", 0.2, 15); snap(`${n}-launched`);
+        d.key("F0", 1, 15); snap(`${n}-launched`);
         d.key("C", 1, 1);
         let t = 0; while (d.n.doe < n && t < LIMIT) { d.secs(1); t++; if (t === 10) snap(`${n}-docking`); }
         console.log(`docking ${n}: ${d.n.doe >= n ? `docked after ${t} s` : `NOT DOCKED after ${LIMIT} s`}`);
         if (d.n.doe < n) { ok = false; snap(`${n}-failed`); break; }
-        d.secs(10); d.key("SPACE", 0.2, 3); snap(`${n}-docked`);
+        d.secs(10); d.key("SPACE", 1, 3); snap(`${n}-docked`);
     }
     d.kill();
     console.log(ok ? "REDOCK PASS" : "REDOCK FAIL");
