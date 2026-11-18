@@ -306,6 +306,7 @@ export const RELOC_EXCLUDE = {
     V: [2, "temporary; the token printers leave V(1 0) pointing into the token tables"],
     "P+1": [2, "temporary; BULB leaves P(2 1) pointing at a bulb's character data (SPBT, ECBT)"],
     "&A8": [1, "the port's drawing colour (LCOL, elite-map.asm), in the MOS's OSCLI workspace"],
+    "&A9": [2, "the port's dashboard pointer into buffer 0 (SC0, elite-map.asm), in the MOS's OSCLI workspace"],
 };
 // Drawing temporaries and heaps: excluded with --loose (for builds whose drawing
 // differs; the pilot and the game logic never read them across iterations)

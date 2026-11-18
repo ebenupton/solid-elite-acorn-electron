@@ -287,3 +287,12 @@
                         \ pixels; in zero page at &A8, in the MOS's OSCLI
                         \ workspace (each drawing sets it first, and nothing
                         \ draws in a disc command)
+
+ SC0 = &A9              \ The dashboard's second screen pointer, SC0(1 0) =
+                        \ SC(1 0) - BUFD: the same byte in buffer 0 as SC(1 0)
+                        \ in buffer 1. The routines that draw on the dashboard
+                        \ set both and write each byte through both, so that
+                        \ the two buffers' dashboards stay identical (and an
+                        \ EOR read from buffer 1 is right for buffer 0 too);
+                        \ in zero page at &A9-&AA, in the MOS's OSCLI workspace
+                        \ after LCOL (each drawing sets it first)

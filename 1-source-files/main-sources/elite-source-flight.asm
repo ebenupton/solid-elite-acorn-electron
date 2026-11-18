@@ -8918,11 +8918,13 @@ ENDIF
 
 .DIALS
 
- LDA #&D0               \ Set SC(1 0) = &78D0, which is the screen address for
+ LDA #LO(PANEL% + &D0)  \ Set SC(1 0) = &78D0, which is the screen address for
  STA SC                 \ the character block containing the left end of the
- LDA #HI(PANEL%)        \ top indicator in the right part of the dashboard, the
- STA SC+1               \ one showing our speed (Port: the dashboard is at
-                        \ PANEL%, the original's &7800)
+ STA SC0                \ top indicator in the right part of the dashboard, the
+ LDA #HI(PANEL% + &D0)  \ one showing our speed (Port: PANEL% + &D0, the
+ STA SC+1               \ original's &7800 + &D0, and SC0(1 0) the same in
+ LDA #HI(PANEL% + &D0 - BUFD)   \ buffer 0)
+ STA SC0+1
 
  JSR PZW                \ Call PZW to set A to the colour for dangerous values
                         \ and X to the colour for safe values
@@ -9150,11 +9152,13 @@ ENDIF
 \
 \ ******************************************************************************
 
- LDA #HI(PANEL%)        \ Set SC(1 0) = &7810, which is the screen address for
-                        \ (Port: PANEL% + &10)
- STA SC+1               \ the character block containing the left end of the
- LDA #&10               \ top indicator in the left part of the dashboard, the
- STA SC                 \ one showing the forward shield
+ LDA #LO(PANEL% + &10)  \ Set SC(1 0) = &7810, which is the screen address for
+ STA SC                 \ the character block containing the left end of the
+ STA SC0                \ top indicator in the left part of the dashboard, the
+ LDA #HI(PANEL% + &10)  \ one showing the forward shield (Port: PANEL% + &10,
+ STA SC+1               \ and SC0(1 0) the same in buffer 0)
+ LDA #HI(PANEL% + &10 - BUFD)
+ STA SC0+1
 
  LDA FSH                \ Draw the forward shield indicator using a range of
  JSR DILX               \ 0-255, and increment SC to point to the next indicator
@@ -9392,13 +9396,16 @@ ENDIF
                         \ in the mask byte in A
 
  STA (SC),Y             \ Draw the shape of the mask on pixel row Y of the
-                        \ character block we are processing
+ STA (SC0),Y            \ character block we are processing (Port: in both
+                        \ buffers, as each store below)
 
  INY                    \ Draw the next pixel row, incrementing Y
  STA (SC),Y
+ STA (SC0),Y
 
  INY                    \ And draw the third pixel row, incrementing Y
  STA (SC),Y
+ STA (SC0),Y
 
  TYA                    \ Add 6 to Y, so Y is now 8 more than when we started
                         \ this loop iteration (C is always set here, both from
@@ -9466,11 +9473,16 @@ ENDIF
 
 .DL6
 
- INC SC+1               \ Increment the high byte of SC to point to the next
-                        \ character row on-screen (as each row takes up exactly
-                        \ one page of 256 bytes) - so this sets up SC to point
-                        \ to the next indicator, i.e. the one below the one we
-                        \ just drew
+ LDA SC                 \ Move SC(1 0) and SC0(1 0) to the next character row
+ CLC                    \ on-screen, so they point to the next indicator, i.e.
+ ADC #LO(SCRROW)        \ the one below the one we just drew (Port: a row is
+ STA SC                 \ SCRROW bytes, where the original's is a page, which
+ STA SC0                \ it moved on to with INC SC+1)
+ LDA SC+1
+ ADC #HI(SCRROW)
+ STA SC+1
+ SBC #HI(BUFD) - 1      \ (the C flag is clear, so this subtracts HI(BUFD), and
+ STA SC0+1              \ it returns set, as DIL2's callers need it)
 
 .DL9
 
@@ -9577,16 +9589,20 @@ ENDIF
 .DLL12
 
  STA (SC),Y             \ Draw the shape of the mask on pixel row Y of the
-                        \ character block we are processing
+ STA (SC0),Y            \ character block we are processing (Port: in both
+                        \ buffers, as each store below)
 
  INY                    \ Draw the next pixel row, incrementing Y
  STA (SC),Y
+ STA (SC0),Y
 
  INY                    \ And draw the third pixel row, incrementing Y
  STA (SC),Y
+ STA (SC0),Y
 
  INY                    \ And draw the fourth pixel row, incrementing Y
  STA (SC),Y
+ STA (SC0),Y
 
  TYA                    \ Add 5 to Y, so Y is now 8 more than when we started
  CLC                    \ this loop iteration, so Y now points to the address
@@ -9598,13 +9614,11 @@ ENDIF
  BCC DLL10              \ blocks to draw, so loop back to DLL10 to display the
                         \ next one along
 
- INC SC+1               \ Increment the high byte of SC to point to the next
-                        \ character row on-screen (as each row takes up exactly
-                        \ one page of 256 bytes) - so this sets up SC to point
-                        \ to the next indicator, i.e. the one below the one we
-                        \ just drew
-
- RTS                    \ Return from the subroutine
+ JMP DL6                \ Move SC(1 0) and SC0(1 0) to the next character row
+                        \ on-screen, so they point to the next indicator, i.e.
+                        \ the one below the one we just drew, and return from
+                        \ the subroutine with the C flag set, as the original
+                        \ does (Port: DIL's DL6, as a row is SCRROW bytes)
 
 .DADD
 
@@ -20860,6 +20874,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw a dash on the compass
+\       Area: cold
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20891,11 +20906,13 @@ ENDMACRO
  STA COL
 
  CMP #&F0               \ If COL is &F0 then the planet/station is in front of
- BNE CPIX2              \ us and we want to draw a double-height dash, so if it
-                        \ isn't &F0 jump to CPIX2 to draw a single-height dash
+ BEQ P%+5               \ us and we want to draw a double-height dash, so if it
+ JMP CPIX2              \ isn't &F0 jump to CPIX2 to draw a single-height dash
 
-                        \ Otherwise fall through into CPIX4 to draw a double-
-                        \ height dash
+ JMP CPIX4              \ Otherwise jump to CPIX4 to draw a double-height dash
+                        \ (Port: DOT is in the cold bank, as COMPAS, its only
+                        \ caller, is in cold 6, so it jumps to CPIX2 and CPIX4
+                        \ on the hot side, where the original falls into CPIX4)
 
 \ ******************************************************************************
 \
@@ -20962,27 +20979,32 @@ ENDMACRO
 
  TAY                    \ Store the y-coordinate in Y
 
- LSR A                  \ Set A = A / 8, so A now contains the character row we
- LSR A                  \ need to draw in (as each character row contains 8
- LSR A                  \ pixel rows)
-
- CLC                    \ Port: the dashboard's rows 24 to 30 are at PANEL%,
- ADC #HI(PANEL%) - 24   \ not &7800 (the original's &60 OR the row)               \ Each character row in Elite's screen mode takes up one
-                        \ page in memory (256 bytes), so we now OR with &60 to
-                        \ get the page containing the dash (see the comments in
-                        \ routine TT26 for more discussion about calculating
-                        \ screen memory addresses)
-
- STA SCH                \ Store the screen page in the high byte of SC(1 0)
+ LSR A                  \ Set X = A / 8, the character row we need to draw in
+ LSR A                  \ (as each character row contains 8 pixel rows), one
+ LSR A                  \ of the dashboard's rows 24 to 30
+ TAX
 
  LDA X1                 \ Each character block contains 8 pixel rows, so to get
  AND #%11111000         \ the address of the first byte in the character block
                         \ that we need to draw into, as an offset from the start
                         \ of the row, we clear bits 0-2
 
- STA SC                 \ Store the address of the character block in the low
-                        \ byte of SC(1 0), so now SC(1 0) points to the
-                        \ character block we need to draw into
+                        \ Port: the original's rows are pages from &6000, so it
+                        \ took the page from the row and the offset as the low
+                        \ byte; here a row is SCRROW bytes, and the dashboard's
+                        \ 128 pixels start at byte SCRX of it, so we add the
+                        \ offset to the row's address in buffer 1 (DROWL and
+                        \ DROWH), and set SC0(1 0) to the same byte in buffer 0
+
+ CLC                    \ Set SC(1 0) and SC0(1 0) to the address of the
+ ADC DROWL-24,X         \ character block we need to draw into
+ STA SC
+ STA SC0
+ LDA DROWH-24,X
+ ADC #0
+ STA SCH
+ SBC #HI(BUFD) - 1      \ (the C flag is clear, so this subtracts HI(BUFD))
+ STA SC0+1
 
  TYA                    \ Set Y to the y-coordinate mod 8, which will be the
  AND #7                 \ number of the pixel row we need to draw within the
@@ -21003,7 +21025,9 @@ ENDMACRO
 
  EOR (SC),Y             \ Draw the pixel on-screen using EOR logic, so we can
  STA (SC),Y             \ remove it later without ruining the background that's
-                        \ already on-screen
+ STA (SC0),Y            \ already on-screen (Port: and in buffer 0, whose
+                        \ dashboard is the same as buffer 1's, so the byte
+                        \ EOR'd with buffer 1's is right for both)
 
  LDA CTWOS+1,X          \ Fetch a mode 5 one-pixel byte with the pixel position
                         \ at X+1, so we can draw the right pixel of the dash
@@ -21017,14 +21041,21 @@ ENDMACRO
  LDA SC                 \ Otherwise the left pixel we drew was at the last
  ADC #8                 \ position of four in this character block, so we add
  STA SC                 \ 8 to the screen address to move onto the next block
-                        \ along (as there are 8 bytes in a character block).
+ STA SC0                \ along (as there are 8 bytes in a character block).
                         \ The C flag was cleared above, so this ADC is correct
 
- LDA CTWOS+1,X          \ Re-fetch the mode 5 one-pixel byte, as we just
+ BCC P%+7               \ Port: the row's 256 bytes can cross a page, so add
+ INC SCH                \ the carry to both high bytes, and clear the C flag
+ INC SC0+1              \ again, as the original leaves it
+ CLC
+
+ LDA #%10001000         \ Re-fetch the mode 5 one-pixel byte, as we just
                         \ overwrote A (the byte will still be the fifth byte
                         \ from the table, which is correct as we want to draw
                         \ the leftmost pixel in the next character along as the
-                        \ dash's right pixel)
+                        \ dash's right pixel; Port: as an immediate, the fifth
+                        \ byte's value, for the room the page crossing above
+                        \ takes)
 
 .CP1
 
@@ -21032,9 +21063,26 @@ ENDMACRO
 
  EOR (SC),Y             \ Draw the dash's right pixel according to the mask in
  STA (SC),Y             \ A, with the colour in COL, using EOR logic, just as
-                        \ above
+ STA (SC0),Y            \ above (Port: in both buffers)
 
  RTS                    \ Return from the subroutine
+
+.DROWL
+
+                        \ Port: the address in buffer 1 of each of the
+                        \ dashboard's character rows 24 to 30, byte SCRX of
+                        \ the row (where the dashboard's 128 pixels start), for
+                        \ CPIX2: the low bytes, then the high bytes
+
+ FOR I%, 24, 30
+  EQUB LO(SCREEN% + I% * SCRROW + SCRX)
+ NEXT
+
+.DROWH
+
+ FOR I%, 24, 30
+  EQUB HI(SCREEN% + I% * SCRROW + SCRX)
+ NEXT
 
 \ ******************************************************************************
 \
@@ -21829,23 +21877,34 @@ ENDMACRO
 
 .BULB
 
- STA SC                 \ Store the low byte of the screen address in SC
+                        \ Port: the bulbs are both in the dashboard's character
+                        \ row 5, at PANEL% + 5 * SCRROW (the original's &7D00),
+                        \ so set SC(1 0) to the bulb's character block there,
+                        \ the row's address plus A, and SC0(1 0) to the same
+                        \ block in buffer 0
+
+ CLC                    \ Set SC(1 0) = PANEL% + 5 * SCRROW + A
+ ADC #LO(PANEL% + 5 * SCRROW)
+ STA SC
+ STA SC0
+ LDA #HI(PANEL% + 5 * SCRROW)
+ ADC #0
+ STA SC+1
+ SBC #HI(BUFD) - 1      \ Set SC0(1 0) = SC(1 0) - BUFD (the C flag is clear)
+ STA SC0+1
 
  STX P+1                \ Set P(2 1) = (Y X)
  STY P+2
 
- LDA #HI(PANEL%) + 5    \ Port: the dashboard is at PANEL%, the original's &7800               \ Set A to the high byte of the screen address, which is
-                        \ &7D as the bulbs are both in the character row from
-                        \ &7D00 to &7DFF
-
- STA SC+1               \ Port: RREN's work (the original's character printer
- LDY #7                 \ ends with it): EOR the eight bytes at P(2 1) onto
-                        \ the screen at SC(1 0)
+ LDY #7                 \ Port: RREN's work (the original's character printer
+                        \ ends with it): EOR the eight bytes at P(2 1) onto
+                        \ the screen at SC(1 0), in both buffers
 .BUL1
 
  LDA (P+1),Y
  EOR (SC),Y
  STA (SC),Y
+ STA (SC0),Y
  DEY
  BPL BUL1
 
@@ -21961,9 +22020,13 @@ ENDMACRO
  ASL A                  \ to 3
  STA T
 
- LDA #49                \ Set SC = 49 - T - (1 - C)
+ LDA #LO(PANEL% + 6 * SCRROW + 49)   \ Set SC = 49 - T - (1 - C)
  SBC T                  \        = 49 - (X * 8) - 1
  STA SC                 \        = 48 - (X * 8)
+ STA SC0                \
+                        \ Port: plus the address of the dashboard's
+                        \ character row 6 in buffer 1, PANEL% + 6 * SCRROW, and
+                        \ in SC0(1 0) in buffer 0, the high bytes below
 
                         \ So the low byte of SC(1 0) contains the row address
                         \ for the rightmost missile indicator, made up as
@@ -21977,9 +22040,12 @@ ENDMACRO
                         \     missile, for X = 1 we hop to the left by one
                         \     character, and so on
 
- LDA #HI(PANEL%) + 6    \ Port: the dashboard is at PANEL%, the original's &7800               \ Set the high byte of SC(1 0) to &7E, the character row
- STA SCH                \ that contains the missile indicators (i.e. the bottom
-                        \ row of the screen)
+ LDA #HI(PANEL% + 6 * SCRROW + 49)   \ Set the high byte of SC(1 0) to &7E, the character row
+ SBC #0                 \ that contains the missile indicators (i.e. the bottom
+ STA SCH                \ row of the screen; Port: the row's, with the borrow)
+ SEC                    \ and SC0(1 0) to SC(1 0) - BUFD
+ SBC #HI(BUFD)
+ STA SC0+1
 
  TYA                    \ Set A to the correct colour, which is a three-pixel
                         \ wide mode 5 character row in the correct colour (for
@@ -21993,9 +22059,9 @@ ENDMACRO
 .MBL1
 
  STA (SC),Y             \ Draw the three-pixel row, and as we do not use EOR
-                        \ logic, this will overwrite anything that is already
+ STA (SC0),Y            \ logic, this will overwrite anything that is already
                         \ there (so drawing a black missile will delete what's
-                        \ there)
+                        \ there; Port: in both buffers)
 
  DEY                    \ Decrement the counter for the next row
 
@@ -27968,6 +28034,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Switch off the E.C.M. and turn off the dashboard bulb
+\       Area: cold
 \
 \ ******************************************************************************
 
@@ -27980,9 +28047,10 @@ ENDIF
  JSR ECBLB              \ Update the E.C.M. indicator bulb on the dashboard
 
  LDA #72                \ Call the NOISE routine with A = 72 to make the sound
- BNE NOISE              \ of the E.C.M. being turned off and return from the
-                        \ subroutine using a tail call (this BNE is effectively
-                        \ a JMP as A will never be zero)
+ JMP NOISE              \ of the E.C.M. being turned off and return from the
+                        \ subroutine using a tail call (Port: a JMP, as ECMOF
+                        \ is in the cold bank, with the bulb, as it runs only
+                        \ when the E.C.M. stops)
 
 \ ******************************************************************************
 \
@@ -36988,13 +37056,13 @@ ENDIF
  BPL VL1                \ If Y is still positive then it correctly points at the
                         \ line above, so jump to VL1 to skip the following
 
- LDY #7                 \ We just decremented Y up through the top of the
+ JSR DRUP               \ We just decremented Y up through the top of the
                         \ character block, so we need to move it to the last row
                         \ in the character above, so set Y to 7, the number of
-                        \ the last row
-
- DEC SC+1               \ Decrement the high byte of the screen address to move
-                        \ to the character block above
+                        \ the last row, and move both screen addresses to the
+                        \ character block above (Port: DRUP, SCRROW bytes up,
+                        \ where the original decremented the high byte of the
+                        \ screen address)
 
 .VL1
 
@@ -37004,7 +37072,8 @@ ENDIF
                         \ stick comes out of the right side of the dot)
 
  EOR (SC),Y             \ Draw the stick on row Y of the character block using
- STA (SC),Y             \ EOR logic
+ STA (SC),Y             \ EOR logic (Port: in both buffers)
+ STA (SC0),Y
 
  DEX                    \ Decrement the (positive) stick height in X
 
@@ -37026,16 +37095,16 @@ ENDIF
                         \ right pixel that the call to CPIX4 finished on)
 
  CPY #8                 \ If the row number in Y is less than 8, then it
- BNE P%+6               \ correctly points at the next line down, so jump to
+ BNE VLL2               \ correctly points at the next line down, so jump to
                         \ VLL2 to skip the following
 
- LDY #0                 \ We just incremented Y down through the bottom of the
+ JSR DRDN               \ We just incremented Y down through the bottom of the
                         \ character block, so we need to move it to the first
                         \ row in the character below, so set Y to 0, the number
-                        \ of the first row
-
- INC SC+1               \ Increment the high byte of the screen address to move
-                        \ to the character block above
+                        \ of the first row, and move both screen addresses to
+                        \ the character block below (Port: DRDN, SCRROW bytes
+                        \ down, where the original incremented the high byte of
+                        \ the screen address)
 
 .VLL2
 
@@ -37046,13 +37115,13 @@ ENDIF
  BNE VL2                \ correctly points at the next line down, so jump to
                         \ VL2 to skip the following
 
- LDY #0                 \ We just incremented Y down through the bottom of the
+ JSR DRDN               \ We just incremented Y down through the bottom of the
                         \ character block, so we need to move it to the first
                         \ row in the character below, so set Y to 0, the number
-                        \ of the first row
-
- INC SC+1               \ Increment the high byte of the screen address to move
-                        \ to the character block above
+                        \ of the first row, and move both screen addresses to
+                        \ the character block below (Port: DRDN, SCRROW bytes
+                        \ down, where the original incremented the high byte of
+                        \ the screen address)
 
 .VL2
 
@@ -37062,7 +37131,8 @@ ENDIF
                         \ stick comes out of the right side of the dot)
 
  EOR (SC),Y             \ Draw the stick on row Y of the character block using
- STA (SC),Y             \ EOR logic
+ STA (SC),Y             \ EOR logic (Port: in both buffers)
+ STA (SC0),Y
 
  INX                    \ Increment the (negative) stick height in X
 
@@ -37070,6 +37140,42 @@ ENDIF
                         \ to draw the next pixel
 
  RTS                    \ Return from the subroutine
+
+.DRDN
+
+                        \ Port: for the sticks, set Y = 0 and move SC(1 0) and
+                        \ SC0(1 0) down a character row (SCRROW bytes), or
+                        \ with DRUP, set Y = 7 and move them up a row (X is
+                        \ kept)
+
+ LDY #0
+ LDA SC
+ CLC
+ ADC #LO(SCRROW)
+ STA SC
+ LDA SC+1
+ ADC #HI(SCRROW)
+ BCC drs                \ (always: the C flag is clear)
+
+.DRUP
+
+ LDY #7
+ LDA SC
+ SEC
+ SBC #LO(SCRROW)
+ STA SC
+ LDA SC+1
+ SBC #HI(SCRROW)
+
+.drs
+
+ STA SC+1               \ Set the high byte, and SC0(1 0) = SC(1 0) - BUFD
+ SEC
+ SBC #HI(BUFD)
+ STA SC0+1
+ LDA SC
+ STA SC0
+ RTS
 
 \ ******************************************************************************
 \
