@@ -190,6 +190,7 @@ export async function runElite(opts) {
     const res = { snaps: [], fsDirty: [], screens: [], screenZone: [], fsShown: 0, fsShownAt: [], iterTimes: [], tt100Times: [], tt100AtIter: [], init: null, keyLog: [], events: [], s, cpu, regions, page0d: [] };
     let started = false, done = false, armPatch = false, iter = 0, tt100 = 0, inGame = false;
     let keysDown = [], lasSaved = -1, curProg = "docked";
+    res.prog = curProg;           // (the program whose hook ran last: eramacc.mjs's labels)
     const progIdx = { flight: 0, docked: 1 };
     const emuSecs = () => e.reg.cycles / 2e6;
     const ctxBase = { rb, rd, sy: fsy, iterOf: () => iter, tt100Of: () => tt100 };
@@ -352,7 +353,7 @@ export async function runElite(opts) {
             for (const id of ev.ids) {
                 const h = hooks[id];
                 if (!h || !live(h)) continue;
-                if (h.prog && curProg !== h.prog.name) { curProg = h.prog.name; e.send(`tprog ${progIdx[curProg]}`); }
+                if (h.prog && curProg !== h.prog.name) { curProg = res.prog = h.prog.name; e.send(`tprog ${progIdx[curProg]}`); }
                 if (fire(h, ev.pc)) break;
             }
         }
