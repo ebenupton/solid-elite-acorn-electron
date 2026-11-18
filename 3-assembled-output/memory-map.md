@@ -12,13 +12,13 @@
 | main RAM | `&0D7A-&0D9D` | `CATD` | 36 | 0 |
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
-| main RAM (flight) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 1248 | 16 |
-| main RAM (docked) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 16 | 1248 |
-| main RAM | `&1E00-&1E9F` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
-| main RAM | `&1EA0-&1F3F` | the missile's blueprint | 160 | 0 |
-| main RAM | `&1F40-&1F4F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
-| main RAM | `&1F50-&1F5F` | the interrupt's variables | 0 | 16 |
-| main RAM | `&1F60-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 59 | 99 |
+| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` and `hotx` | 1289 | 55 |
+| main RAM (docked) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` and `hotx` | 16 | 1328 |
+| main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
+| main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
+| main RAM | `&1F80-&1F8F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
+| main RAM | `&1F90-&1F9F` | the interrupt's variables | 0 | 16 |
+| main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 59 | 35 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&2FFF` | the staging area (`STAGE%`, on over buffer 0 for a program's images) | 0 | 4096 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
@@ -28,8 +28,8 @@
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 4 (docked) | `&8000-&AE0F` | `S%` and the hot pass | 8958 | 2834 |
-| bank 4 (docked) | `&AE10-&B2FF` | the main RAM part's image | 1264 | 0 |
+| bank 4 (docked) | `&8000-&ADBF` | `S%` and the hot pass | 8999 | 2713 |
+| bank 4 (docked) | `&ADC0-&B2FF` | the main RAM part's image | 1344 | 0 |
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
@@ -55,4 +55,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 4218, main RAM (flight) 16, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 2994, bank 7 (flight) 193, bank 7 0, bank 7 (docked) 4784, bank 5 367, bank 6 707.
+Free, by place: main RAM 4154, main RAM (flight) 55, main RAM (docked) 1328, bank 4 (flight) 40, bank 4 (docked) 2873, bank 7 (flight) 193, bank 7 0, bank 7 (docked) 4784, bank 5 367, bank 6 707.

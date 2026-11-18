@@ -1,5 +1,6 @@
 {
   "machine": "electron",
+  "elkKeys": { "AT": ["SHIFT", "0"] },
   "disc": "../5-compiled-game-discs/elite-electron.ssd",
   "flight": { "syms": "flight-symbols.txt", "banks": "flight-banks.txt",
               "images": [["D.CODEH.bin", "H", "8000"], ["D.CODEC.bin", "C", "8000"],

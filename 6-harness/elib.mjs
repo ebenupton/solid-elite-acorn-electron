@@ -42,7 +42,8 @@ export const isElectron = b => machineOf(b) === "electron";
 
 // The BBC Micro's key names (jsbeeb's BBC table, as the tools use them) as
 // the Electron's keys (clkh.mjs's ELK_KEYS); a build.json's "elkKeys" maps
-// any the port puts elsewhere (e.g. { "AT": "COPY" })
+// any the port puts elsewhere (e.g. { "AT": "COPY" }, or a list of keys
+// pressed together, { "AT": ["SHIFT", "0"] })
 export function elkKey(b, name) {
     let over = {};
     try { over = JSON.parse(readFileSync(b.file, "utf8")).elkKeys || {}; } catch { }
@@ -425,8 +426,11 @@ export class ElkDriver {
         }
     }
     key(name, hold = 0.2, after = 1) {
-        const k = elkKey(this.b, name);
-        this.e.key(k, true); this.secs(hold); this.e.key(k, false); this.secs(after);
+        const k = [].concat(elkKey(this.b, name));      // (a list: keys pressed together)
+        for (const x of k) this.e.key(x, true);
+        this.secs(hold);
+        for (const x of k) this.e.key(x, false);
+        this.secs(after);
     }
     shot() { return this.e.shot(); }
     rb(a) { return this.e.rb(a); }

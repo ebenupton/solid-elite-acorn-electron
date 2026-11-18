@@ -23305,15 +23305,43 @@ ENDIF
 
  JSR kbscan
 
- CPX #&40               \ If that is FUNC (CAPS LK), it is a shift, not a key:
- BNE rdk2               \ go on scanning from the key after it
- LDX #&41
- BNE rdk1
+ CPX #&40               \ If that is FUNC (CAPS LK), look for a digit held
+ BNE rdk2               \ with it (the MOS's scan finds keys in the matrix's
+                        \ order, so FUNC can come first)
+ LDY #9
+
+.rdk8
+
+ STY rdk9+1             \ (the digit's index)
+ LDX kbdg,Y
+ JSR kbtest
+.rdk9
+ LDY #0                 \ (the index is patched above)
+ BCS rdk7+2             \ A digit is held with FUNC: its function key
+ DEY
+ BPL rdk8
+
+ LDX #&41               \ No digit: FUNC is a shift, not a key, so go on
+ BNE rdk1               \ scanning from the key after it
 
 .rdk2
 
  TXA                    \ If nothing is pressed, set A = %10000000, as the
  BMI rdk5               \ original's loop leaves it
+
+ CMP #&47               \ The Electron's 0 key reads as both 0 (&27) and the
+ BNE P%+4               \ BBC Micro's @ (&47), its shifted symbol: it is @
+ LDA #&27               \ with SHIFT, else 0
+ CMP #&27
+ BNE rdk10
+ LDX #0                 \ (SHIFT is key 0)
+ JSR kbtest
+ LDA #&27
+ BCC rdk10
+ LDA #&47
+ BNE rdk6               \ (this BNE is effectively a JMP)
+
+.rdk10
 
  LDY #9                 \ If the key is a digit, held with FUNC, it is the
                         \ function key of its number

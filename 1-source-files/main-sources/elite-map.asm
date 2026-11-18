@@ -39,7 +39,7 @@
                         \ code's layout checks it is there)
 
  PROGM% = &1900         \ Each program's main RAM part (its low pass, then the
- PROGM_END% = &1DF0     \ hot pass's main RAM containers), at the start of the
+ PROGM_END% = &1E40     \ hot pass's main RAM containers), at the start of the
                         \ main RAM that DFS leaves (PAGE is &1900), below the
                         \ mailbox. The program's layout copies it into its bank
                         \ 4 image at PROGI% (S%+14 gives it, as staged), and
@@ -154,7 +154,7 @@
 
  PANELROWS = 7          \ The dashboard's character rows
 
- MBOX = &1E00           \ The rasteriser's mailbox (&1E00-&1E9F, after the main
+ MBOX = &1E40           \ The rasteriser's mailbox (&1E40-&1EDF, after the main
                         \ RAM part): its callers' inputs (gfx-rws.asm). Main
                         \ RAM's workspace is one run from here: the mailbox,
                         \ the missile's blueprint, the shared variables
@@ -162,7 +162,7 @@
                         \ circle engine's variables (PFVH%), to VEC
  ASSERT MBOX >= PROGM_END%
 
- MISSILE% = MBOX + &A0  \ The missile's blueprint (&1EA0-&1F3F), where both
+ MISSILE% = MBOX + &A0  \ The missile's blueprint (&1EE0-&1F7F), where both
                         \ blueprint tables point (the original's &7F00 is
                         \ buffer 1's)
 
@@ -170,7 +170,7 @@
                         \ original's VEC, at &7FFE)
 
 
- GVARS = &1F40          \ The filled renderer's shared variables (&1F40-&1F4F,
+ GVARS = &1F80          \ The filled renderer's shared variables (&1F80-&1F8F,
                         \ after the missile's blueprint, which ends there
                         \ without its edges), which the game's hooks, the
                         \ vertical sync interrupt and the frame layer (bank

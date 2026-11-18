@@ -97,7 +97,7 @@ const std::map<std::string, uint16_t> key_names = {
 	{"SPACE", Electron::KeySpace}, {"RETURN", Electron::KeyReturn}, {"LEFT", Electron::KeyLeft},
 	{"RIGHT", Electron::KeyRight}, {"UP", Electron::KeyUp}, {"DOWN", Electron::KeyDown},
 	{"COLON", Electron::KeyColon}, {"SLASH", Electron::KeySlash}, {"SHIFT", Electron::KeyShift},
-	{"CONTROL", Electron::KeyControl}, {"ESCAPE", Electron::KeyEscape}, {"COPY", Electron::KeyCopy},
+	{"CONTROL", Electron::KeyControl}, {"ESCAPE", Electron::KeyEscape}, {"COPY", Electron::KeyCopy}, {"FUNC", Electron::KeyFunc},
 	{"DELETE", Electron::KeyDelete}, {"MINUS", Electron::KeyMinus}, {"SEMICOLON", Electron::KeySemiColon},
 	{"COMMA", Electron::KeyComma}, {"FULLSTOP", Electron::KeyFullStop}, {"BREAK", Electron::KeyBreak},
 	{"A", Electron::KeyA}, {"B", Electron::KeyB}, {"C", Electron::KeyC}, {"D", Electron::KeyD},
