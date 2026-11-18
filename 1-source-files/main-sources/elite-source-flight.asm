@@ -8926,6 +8926,12 @@ ENDIF
  LDA #HI(PANEL% + &D0 - BUFD)   \ buffer 0)
  STA SC0+1
 
+ LDX #0                 \ Port: set DLIX = 0, the number of the indicator that
+ STX DLIX               \ DIL and DIL2 draw next (DL6 counts them: 0 speed, 1
+                        \ roll, 2 pitch, 3 to 6 the energy banks, 7 to 12 the
+                        \ forward and aft shields, fuel, cabin and laser
+                        \ temperatures, altitude), for DLAST
+
  JSR PZW                \ Call PZW to set A to the colour for dangerous values
                         \ and X to the colour for safe values
 
@@ -9369,6 +9375,25 @@ ENDIF
 
  STA COL                \ Store the colour of the indicator in COL
 
+                        \ Port: if the indicator is already drawn with this
+                        \ length and colour, leave it (in both buffers) and
+                        \ just move on to the next one: DLAST keeps each
+                        \ indicator's last length and colour, as Q + 16 * the
+                        \ colour byte's low nibble (Q is 0 to 15, the colour
+                        \ &F0 or &FF), and the X and Y that DIL leaves are dead
+
+ ASL A                  \ Set A = Q + 16 * (COL AND 15)
+ ASL A
+ ASL A
+ ASL A
+ ORA Q
+
+ LDX DLIX               \ If DLAST for this indicator is A, it is drawn: jump
+ CMP DLAST,X            \ to DL6 to move on to the next one
+ BEQ DL6
+
+ STA DLAST,X            \ Otherwise note it, and draw it
+
  LDY #2                 \ We want to start drawing the indicator on the third
                         \ line in this character row, so set Y to point to that
                         \ row's offset
@@ -9478,6 +9503,8 @@ ENDIF
 
 .DL6
 
+ INC DLIX               \ Port: count the indicator done
+
  LDA SC                 \ Move SC(1 0) and SC0(1 0) to the next character row
  CLC                    \ on-screen, so they point to the next indicator, i.e.
  ADC #LO(SCRROW)        \ the one below the one we just drew (Port: a row is
@@ -9528,6 +9555,24 @@ ENDIF
 \ ******************************************************************************
 
 .DIL2
+
+                        \ Port: if the indicator is already drawn with its bar
+                        \ at A, leave it (in both buffers) and just move on to
+                        \ the next one, with X and Y as drawing it leaves them,
+                        \ X = A AND 3 (the bar's pixel in its block) and Y = 33
+
+ LDX DLIX               \ If DLAST for this indicator is A, jump to dl2a
+ CMP DLAST,X
+ BNE dl2a
+
+ AND #3                 \ Set X and Y as drawing the indicator leaves them, and
+ TAX                    \ jump to DL6 to move on to the next indicator
+ LDY #33
+ JMP DL6
+
+.dl2a
+
+ STA DLAST,X            \ Note the bar's position in DLAST, and draw it
 
  LDY #1                 \ We want to start drawing the vertical indicator bar on
                         \ the second line in the indicator's character block, so
@@ -9623,6 +9668,17 @@ ENDIF
                         \ the one below the one we just drew, and return from
                         \ the subroutine with the C flag set, as the original
                         \ does (Port: DIL's DL6, as a row is SCRROW bytes)
+
+.DLIX
+
+ EQUB 0                 \ Port: the indicator that DIL or DIL2 draws next (DIALS)
+
+.DLAST
+
+ FOR I%, 0, 12          \ Port: each indicator's last length and colour (DIL)
+  EQUB &80              \ or bar position (DIL2), as drawn in both buffers;
+ NEXT                   \ &80 matches none, so each is drawn once after the
+                        \ program is loaded (nothing else draws on them)
 
 .DADD
 
@@ -21896,15 +21952,15 @@ ENDMACRO
                         \ the row's address plus A, and SC0(1 0) to the same
                         \ block in buffer 0
 
- CLC                    \ Set SC(1 0) = PANEL% + 5 * SCRROW + A
- ADC #LO(PANEL% + 5 * SCRROW)
+ CLC                    \ Set SC(1 0) = PANEL% + 4 * SCRROW + A, the block a
+ ADC #LO(PANEL% + 4 * SCRROW)   \ row up
  STA SC
- STA SC0
- LDA #HI(PANEL% + 5 * SCRROW)
+ LDA #HI(PANEL% + 4 * SCRROW)
  ADC #0
  STA SC+1
- SBC #HI(BUFD) - 1      \ Set SC0(1 0) = SC(1 0) - BUFD (the C flag is clear)
- STA SC0+1
+
+ JSR DL6                \ Move SC(1 0) down a row, to the bulb's block, and set
+                        \ SC0(1 0) to the same block in buffer 0
 
  STX P+1                \ Set P(2 1) = (Y X)
  STY P+2
@@ -22037,13 +22093,13 @@ ENDMACRO
  ASL A                  \ to 3
  STA T
 
- LDA #LO(PANEL% + 6 * SCRROW + 49)   \ Set SC = 49 - T - (1 - C)
+ LDA #LO(PANEL% + 5 * SCRROW + 49)   \ Set SC = 49 - T - (1 - C)
  SBC T                  \        = 49 - (X * 8) - 1
  STA SC                 \        = 48 - (X * 8)
- STA SC0                \
+                        \
                         \ Port: plus the address of the dashboard's
-                        \ character row 6 in buffer 1, PANEL% + 6 * SCRROW, and
-                        \ in SC0(1 0) in buffer 0, the high bytes below
+                        \ character row 5 in buffer 1, PANEL% + 5 * SCRROW, the
+                        \ high byte below, then moved down to row 6
 
                         \ So the low byte of SC(1 0) contains the row address
                         \ for the rightmost missile indicator, made up as
@@ -22057,12 +22113,11 @@ ENDMACRO
                         \     missile, for X = 1 we hop to the left by one
                         \     character, and so on
 
- LDA #HI(PANEL% + 6 * SCRROW + 49)   \ Set the high byte of SC(1 0) to &7E, the character row
+ LDA #HI(PANEL% + 5 * SCRROW + 49)   \ Set the high byte of SC(1 0) to &7E, the character row
  SBC #0                 \ that contains the missile indicators (i.e. the bottom
- STA SCH                \ row of the screen; Port: the row's, with the borrow)
- SEC                    \ and SC0(1 0) to SC(1 0) - BUFD
- SBC #HI(BUFD)
- STA SC0+1
+ STA SCH                \ row of the screen; Port: row 5's, with the borrow,
+                        \ then DL6 moves SC(1 0) down to row 6 and sets SC0(1 0)
+ JSR DL6                \ to the same byte in buffer 0)
 
  TYA                    \ Set A to the correct colour, which is a three-pixel
                         \ wide mode 5 character row in the correct colour (for
