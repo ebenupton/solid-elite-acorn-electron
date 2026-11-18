@@ -47,7 +47,9 @@ measures the Electron build's main-RAM traffic and profiles it. It needs:
   `~/elite-electron-roms` (or `$ELK_ROMS`);
 * from the port: the labels blib hooks, as now; `DKSX` in each program, the
   instruction after its keyboard read where X holds the key's internal
-  number with bit 7 set if it is down (else `DKS4+17` is used); `LASDEC`
+  number with bit 7 set if it is down (else `DKS4+17` is used), and `DKSL`
+  in the flight program, the same point of `DOKEY`'s own read of the seven
+  primary flight keys; `LASDEC`
   (loader), the interrupt's `DEC LASCT`; `farret` (loader), if far calls
   push a frame (farret's return, the caller's slot, the caller's return);
   the bank numbers in the loader's `BANKS` (`"banks"` in `build.json`), as

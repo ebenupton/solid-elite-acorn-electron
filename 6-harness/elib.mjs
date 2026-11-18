@@ -17,7 +17,8 @@
 //  * the port's DKS4 reads the Electron's keyboard itself: keys are injected
 //    at the label DKSX (the instruction after the read, where X holds the
 //    key's number with bit 7 set if it is down, as at the original's
-//    DKS4+17), or DKS4+17 for a build without it;
+//    DKS4+17), or DKS4+17 for a build without it, and at DKSL, the same
+//    point of DOKEY's own read of the seven primary flight keys;
 //  * the interrupt's DEC LASCT is LASDEC (loader symbols), its bytes DEC
 //    LASCT with the build's own LASCT;
 //  * the write tracking (the filing system's bytes over the compared regions,
@@ -147,6 +148,7 @@ export async function runElite(opts) {
     };
     const remove = h => { e.bpDel(h.id, h.a); hooks[h.id] = null; };
     for (const pn of ["flight", "docked"]) for (const [k, h] of Object.entries(H[pn])) add(k, h);
+    add("DKS4", hookOf(P.flight, "DKSL"));     // (DOKEY's own read of the primary flight keys, as DKSX)
     const deadPend = [];
     let deadSeed = 0x2545F491;
     const deadRnd = () => { deadSeed ^= deadSeed << 13; deadSeed ^= deadSeed >>> 17; deadSeed ^= deadSeed << 5; return deadSeed >>> 0; };

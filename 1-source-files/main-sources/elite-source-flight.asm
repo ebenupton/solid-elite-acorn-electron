@@ -28151,6 +28151,13 @@ ENDIF
 
  STY rdy+1              \ Store Y in the LDY at rdy, to restore it at the end
 
+ LDA kbany              \ Port: if kbkeys found no key down in the whole matrix
+ BNE rdk0               \ since the last call here (DOKEY's scan, for DK4's
+ INC kbany              \ call in the same iteration), there is none to scan
+ BNE rdk5               \ for, so return as for no key (and scan next time)
+
+.rdk0
+
  LDX #16                \ Scan the keyboard from key 16 ("Q") up: X = the first
                         \ key pressed, or &FF for none
 
@@ -29040,6 +29047,14 @@ ENDIF
 
  EQUB &27, &30, &31, &11, &12, &13, &34, &24, &15, &26   \ 0 to 9
 
+.kbrow
+
+                        \ Port: the row's bit, in the column that kbkeys reads
+                        \ for it, of each of KYTB's seven primary flight keys
+                        \ (kbkey's low nibbles for ?, Space, <, >, X, S and A)
+
+ EQUB 8, 8, 8, 8, 8, 4, 4
+
  RTS                    \ (DKS3's BPL DKS2-1 returns through the RTS that
                         \ ends the original's DKS4, just before DKS2)
 
@@ -29328,14 +29343,38 @@ ENDIF
 
  STA BSTK               \ Set BSTK = 0 to disable the Bitstik
 
+ JSR kbkeys             \ Port: read the seven primary flight keys' columns of
+                        \ the Electron's keyboard matrix, in one visit to main
+                        \ RAM (and whether any key at all is down, for DK4's
+                        \ RDKEY)
+
  LDY #7                 \ We're going to work our way through the primary flight
                         \ control keys (pitch, roll, speed and laser), so set a
                         \ counter in Y so we can loop through all 7
 
 .DKL2
 
- JSR DKS1               \ Call DKS1 to see if the KYTB key at offset Y is being
-                        \ pressed, and set the key logger accordingly
+                        \ Port: DKS1 and DKS4 in line for KYTB's key Y, from
+                        \ the column that kbkeys read for it
+
+ LDA kbcol-1,Y          \ Set the C flag if the key's row's bit is set in its
+ AND kbrow-1,Y          \ column (the key is pressed)
+ CMP #1
+
+ LDA KYTB,Y             \ Set X to the key's internal number, as DKS4 does,
+ AND #%01111111         \ with bit 7 set if it is pressed
+ BCC P%+4
+ ORA #%10000000
+ TAX
+
+.DKSL
+
+ TXA                    \ (The harness's point, as DKS4's DKSX: X holds the
+                        \ result)
+
+ BPL P%+7               \ If the key is pressed, store &FF in the Y-th byte of
+ LDA #&FF               \ the key logger at KL, as DKS1 does
+ STA KL,Y
 
  DEY                    \ Decrement the loop counter
 
@@ -37900,6 +37939,72 @@ NEXT
 FOR I%, 0, 13
  EQUB HI(&BFFF EOR (1 << I%))
 NEXT
+
+\ ******************************************************************************
+\
+\       Name: kbkeys
+\       Type: Subroutine
+\   Category: Keyboard
+\    Summary: Port: read the primary flight keys' columns of the Electron's
+\             keyboard matrix, and whether any key is down
+\       Area: low
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: DOKEY's read of the keyboard, once an iteration: with the keyboard
+\ paged in (as kbfast, which describes it), read the matrix with every
+\ column's address line low, which gives the rows of every column together
+\ (kbany: zero if no key at all is down), and the column of each of KYTB's
+\ seven primary flight keys (kbcol: as kbkey has them, ? in column 3, Space
+\ in 0, < in 5, > in 4, X and S in 11 and A in 12), for DOKEY to test in
+\ bank 4.
+\
+\ Returns:
+\
+\   A                   Changed (X and Y are kept)
+\
+\ ******************************************************************************
+
+.kbkeys
+
+ SEI                    \ Page the keyboard in, with interrupts off
+ LDA #8
+ STA ROMSEL
+
+ LDA &8000              \ Every column at once: the rows in which a key is
+ AND #&0F               \ down
+ STA kbany
+
+ LDA &BFFF EOR (1 << 3) \ The flight keys' columns
+ STA kbcol
+ LDA &BFFF EOR (1 << 0)
+ STA kbcol+1
+ LDA &BFFF EOR (1 << 5)
+ STA kbcol+2
+ LDA &BFFF EOR (1 << 4)
+ STA kbcol+3
+ LDA &BFFF EOR (1 << 11)
+ STA kbcol+4
+ STA kbcol+5
+ LDA &BFFF EOR (1 << 12)
+ STA kbcol+6
+
+ LDA #12                \ Page the program's bank back in, through bank 12
+ STA ROMSEL
+ LDA &F4
+ STA ROMSEL
+ CLI
+
+ RTS                    \ Return from the subroutine
+
+.kbany
+
+ EQUB 1                 \ Zero if kbkeys found no key down, until RDKEY reads
+                        \ it
+
+.kbcol
+
+ SKIP 7                 \ The columns of KYTB's keys 1 to 7
 
 \ ******************************************************************************
 \

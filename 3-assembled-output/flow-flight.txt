@@ -1,4 +1,4 @@
-hot &8000-&A86D: 71 units, 10112 bytes, 238 free
+hot &8000-&A86D: 71 units, 10145 bytes, 205 free
   &8000    22 S%
   &8016    13 INBAY
   &8023     9 LTLI
@@ -42,35 +42,35 @@ hot &8000-&A86D: 71 units, 10112 bytes, 238 free
   &9397    13 FAROF..FAROF2
   &93A4     7 MAS4
   &93AB   145 SPS1..NORM
-  &943C   129 DKS1..DKS2
-  &94BD   326 DKJ1..DK4
-  &9603    86 TIS2
-  &9659    70 TIS3..DVIDT
-  &969F    60 LL5
-  &96DB   110 LL28
-  &9749   119 L5SET
-  &97C0     4 SHCOL
-  &97C4     6 RECM
-  &97CA    86 H_CIRC
-  &9820    28 MFRAME
-  &983C    11 LL42F
-  &9847    78 H_LL42..H_EE31
-  &9895    89 S_SHIP
-  &98EE   716 L_REC
-  &9BBA  1650 LL9 (Part 1 of 12)..LL9 (Part 6 of 12)
-  &A22C   282 LL61..LL9 (Part 9 of 12)
-  &A346     1 LL9 (Part 9 of 12), drawing
-  &A347     6 LL9 (Part 10 of 12)
-  &A34D     1 LL9 (Part 11 of 12)
-  &A34E     2 LL9 (Part 12 of 12)
-  &A350     1 LL9 (Part 12 of 12), drawing
-  &A351   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
-  &A4F5    87 MVT1
-  &A54C   103 MVS4
-  &A5B3    53 MVT6
-  &A5E8   200 MV40
-  &A6B0   208 LYN..SCAN
-hotm &1A94-&1E3F: 0 units, 0 bytes, 940 free
+  &943C   136 DKS1..DKS2
+  &94C4   352 DKJ1..DK4
+  &9624    86 TIS2
+  &967A    70 TIS3..DVIDT
+  &96C0    60 LL5
+  &96FC   110 LL28
+  &976A   119 L5SET
+  &97E1     4 SHCOL
+  &97E5     6 RECM
+  &97EB    86 H_CIRC
+  &9841    28 MFRAME
+  &985D    11 LL42F
+  &9868    78 H_LL42..H_EE31
+  &98B6    89 S_SHIP
+  &990F   716 L_REC
+  &9BDB  1650 LL9 (Part 1 of 12)..LL9 (Part 6 of 12)
+  &A24D   282 LL61..LL9 (Part 9 of 12)
+  &A367     1 LL9 (Part 9 of 12), drawing
+  &A368     6 LL9 (Part 10 of 12)
+  &A36E     1 LL9 (Part 11 of 12)
+  &A36F     2 LL9 (Part 12 of 12)
+  &A371     1 LL9 (Part 12 of 12), drawing
+  &A372   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
+  &A516    87 MVT1
+  &A56D   103 MVS4
+  &A5D4    53 MVT6
+  &A609   200 MV40
+  &A6D1   208 LYN..SCAN
+hotm &1ADD-&1E3F: 0 units, 0 bytes, 867 free
 hotx &1100-&18FF: 10 units, 2046 bytes, 2 free
   &1100   349 Main flight loop (Part 13 of 16)..SPIN
   &125D   187 DOCKIT
@@ -86,7 +86,7 @@ hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free
   &2C50    14 MAS2
   &2C5E   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
   &2EA1   351 KS3..SFX
-hots &2450-&2C4F: 24 units, 1326 bytes, 722 free
+hots &2450-&2C4F: 24 units, 1336 bytes, 712 free
   &2450    41 SUNSC
   &2479    15 HLOIN2
   &2488   146 BLINE
@@ -102,12 +102,12 @@ hots &2450-&2C4F: 24 units, 1326 bytes, 722 free
   &26F3    45 PLS22..CIRCLE
   &2720    78 TT17
   &276E    14 DPLT
-  &277C    91 RDKEY
-  &27D7   109 EXNO3..KYTB
-  &2844    23 DKS3
-  &285B   162 TIDY
-  &28FD    73 SHPPT
-  &2946    11 LL9F
-  &2951    14 H_PTCLS
-  &295F    14 H_PTCLSE
-  &296D    17 H_DOT
+  &277C   101 RDKEY
+  &27E1   109 EXNO3..KYTB
+  &284E    23 DKS3
+  &2865   162 TIDY
+  &2907    73 SHPPT
+  &2950    11 LL9F
+  &295B    14 H_PTCLS
+  &2969    14 H_PTCLSE
+  &2977    17 H_DOT
