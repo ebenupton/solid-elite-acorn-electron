@@ -75,6 +75,7 @@
 import { runElite, loadBuild, loadRefPatch, loadSyms, progHooks, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, REF_BUILD, CAND_BUILD } from "./blib.mjs";
 import { makePilot, patchCommander, K } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
 import { resolve, dirname } from "path";
 const a = parseArgs({ scene: "value", iters: "value", cand: "value" });
 const CAND = resolve(a.cand || CAND_BUILD);
@@ -131,8 +132,19 @@ async function fly(b, ref, scene, refRun = null, rp = RP) {
     // (CTRL held at TT18's mis-jump test, ee5, or at hyp's, which makes the
     // H key's jump a galactic one)
     const dks = c => c.key === 1 && ((misjump >= it && c.site === "ee5") || (ghyp >= it && c.site === "hyp")) ? true : pilot.dks(c);
-    const r = await runElite({
-        build: b, pilot: { keys, dks, observe: pilot.observe, P }, iters: ITERS, deadRegs: !ref, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: ref ? rp : null, seedBoot,
+    // An Electron candidate runs on clkh (elib.mjs): the PCs the hook below
+    // tests are breakpoints there (elib's opts.hooks, any slot, no
+    // signature), and the hook runs at each stop as it runs at each
+    // instruction on jsbeeb, with the same live tests through elib's cpu
+    const elk = isElectron(b);
+    let hookFn = null;
+    const elkHooks = elk ? (() => {
+        const { hookOf } = progHooks(b, {});
+        const pcs = new Set([...Object.values(R).map(h => h.a), b6.ff_stars9, ...EVENTS.map(n => hookOf("flight", n)?.a)].filter(x => x !== undefined));
+        return [...pcs].map(a => ({ name: "sunslot", a, map: "m", sig: [], fn: ({ pc }) => { hookFn(pc); return false; } }));
+    })() : undefined;
+    const r = await (elk ? runEliteElectron : runElite)({
+        build: b, pilot: { keys, dks, observe: pilot.observe, P }, hooks: elkHooks, iters: ITERS, deadRegs: !ref, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: ref ? rp : null, seedBoot,
         onBoot: s => {
             cpu = s._machine.processor;
             const ph = progHooks(b, cpu);
@@ -166,6 +178,7 @@ async function fly(b, ref, scene, refRun = null, rp = RP) {
                 else for (const [n, h] of EH) if (h && pc === h.a && ph.live(h)) { evc(n); if (parkedNow()) evc(n + "Parked"); if (n === "TT18") jumped = true; break; }
                 return false;
             };
+            if (elk) { hookFn = hook; return; }
             cpu.debugInstruction.add(hook);
             const ex = cpu.execute.bind(cpu);
             cpu.execute = n => { hook(cpu.pc); return ex(n); };

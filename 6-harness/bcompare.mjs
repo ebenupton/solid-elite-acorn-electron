@@ -55,7 +55,7 @@
 import { runElite as runEliteModelB, loadBuild, loadRefPatch, regionsFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, ROOT, CAND_BUILD, REF_BUILD, WORK, page1Format } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { writeFileSync, mkdirSync } from "fs";
-import { makeTracer } from "./btrace.mjs";
+import { makeTracer, makeTraceHooks } from "./btrace.mjs";
 import { parseArgs } from "./args.mjs";
 // (a build whose build.json says "machine": "electron" runs on clkh, the
 // headless Electron: elib.mjs; the reference stays on jsbeeb)
@@ -105,21 +105,23 @@ async function run(label, build, seedBoot, refPatch = null) {
     const phases = [];
     // --trace FROM,TO,LABEL+LABEL,EXTRA+EXTRA (mtrace.mjs): <out>/trace-<label>.txt
     const traceOut = [];
-    const tracer = args.trace ? makeTracer(args.trace, build, traceOut) : null;
+    // (an Electron candidate: the labels as clkh breakpoints, elib's opts.hooks)
+    const tracer = args.trace && !isElectron(build) ? makeTracer(args.trace, build, traceOut) : null;
+    const traceHooks = args.trace && isElectron(build) ? makeTraceHooks(args.trace, build, traceOut) : undefined;
     const t0 = Date.now();
     const elk = isElectron(build);
     if (elk && args.screen) throw new Error("--screen: an Electron build's screen is another format");
     const runElite = elk ? runEliteElectron : runEliteModelB;
     const r = await runElite({
         build, pilot, iters: ITERS, maxSecs: +(args.maxsecs || 4 * ITERS), refPatch, deadRegs: !!args.deadregs && label === "cand",
-        patch: args.nopatch ? null : patchCommander, seedBoot, screen: !!args.screen,
+        patch: args.nopatch ? null : patchCommander, seedBoot, screen: !!args.screen, hooks: traceHooks,
         screenLo: args.screenlo ? parseInt(args.screenlo) : undefined, screenHi: args.screenhi ? parseInt(args.screenhi) : undefined,
         onIter: (i, s, res) => { phases.push(pilot.P.phase); if (tracer) tracer(i, s, res); },
         shots: SHOTS, onShot: async (s, i) => writeFileSync(`${OUT}/${label}-${String(i).padStart(6, "0")}.png`, await s.screenshotActive({ scale: 1 })),
     });
     if (Object.keys(r.deadN || {}).length) console.log(`${label}: registers scrambled after ${Object.entries(r.deadN).map(([n, c]) => n + " " + c).join(", ")}`);
     r.phases = phases; r.stats = pilot.P.stats; r.wall = (Date.now() - t0) / 1000;
-    if (tracer) writeFileSync(`${OUT}/trace-${label}.txt`, traceOut.join("\n") + "\n");
+    if (args.trace) writeFileSync(`${OUT}/trace-${label}.txt`, traceOut.join("\n") + "\n");
     console.log(`${label}: ${r.iters} iterations (${r.tt100} in flight), emulated ${r.emuSecs.toFixed(1)} s, wall ${r.wall.toFixed(1)} s${elk ? ` (Electron, clkh: ${r.stops} stops)` : ""}${r.error ? ", STOPPED: " + r.error : ""}`);
     return r;
 }

@@ -29,6 +29,7 @@
 import { runElite, loadBuild, loadRefPatch, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, REF_BUILD, CAND_BUILD } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 
@@ -53,11 +54,13 @@ async function fly(patch, b = rb, refRun = null) {
         }
         return out;
     } : null;
-    const r = await runElite({
+    // (an Electron candidate runs on clkh, elib.mjs: it has no patch, so no site to count)
+    const elk = isElectron(b);
+    const r = await (elk ? runEliteElectron : runElite)({
         build: b, pilot: makePilot(), iters: ITERS, maxSecs: 6 * ITERS, patch: patchCommander, refPatch: patch, seedBoot,
         onBoot: s => {
             cpu = s._machine.processor;
-            cpu.debugInstruction.add(pc => { if (siteAt < 0 && patch) { const st = patch.sites.find(x => x.name === "SUN: JSR DORND"); if (st && st.at !== undefined) siteAt = st.at; } if (pc === siteAt && cpu.ramRomOs[pc] === 0xA9) siteRuns++; return false; });
+            if (!elk) cpu.debugInstruction.add(pc => { if (siteAt < 0 && patch) { const st = patch.sites.find(x => x.name === "SUN: JSR DORND"); if (st && st.at !== undefined) siteAt = st.at; } if (pc === siteAt && cpu.ramRomOs[pc] === 0xA9) siteRuns++; return false; });
         },
         onIter: () => {
             const ram = cpu.ramRomOs;

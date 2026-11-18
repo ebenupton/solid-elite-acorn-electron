@@ -34,3 +34,31 @@ export function makeTracer(spec, build, out) {
         });
     };
 }
+
+// The same trace for an Electron candidate on clkh (elib.mjs): the labels as
+// breakpoints (elib's opts.hooks: the image's bytes checked in clkh, a
+// label in sideways RAM only with its bank paged), logged in the same
+// format. The iteration is the last MLOOP's, as above (nothing is logged
+// before the first).
+export function makeTraceHooks(spec, build, out) {
+    const [from, to, labels, extra] = spec.split(",");
+    const sy = build.progs.flight.sy;
+    const ex = (extra || "").split("+").filter(Boolean).map(n => { const [b, o] = n.split("~"); return [n, sy[b] + (+o || 0)]; });
+    const hooks = [];
+    for (const p of Object.values(build.progs)) for (const n of labels.split("+")) {
+        const a = p.sy[n];
+        if (a === undefined) continue;
+        const role = p.bank[n];
+        const img = p.images.find(im => (role === undefined || im.map === role || im.map === "m") && a >= im.base && a + 3 <= im.base + im.data.length);
+        if (!img) continue;
+        hooks.push({ name: n, a, map: img.map, sig: [0, 1, 2].map(i => img.data[a + i - img.base]), fn: ({ e, iter }) => {
+            const it = iter - 1;
+            if (it < +from || it > +to || it < 0) return false;
+            const ret = (e.rb(0x101 + e.s) | e.rb(0x102 + e.s) << 8) - 2;
+            const r = x => e.rb(x).toString(16).padStart(2, "0");
+            out.push(`${it} ${p.name} ${n} from &${ret.toString(16)} A=${e.a.toString(16)} X=${e.x.toString(16)} Y=${e.y.toString(16)} C=${e.p.c ? 1 : 0} RAND=${r(0)}${r(1)}${r(2)}${r(3)} ${ex.map(([nm, x]) => nm + "=" + r(x)).join(" ")}`);
+            return false;
+        } });
+    }
+    return hooks;
+}

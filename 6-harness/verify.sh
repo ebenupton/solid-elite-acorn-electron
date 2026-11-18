@@ -48,6 +48,14 @@
 # differently, U for one, though nothing reads them before writing them
 # again. MODE="..." in the environment overrides it.
 #
+# An Electron build ("machine": "electron" in 3-assembled-output/build.json):
+# the candidate runs on clkh, the headless Electron (6-harness/clkh, built
+# here if it is missing; elib.mjs), the reference on jsbeeb as before, in
+# every step that runs the candidate (the comparisons, bredock, bsavetest,
+# bsunedge's port run, bsunslot); bsunref and the passive and edge runs are
+# the reference's alone. The screen is not compared (its format is the
+# Electron's): a MODE with "screen" is run without it, and says so.
+#
 # Prints PASS/FAIL per step, then "VERIFY PASS <ref it/s> <cand it/s> <ratio>
 # <cycles>" or "VERIFY FAIL <step>"; exit status 0 only on PASS. Logs go to
 # 6-harness/work/verify/. 10000 iterations take about 15 minutes (the
@@ -79,6 +87,16 @@ if grep -iE "error|assertion failed" "$LOG/build.log" 3-assembled-output/compile
     cat "$LOG/build.errors"; echo "build: FAIL (error/ASSERT in output)"; fail build
 fi
 echo "build: PASS"
+ELK=0
+grep -q '"machine": *"electron"' "$CAND" && ELK=1
+if [ $ELK -eq 1 ]; then
+    CLKH_BIN=${CLKH:-6-harness/clkh/build/clkh}
+    if [ ! -x "$CLKH_BIN" ]; then
+        { cmake -S 6-harness/clkh -B 6-harness/clkh/build && make -C 6-harness/clkh/build -j6; } > "$LOG/clkh-build.log" 2>&1 \
+            || { tail -10 "$LOG/clkh-build.log"; echo "clkh: FAIL (build)"; fail clkh; }
+    fi
+    echo "machine: Electron (the candidate on clkh, $CLKH_BIN; the reference on jsbeeb)"
+fi
 if [ -f 6-harness/test_frame.py ]; then
     if BEEBASM="$BEEBASM" python3 6-harness/test_frame.py --png "$LOG" > "$LOG/test_frame.log" 2>&1; then
         echo "test_frame: PASS"
@@ -97,7 +115,10 @@ fi
 # ---- 2. determinism (and speed)
 OPTS=
 case "$MODE" in *strict*) ;; *) OPTS="--loose" ;; esac
-case "$MODE" in *screen*) OPTS="$OPTS --screen" ;; esac
+case "$MODE" in *screen*)
+    if [ $ELK -eq 1 ]; then echo "screen comparison: SKIPPED (an Electron build's screen is another format; MODE=$MODE runs without it)"
+    else OPTS="$OPTS --screen"; fi ;;
+esac
 node 6-harness/bcompare.mjs --iters "$ITERS" $OPTS --deadregs --needsites '^MV40' --cand "$CAND" \
     --out "$LOG/compare" "$@" > "$LOG/compare.log" 2>&1
 CST=$?
@@ -170,8 +191,11 @@ if [ -f 3-assembled-output/sunref.json ]; then
 fi
 
 # ---- 3c. plain disc planets (make circles=off), in a copy of the tree
-OFF=$LOG/circles-off
-rm -rf "$OFF"; mkdir -p "$OFF"
+# (a fresh directory each run, the last run's moved aside: nothing deleted)
+OFF=$LOG/circles-off.$(date +%Y%m%d-%H%M%S).$$
+mkdir -p "$LOG/old"
+for d in "$LOG"/circles-off.*; do [ -d "$d" ] && mv "$d" "$LOG/old/"; done
+mkdir -p "$OFF"
 tar cf - Makefile 1-source-files 2-build-files 4-reference-binaries 3-assembled-output 5-compiled-game-discs | (cd "$OFF" && tar xf -)
 (cd "$OFF" && make BEEBASM="$BEEBASM" PYTHON="$PYTHON" circles=off) > "$LOG/circles-off-build.log" 2>&1 || { tail -5 "$LOG/circles-off-build.log"; echo "circles=off: FAIL (build)"; fail circles-off; }
 if grep -iE "error|assertion failed" "$LOG/circles-off-build.log" "$OFF/3-assembled-output/compile.txt" > "$LOG/circles-off-errors.log"; then
