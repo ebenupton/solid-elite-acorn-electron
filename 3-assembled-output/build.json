@@ -4,7 +4,7 @@
   "disc": "../5-compiled-game-discs/elite-electron.ssd",
   "flight": { "syms": "flight-symbols.txt", "banks": "flight-banks.txt",
               "images": [["D.CODEH.bin", "H", "8000"], ["D.CODEC.bin", "C", "8000"],
-                         ["D.CODEM.bin", "m", "1900"], ["D.LOW.bin", "m", "2c50"], ["C6.bin", "6", "8000"]] },
+                         ["D.CODEM.bin", "m", "1900"], ["D.LOW.bin", "m", "2450"], ["D.LOWK.bin", "m", "1100"], ["C6.bin", "6", "8000"]] },
   "docked": { "syms": "docked-symbols.txt", "banks": "docked-banks.txt",
               "images": [["T.CODEH.bin", "H", "8000"], ["T.CODEC.bin", "C", "8000"],
                          ["T.CODEM.bin", "m", "1900"]] },

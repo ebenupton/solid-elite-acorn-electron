@@ -48,15 +48,6 @@
  PROGIS% = PROGM_END% - PROGM%   \ The size of the main RAM part's image in
                         \ bank 4 (PROGI%)
 
- PROGH% = PROGM_END%     \ Where the main RAM part's first hot container
-                        \ (hotm, after the low pass) ends: the second (hotx)
-                        \ follows hotm's units, to PROGM_END% (as one container,
-                        \ the flow, streams.py, would interleave hotx's units
-                        \ with hotm's in the source's order, moving hotm's
-                        \ across page boundaries, and their branches' cycles);
-                        \ now that bank 4 holds every untagged unit, hotm has
-                        \ all the room and hotx none
-
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
  C6SZ = 838             \ (BANK6), before the frame layer, and its room (the
                         \ flight code's layout assembles it there and saves it
@@ -80,7 +71,7 @@
  FC_NORMTAB = NORMTAB
 
 
- PROGL% = &2C50         \ The flight code's second main RAM part (D.LOW), to
+ PROGL% = &2C50         \ The flight code's second main RAM part (hotl, D.LOW), to
  PROGL_END% = &3000     \ PROGL_END%: its hot pass's blocks tagged "Area: hot,
                         \ main", which run too rarely to earn their place in bank
                         \ 4 (2-build-files/streams.py, hotl), loaded by DEEOR
@@ -88,6 +79,21 @@
                         \ program's load stages over it; the staging of the
                         \ files loaded in flight (the blueprint sets, the
                         \ overlays) ends below it (elite-shipset.asm checks)
+
+ PROGK% = &1100         \ The flight code's third main RAM part (hotx), to
+ PROGK_END% = &1900     \ PROGK_END%: more of its hot pass's blocks tagged
+                        \ "Area: hot, main" (streams.py), in the pages DFS
+                        \ keeps for the files a program opens (&1100-&18FF:
+                        \ their channels' blocks and buffers), which no
+                        \ command of the game's touches, as the game opens no
+                        \ file: it loads and saves whole files, and reads
+                        \ sectors (ELECTRON-REPORT.md, "Memory map"). D.LOW
+                        \ carries the part before the second (PROGL%), and
+                        \ LOWLD copies it down from PROGKI%
+
+ PROGKI% = PROGL% - (PROGK_END% - PROGK%)   \ Where D.LOW loads: the third
+                        \ main RAM part's image, in the staging area just
+                        \ below the second part (which loads in its place)
 
  STAGE% = &2000         \ Where files are loaded before they are copied into
                         \ their bank (main RAM &2000 to &57FF, over buffer 0

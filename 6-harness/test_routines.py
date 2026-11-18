@@ -51,12 +51,21 @@ def map_constants():
 
 
 def main_part(home, mc):
-    """the program's main RAM part, PROGM% to PROGM_END%, from its image in
+    """the program's main RAM parts: PROGM% to PROGM_END%, from its image in
     the home image (S%+14 gives its address as PCLI stages it), as PCLI
-    copies it: [(address, bytes)]"""
+    copies it, and the flight code's D.LOW: [(address, bytes)]"""
     at = home[14] + 256 * home[15] - mc["STAGE%"]
     n = mc["PROGM_END%"] - mc["PROGM%"]
-    return [(mc["PROGM%"], home[at:at + n])]
+    out = [(mc["PROGM%"], home[at:at + n])]
+    # (the flight code's second and third main RAM parts, as LOWLD loads
+    # D.LOW: the third part's image first, copied down to PROGK%, then the
+    # second at PROGL%)
+    low = os.path.join(REPO, "3-assembled-output/D.LOW.bin")
+    if "PROGK%" in mc and os.path.exists(low):
+        d = open(low, "rb").read()
+        k = mc["PROGK_END%"] - mc["PROGK%"]
+        out += [(mc["PROGK%"], d[:k]), (mc["PROGL%"], d[k:])]
+    return out
 
 
 def flight_constants(path):

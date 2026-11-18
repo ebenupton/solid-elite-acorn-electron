@@ -62,9 +62,9 @@
 
  PUTFILE "3-assembled-output/D.OV1.bin", "D.OV1", &008000, &008000
  PUTFILE "3-assembled-output/D.OV2.bin", "D.OV2", &008000, &008000
- PUTFILE "3-assembled-output/D.LOW.bin", "D.LOW", PROGL%, PROGL%   \ (the flight
-                        \ code's second main RAM part, loaded to its own address
-                        \ by DEEOR: elite-map.asm)
+ PUTFILE "3-assembled-output/D.LOW.bin", "D.LOW", PROGKI%, PROGKI%   \ (the flight
+                        \ code's second and third main RAM parts, loaded by
+                        \ DEEOR: elite-map.asm)
  PUTFILE "3-assembled-output/D.CODEH.bin", "D.CODEH", &008000, &008000
  PUTFILE "3-assembled-output/D.CODEC.bin", "D.CODEC", &008000, &008000
  PUTFILE "3-assembled-output/T.CODEH.bin", "T.CODEH", &008000, &008000

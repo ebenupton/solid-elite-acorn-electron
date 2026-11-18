@@ -29,7 +29,7 @@
 .LOW_END%
 
  HOTM% = LOW_END%
- HOTM_END% = PROGH%
+ HOTM_END% = PROGM_END%
 
  CLEAR &8000, &C000
  ORG HOME%
@@ -60,10 +60,8 @@
 .M_HOTM
  ORG HOTM_END%
 .M_HOTM_END
- ORG PROGH%
-.M_HOTX
- ORG PROGM_END%
+ ORG PROGL%             \ (the docked code has no second or third main RAM
+.M_HOTX                 \ part)
 .M_HOTX_END
- ORG PROGL%             \ (the docked code has no second main RAM part)
 .M_HOTL
 .M_HOTL_END

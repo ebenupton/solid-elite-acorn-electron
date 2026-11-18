@@ -23,8 +23,7 @@
 #     it: bank 4 from S% at &8000 (HOME%) to the room that the layout keeps
 #     before the blueprint slot (in the flight code, the renderer's routines
 #     that run in game context), then main RAM after the low pass (hotm, to
-#     PROGH%, then hotx, to PROGM_END%: elite-layout-<program>.asm,
-#     elite-map.asm).
+#     PROGM_END%: elite-layout-<program>.asm, elite-map.asm).
 #   * "Area: low": the low pass, code that must be in main RAM, where it is
 #     seen whatever bank is paged (LOW%, elite-map.asm). The disc version's
 #     own code of that kind (the interrupt handler, the break handler, the
@@ -51,9 +50,10 @@
 #   * ", main" after "hot" ("Area: hot, main"): a hot block that runs too
 #     rarely in flight to earn its place in bank 4, by measurement
 #     (ELECTRON-REPORT.md, "Memory map"): its unit goes in main RAM, in the
-#     flight code's second main RAM part (hotl, D.LOW, which DEEOR loads, so
-#     no such block may run before DEEOR) or else in hotm or hotx, leaving
-#     bank 4's room to the hot code. Untagged units never go in hotl.
+#     flight code's second or third main RAM part (hotl, then hotx: both in
+#     D.LOW, which DEEOR loads, so no such block may run before DEEOR) or
+#     else in hotm, leaving bank 4's room to the hot code. Untagged units
+#     never go in hotl or hotx.
 #
 # A block runs from its header to the next header (or to a separator line of
 # stars, which starts an untagged block: the original's PRINT and SAVE
@@ -140,7 +140,7 @@
 #   * every stub's line is blank in its copy, and every target is defined in
 #     the program's source (a stub has a place only there);
 #   * a hot block that the cold side or cold 6 reads (not calls) goes into
-#     a main RAM container (hotm, hotx), as bank 4 is not paged in there;
+#     the main RAM part's container (hotm), as bank 4 is not paged in there;
 #   * every unit fits a container, and the flow fits.
 import glob, os, re, sys
 
@@ -162,10 +162,10 @@ HOTSIDE = ("low", "hot", "blueprints")
 # the largest units first
 CONTAINERS = (("hot", "M_HOT", "M_HOT_END"), ("hotm", "M_HOTM", "M_HOTM_END"), ("hotx", "M_HOTX", "M_HOTX_END"),
               ("hotl", "M_HOTL", "M_HOTL_END"))
-LOWER = 3       # (hotl: the second main RAM part, D.LOW, which the flight code
-                # loads at its start, DEEOR: only blocks tagged ", main" go
-                # there, which never run before it is loaded, and they go
-                # there first)
+LOWER = (3, 2)  # (hotl and hotx: the second and third main RAM parts, both in
+                # D.LOW, which the flight code loads at its start, DEEOR:
+                # only blocks tagged ", main" go there, which never run
+                # before it is loaded, and they go there first)
 
 # NORETURN: the targets that never return to their caller, so that their
 # stubs jump (farCj, farHj) and leave no far-call frame on the stack: the
@@ -295,7 +295,11 @@ def last_statement(lines, s, e):
     the branches the build's flags rule out, and the statements that
     assemble nothing (constants, PRINTs, ASSERTs ...: the docked code's MT16
     ends with DTW7 = MT16 + 1, after the LDA that falls through into TT26);
-    a macro's definition ends with its ENDMACRO"""
+    a macro's definition ends with its ENDMACRO. A one-byte end (RTS, RTI,
+    BRK) that the statement before it branches over (Bxx P%+3: MVEIT part
+    6's RTS for the sun) is not the end: the branch is returned, which falls
+    through"""
+    last = None
     for i in range(e - 1, s - 1, -1):
         if ACTIVE and not ACTIVE[i]:
             continue
@@ -303,11 +307,16 @@ def last_statement(lines, s, e):
         if not c or re.match(r"^(IF|ELIF|ELSE|ENDIF)\b", c, re.I):
             continue
         if c.upper().startswith("EQU") or re.match(r"^ENDMACRO\b", c, re.I):
-            return c
+            return last or c
         for st in reversed([x.strip() for x in c.split(" : ")]):
-            if assembles(st, set()):
+            if not assembles(st, set()):
+                continue
+            if last is not None:
+                return st if re.match(r"^B(CC|CS|EQ|MI|NE|PL|VC|VS)\s+P%\s*\+\s*3$", st, re.I) else last
+            if st.upper() not in ("RTS", "RTI", "BRK"):
                 return st
-    return None
+            last = st
+    return last
 
 
 def entry_label(lines, s, e, macros):
@@ -1321,7 +1330,7 @@ def program(prog, phase, errors):
         where = {}
         for size, u0, u1, names in [sized[0]] + sorted(sized[1:], key=lambda s: (-s[0], s[1])):
             tagged = any(bl[hot[n]].main for n in range(u0, u1 + 1))
-            order = [LOWER, 1, 2] if tagged else [1, 2] if any(n in mainonly for n in range(u0, u1 + 1)) else [0, 1, 2]
+            order = list(LOWER) + [1] if tagged else [1] if any(n in mainonly for n in range(u0, u1 + 1)) else [0, 1]
             cur = next((c for c in order if conts[c][1] + used[conts[c][0]] + size <= conts[c][2]), len(conts))
             if cur == len(conts):
                 errors.append("%s: the hot pass does not fit: %s (%d bytes) has no room" % (prog, names, size))

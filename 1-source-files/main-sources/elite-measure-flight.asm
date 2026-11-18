@@ -37,7 +37,7 @@ ENDIF
 .LOW_END%
 
  HOTM% = LOW_END%
- HOTM_END% = PROGH%
+ HOTM_END% = PROGM_END%
 
  CLEAR &8000, &C000
  ORG HOME%
@@ -62,7 +62,8 @@ IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
  ORG PFVA%
  INCLUDE "3-assembled-output/gfx-merid-mainlow.asm"
  ASSERT P% <= GLUE%
- ORG PFVS%
+ CLEAR PFVS%, QSL       \ (the measure's hot pass, with the main RAM parts'
+ ORG PFVS%              \ units, can run on over these variables' place)
  INCLUDE "3-assembled-output/gfx-merid-bank4top.asm"
  ASSERT P% <= QSL
 ENDIF
@@ -99,9 +100,9 @@ ENDIF
 .M_HOTM
  ORG HOTM_END%
 .M_HOTM_END
- ORG PROGH%
+ ORG PROGK%
 .M_HOTX
- ORG PROGM_END%
+ ORG PROGK_END%
 .M_HOTX_END
  ORG PROGL%
 .M_HOTL

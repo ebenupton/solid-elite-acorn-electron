@@ -72,12 +72,10 @@ ENDIF
 
 .LOW_END%
 
- HOTM% = LOW_END%       \ (the hot pass's containers in main RAM: hotm to
- HOTM_END% = PROGH%     \ PROGH%, then hotx, straight after hotm's units, to
-                        \ the main RAM part's end: elite-map.asm)
+ HOTM% = LOW_END%       \ (the hot pass's container in the main RAM part,
+ HOTM_END% = PROGM_END% \ hotm, to the part's end: elite-map.asm)
 
  INCLUDE "3-assembled-output/elite-flight-hotm.asm"
- INCLUDE "3-assembled-output/elite-flight-hotx.asm"
 
 .PROGM_USED%
 
@@ -92,7 +90,21 @@ ENDIF
 
  ASSERT PROGL_USED% <= PROGL_END%
 
- SAVE "3-assembled-output/D.LOW.bin", PROGL%, PROGL_USED%, PROGL%
+ ORG PROGK%             \ The third main RAM part, hotx (elite-map.asm), which
+                        \ D.LOW carries before the second: LOWLD copies it
+                        \ down from PROGKI%
+
+ INCLUDE "3-assembled-output/elite-flight-hotx.asm"
+
+.PROGK_USED%
+
+ ASSERT PROGK_USED% <= PROGK_END%
+
+ COPYBLOCK PROGK%, PROGK_END%, PROGKI%
+
+ SAVE "3-assembled-output/D.LOW.bin", PROGKI%, PROGL_USED%, PROGKI%
+ SAVE "3-assembled-output/D.LOWK.bin", PROGK%, PROGK_END%, PROGK%   \ (the third
+                        \ part where it runs, for the harness)
 
  CLEAR &8000, &C000
  ORG HOME%
@@ -135,6 +147,7 @@ ENDIF
  PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", BPSLOT%-HOME_END%
  PRINT "Flight main RAM part: low pass ", ~PROGM%, "-", ~LOW_END%-1, ", hot pass to ", ~PROGM_USED%-1, ", free ", PROGM_END%-PROGM_USED%
  PRINT "Flight second main RAM part (D.LOW): ", ~PROGL%, "-", ~PROGL_USED%-1, ", free ", PROGL_END%-PROGL_USED%
+ PRINT "Flight third main RAM part (D.LOW, copied down): ", ~PROGK%, "-", ~PROGK_USED%-1, ", free ", PROGK_END%-PROGK_USED%
  ASSERT HOME_END% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
 
  ORG PROGI%             \ the main RAM part's image, at the start of the

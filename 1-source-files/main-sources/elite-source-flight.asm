@@ -2102,10 +2102,18 @@ IF _STH_DISC OR _IB_DISC
                         \ there is nothing to decrypt, as in the sideways RAM
                         \ variant
 
- JSR LOWLD              \ Port: load the second main RAM part, D.LOW, which
-                        \ the program's load has staged over (elite-map.asm)
+ JSR deeo1              \ Port: load the second and third main RAM parts,
+                        \ D.LOW, which the program's load has staged over
+                        \ (elite-map.asm)
 
  JMP RSHIPS             \ Jump to RSHIPS
+
+.deeo1
+
+ JSR farC               \ Port: the far call to LOWLD, from a stub of DEEOR's
+ EQUW LOWLD_C           \ own (a far call returns to its stub's caller), as
+                        \ the stub at LOWLD's place could be in the parts
+                        \ that it loads
 
 ELIF _SRAM_DISC
 
@@ -5244,6 +5252,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Remove a line from the sun line heap and draw it on-screen
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -7348,6 +7357,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Calculate a cap on the maximum distance to the planet or sun
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -7410,6 +7420,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate A = x_hi^2 + y_hi^2 + z_hi^2 in the K% block
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -8906,7 +8917,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the dashboard: speed indicator
-\       Area: cold
 \  Deep dive: The dashboard indicators
 \
 \ ------------------------------------------------------------------------------
@@ -8963,7 +8973,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the dashboard: pitch and roll indicators
-\       Area: cold
 \  Deep dive: The dashboard indicators
 \
 \ ******************************************************************************
@@ -9031,7 +9040,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the dashboard: four energy banks
-\       Area: cold
 \  Deep dive: The dashboard indicators
 \
 \ ------------------------------------------------------------------------------
@@ -9157,7 +9165,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the dashboard: shields, fuel, laser & cabin temp, altitude
-\       Area: cold
 \  Deep dive: The dashboard indicators
 \
 \ ******************************************************************************
@@ -9232,7 +9239,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Fetch the current dashboard colours, to support flashing
-\       Area: cold
 \
 \ ------------------------------------------------------------------------------
 \
@@ -9297,7 +9303,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update a bar-based indicator on the dashboard
-\       Area: cold
 \  Deep dive: The dashboard indicators
 \
 \ ------------------------------------------------------------------------------
@@ -9530,7 +9535,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the roll or pitch indicator on the dashboard
-\       Area: cold
 \  Deep dive: The dashboard indicators
 \
 \ ------------------------------------------------------------------------------
@@ -11407,6 +11411,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Negate the vector in XX15 so it points in the opposite direction
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -18574,7 +18579,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Add the space station and this system's sun as we launch
-\       Area: cold 6, again
+\       Area: hot, main, again
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19816,6 +19821,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Draw an exploding ship
+\       Area: hot, main
 \  Deep dive: Drawing explosion clouds
 \             Generating random numbers
 \
@@ -20506,7 +20512,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing the screen
 \    Summary: Show or hide the dashboard (for when we die)
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20553,6 +20559,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Charge a shield and drain some energy from the energy banks
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20591,6 +20598,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Drain some energy from the energy banks
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20623,7 +20631,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Update the compass
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -20657,7 +20665,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (Y X) = A / 10
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20755,7 +20763,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw the space station on the compass
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -20772,7 +20780,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw a dot on the compass, given the planet/station vector
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21357,7 +21365,7 @@ ENDMACRO
 \   Category: Universe
 \    Summary: Park the sun outside the ship slots, as the space station is
 \             about to take its slot
-\       Area: cold 6, again
+\       Area: hot, main, again
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21395,7 +21403,7 @@ ENDMACRO
 \   Category: Universe
 \    Summary: Fetch the NEWB bits a new sun gets from the planet's and the sun's
 \             E% bytes
-\       Area: hot, again
+\       Area: hot, main, again
 \
 \ ------------------------------------------------------------------------------
 \
@@ -23715,6 +23723,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing circles
 \    Summary: Draw a circle for the planet
+\       Area: hot, main
 \  Deep dive: Drawing circles
 \
 \ ------------------------------------------------------------------------------
@@ -23920,6 +23929,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing planets
 \    Summary: Remove the planet from the screen
+\       Area: hot, main
 \  Deep dive: The ball line heap
 \
 \ ------------------------------------------------------------------------------
@@ -23999,6 +24009,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing planets
 \    Summary: Reset the ball line heap
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -24018,6 +24029,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing suns
 \    Summary: Remove the sun from the screen
+\       Area: hot, main
 \  Deep dive: Drawing the sun
 \
 \ ------------------------------------------------------------------------------
@@ -24813,7 +24825,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Set the SLSP ship line heap pointer after shuffling ship slots
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -24846,7 +24858,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Remove the current ship from our local bubble of universe
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -24925,7 +24937,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Put the parked sun back in its slot, as the space station goes
-\       Area: cold 6, again
+\       Area: hot, main, again
 \
 \ ------------------------------------------------------------------------------
 \
@@ -24981,7 +24993,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Check the local bubble for missiles with target lock
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -26956,6 +26968,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Start and end
 \    Summary: Port: DEATH's read of the blueprint table, in the home bank
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27282,8 +27295,10 @@ ENDIF
 \ ------------------------------------------------------------------------------
 \
 \ Port: called by DEEOR each time the flight code starts, as the program's load
-\ stages its images over the part (elite-map.asm, PROGL%): the file loads to its
-\ own address, after CATD has reloaded the catalogue, as LOMOD does.
+\ stages its images over the second part (elite-map.asm, PROGL%): the file
+\ loads at PROGKI%, after CATD has reloaded the catalogue, as LOMOD does, which
+\ puts the second part in its place; the third part's image, before it, is
+\ then copied down to PROGK%.
 \
 \ ******************************************************************************
 
@@ -27293,9 +27308,29 @@ ENDIF
  JSR CATD
  JSR dfsout
 
- LDX #LO(LOWI)          \ Load D.LOW (to its own address, through the MOS:
- LDY #HI(LOWI)          \ PCLI passes it on), and return from the subroutine
- JMP OSCLI              \ using a tail call
+ LDX #LO(LOWI)          \ Load D.LOW (to its own address, PROGKI%, through
+ LDY #HI(LOWI)          \ the MOS: PCLI passes it on)
+ JSR OSCLI
+
+ LDA #HI(PROGKI%)       \ Copy the third main RAM part down from its image to
+ STA lowk1+2            \ PROGK%, a page at a time (both are page aligned in
+ LDA #HI(PROGK%)        \ their low bytes: Y counts a page)
+ STA lowk1+5
+ LDX #HI(PROGK_END% - PROGK%)
+ LDY #0
+
+.lowk1
+
+ LDA PROGKI%,Y          \ (the high bytes are set above, and count up)
+ STA PROGK%,Y
+ INY
+ BNE lowk1
+ INC lowk1+2
+ INC lowk1+5
+ DEX
+ BNE lowk1
+
+ RTS                    \ Return from the subroutine
 
 .LOWI
 
@@ -27867,6 +27902,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Scan the keyboard for key presses
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28189,6 +28225,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Make an explosion sound
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28217,6 +28254,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Make a short, high beep
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -28276,7 +28314,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Status
 \    Summary: Process us making a kill
-\       Area: cold 6
+\       Area: hot, main
 \  Deep dive: Combat rank
 \
 \ ------------------------------------------------------------------------------
@@ -28310,7 +28348,7 @@ ENDIF
 \   Category: Sound
 \    Summary: Make the sound of a laser strike on another ship or a ship
 \             explosion
-\       Area: cold 6
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28391,6 +28429,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Make the sound whose number is in A
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28413,6 +28452,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Make a sound from a prepared sound block
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28473,6 +28513,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Prepare a sound block
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28538,6 +28579,7 @@ ENDIF
 \       Type: Variable
 \   Category: Keyboard
 \    Summary: Lookup table for in-flight keyboard controls
+\       Area: hot, main
 \  Deep dive: The key logger
 \
 \ ------------------------------------------------------------------------------
@@ -28852,6 +28894,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Toggle a configuration setting and emit a beep
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -29761,6 +29804,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Orthonormalise the orientation vectors for a ship
+\       Area: hot, main
 \  Deep dive: Tidying orthonormal vectors
 \             Orientation vectors
 \
@@ -30197,6 +30241,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Draw a distant ship as a point rather than a full wireframe
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -30956,6 +31001,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Port: draw a ship with LL9, then the frame (the escape pod)
+\       Area: hot, main
 \
 \ ******************************************************************************
 
@@ -31012,6 +31058,7 @@ ENDIF
 \   Category: Drawing ships
 \    Summary: Port: the explosion cloud in record mode: noted for the frame,
 \             which draws it from the ship line heap
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31044,6 +31091,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Port: DOEXP removing the old explosion cloud
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31072,6 +31120,7 @@ ENDIF
 \   Category: Drawing ships
 \    Summary: Port: PIXEL for an explosion particle: in record mode, the
 \             frame's
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -36903,7 +36952,6 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing the screen
 \    Summary: Clear most of a row of pixels
-\       Area: cold
 \
 \ ------------------------------------------------------------------------------
 \

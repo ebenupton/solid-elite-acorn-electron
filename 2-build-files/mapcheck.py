@@ -111,6 +111,8 @@ order("main RAM", [
     ("the circle engine's table (main)", LD["pcb_o"], LD["pcb_o"] + 5),
     ("SNE, ACT", 0x07C0, 0x0800),
     ("CATD", LD["CATD"], 0x0D9E),
+    ("WP", 0x0E00, 0x0FD3),
+    ("the flight code's third main RAM part", C["PROGK_P"], C["PROGK_END_P"]),
     ("the main RAM part", progm, progm_end),
     ("the mailbox", C["MBOX"], C["MBOX_END"]),
     ("the missile's blueprint", C["MISSILE_P"], C["GVARS"]),
@@ -127,7 +129,7 @@ for prog, sy in (("flight", FL), ("docked", DK)):
     lo = sy["LOW_END%"]
     nlab += inside(sy, OUT + "elite-%s-low.asm" % prog, progm, lo, "the low pass")
     nlab += inside(sy, OUT + "elite-%s-hotm.asm" % prog, lo, progm_end, "hotm")
-    nlab += inside(sy, OUT + "elite-%s-hotx.asm" % prog, lo, progm_end, "hotx")
+    nlab += inside(sy, OUT + "elite-%s-hotx.asm" % prog, C["PROGK_P"], C["PROGK_END_P"], "hotx")
 
 # banks 4 and 7, each program's
 qsl, bp, bp_end = C["QSL"], C["BPSLOT_P"], C["BPSLOT_END_P"]

@@ -119,5 +119,5 @@ hot &8000-&ADBF: 119 units, 9176 bytes, 2536 free
   &A351   107 LL120..LL123
   &A3BC    28 LL129
 hotm &1974-&1E3F: 0 units, 0 bytes, 1228 free
-hotx &1E40-&1E3F: 0 units, 0 bytes, 0 free
+hotx &2C50-&2C4F: 0 units, 0 bytes, 0 free
 hotl &2C50-&2C4F: 0 units, 0 bytes, 0 free

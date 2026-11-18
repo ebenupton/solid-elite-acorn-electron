@@ -56,16 +56,17 @@
 
 .LOW_END%
 
- HOTM% = LOW_END%       \ (the hot pass's containers in main RAM: hotm to
- HOTM_END% = PROGH%     \ PROGH%, then hotx, straight after hotm's units, to
-                        \ the main RAM part's end: elite-map.asm)
+ HOTM% = LOW_END%       \ (the hot pass's container in the main RAM part,
+ HOTM_END% = PROGM_END% \ hotm, to the part's end: elite-map.asm)
 
  INCLUDE "3-assembled-output/elite-docked-hotm.asm"
- INCLUDE "3-assembled-output/elite-docked-hotx.asm"
 
 .PROGM_USED%
 
  ASSERT PROGM_USED% <= PROGM_END%
+
+ INCLUDE "3-assembled-output/elite-docked-hotx.asm"   \ (the flight code's
+                        \ third main RAM part: nothing of the docked code's)
 
  CLEAR &8000, &C000
  ORG HOME%
