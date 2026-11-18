@@ -76,6 +76,24 @@ row (`y AND 3`), which is the form the rasteriser already takes its colours
 in (`R_COLE`, `R_COLO`, `R_COL2`, `R_COL3`). The tables are made by a
 checked-in generator (`2-build-files/lightramps.py`).
 
+**The dashboard, in both buffers.** The display flips every frame, so
+every dashboard update is made in both buffers, identically: each drawing
+routine (DIALS, DIL, DIL2, CPIX2 and the scanner's sticks, the bulbs,
+MSBAR) sets `SC(1 0)` in buffer 1 and `SC0(1 0)` = `SC(1 0) - &2800` in
+buffer 0 (zero page `&A9-&AA`) and stores each byte through both. The
+dashboards stay identical, so an EOR plot (the scanner, the compass dot,
+the bulbs) reads buffer 1 and stores the result in both. A row is 320
+bytes: rows move by `SCRROW`, and CPIX2 takes a row's address from a
+table. DIL and DIL2 redraw an indicator only when its length or colour
+changes (`DLAST`). The original's dashboard palette (red, yellow, green)
+is mapped onto CMYK: red to magenta (labels, scanner, danger), yellow to
+yellow (frame, safe, bulbs, markers), green to cyan (scales, ships,
+compass dot behind), by `2-build-files/dialscol.py` for the image
+(`P.DIALS`, recoloured at build time) and in the drawing code's colours.
+The escape pod's dashboard palette and the death screen's hidden
+dashboard have no fixed-palette, split-free equivalent: the dashboard
+keeps its colours and stays on show.
+
 ## The Electron's differences, and what was redesigned
 
 * **No 6522 VIA.** The Model B port's mid-line ULA clock switches (the
