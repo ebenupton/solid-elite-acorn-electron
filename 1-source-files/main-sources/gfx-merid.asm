@@ -1971,6 +1971,13 @@ O_RC = pv_rc - pv
 .pm_sx  SKIP 1          \ bit 7: mx < 0 (after negating m if mz < 0)
 .pm_sy  SKIP 1          \ bit 7: my' < 0
 .pm_inv SKIP 1          \ 1 if m was negated
+.pc_v   SKIP 2
+.pc_o   SKIP 3          \ } 24-bit signed, at pc_o + X for pc_sgn: an offset
+.pc_a9  SKIP 3          \ } (16.8); A, sqrt(B) and the two nodes, in 1/512
+.pc_s9  SKIP 3          \ } pixels
+.pc_n   SKIP 6
+.pc_tw  SKIP 4          \ the record's thresholds T1, T2 before clamping (16-bit:
+                        \ each slot's into PC_TU, for the frame's f_hrec)
 
 \       Area: main low
 
@@ -1991,13 +1998,6 @@ O_RC = pv_rc - pv
 .pc_dn  SKIP 1          \ bit 7: d < 0 once m is negated (0 if d is 0)
 .pc_tb  SKIP 1          \ bit 7: the bottom in the region, bit 6: the top
 .pc_st  SKIP 1
-.pc_v   SKIP 2
-.pc_o   SKIP 3          \ } 24-bit signed, at pc_o + X for pc_sgn: an offset
-.pc_a9  SKIP 3          \ } (16.8); A, sqrt(B) and the two nodes, in 1/512
-.pc_s9  SKIP 3          \ } pixels
-.pc_n   SKIP 6
-.pc_tw  SKIP 4          \ the record's thresholds T1, T2 before clamping (16-bit:
-                        \ each slot's into PC_TU, for the frame's f_hrec)
 
 \       Area: bank 4 top
 

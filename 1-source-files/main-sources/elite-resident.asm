@@ -730,8 +730,8 @@ ENDIF
                         \ interrupted bank back in)
 
  LDA &FE00              \ If this is not the display end (bit 2 of the ULA's
- AND #%00000100         \ interrupt status), pass it straight to the MOS
- BEQ irqm
+ AND #%00000100         \ interrupt status), jump to irqn
+ BEQ irqn
 
  TXA                    \ Store X on the stack
  PHA
@@ -783,6 +783,25 @@ ENDIF
                         \ handler for it would write the game's workspace
                         \ (DLY, at &034A, is its VDU workspace there) and the
                         \ screen start address
+
+.irqn
+
+ LDA &FE00              \ If this is not the real-time clock (bit 3), pass it
+ AND #%00001000         \ on to the MOS
+ BEQ irqm
+
+ BIT GMODE              \ In direct mode (GMODE bit 7 clear), pass it on to the
+ BPL irqm               \ MOS, whose tick scans the keyboard into its buffer
+                        \ for the game's text input
+
+ LDA &F4                \ In space mode nothing needs the MOS's tick (the game
+ ORA #%00100000         \ reads the keyboard itself, through KEYV, and the
+ STA &FE05              \ sound engine has been ticked above), and it costs
+                        \ about 700 cycles a time: clear the interrupt (bit 5
+                        \ of &FE05, with the paged bank's number, as below)
+
+ LDA &FC                \ Restore A from the MOS's save register and return
+ RTI
 
 .irqm
 
