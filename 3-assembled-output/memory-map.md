@@ -24,8 +24,8 @@
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 899 | 45 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
-| bank 4 (flight) | `&8000-&A657` | `S%` and the hot pass | 9816 | 0 |
-| bank 4 (flight) | `&A658-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 534 |
+| bank 4 (flight) | `&8000-&A7F6` | `S%` and the hot pass | 10231 | 0 |
+| bank 4 (flight) | `&A7F7-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 119 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
@@ -34,9 +34,9 @@
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 7 (flight) | `&8000-&9E6A` | the cold pass, `QQ18` | 7787 | 0 |
-| bank 7 (flight) | `&9E6B-&A2B4` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&A2B5-&B3FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 4180 | 247 |
+| bank 7 (flight) | `&8000-&9E16` | the cold pass, `QQ18` | 7703 | 0 |
+| bank 7 (flight) | `&9E17-&A260` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
+| bank 7 (flight) | `&A261-&B3FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 4180 | 331 |
 | bank 7 (flight) | `&B400-&BFFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
 | bank 7 (docked) | `&8000-&BFFF` | the set's face lists, the cold pass, `QQ18` | 11362 | 5022 |
 | bank 5 | `&8000-&8BFF` | the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables | 2459 | 613 |
@@ -47,7 +47,7 @@
 | bank 5 | `&B15D-&B3FF` | the room below the per-x tables: `R_DOT`, `r_wq`, `pf_tilt` | 556 | 119 |
 | bank 5 | `&B400-&BFC9` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 3018 | 0 |
 | bank 5 | `&BFCA-&BFFF` | `RJT`, the jump table | 45 | 9 |
-| bank 6 | `&8000-&8445` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 941 | 153 |
+| bank 6 | `&8000-&8445` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 575 | 519 |
 | bank 6 | `&8446-&AAAD` | the frame layer's code (bank 6 passes) | 9832 | 0 |
 | bank 6 | `&AAAE-&AF2B` | the faces' and the lighting's tables | 1150 | 0 |
 | bank 6 | `&AF2C-&B1F9` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
@@ -56,4 +56,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 3167, main RAM (flight) 282, main RAM (docked) 1228, bank 4 (flight) 574, bank 4 (docked) 2696, bank 7 (flight) 247, bank 7 (docked) 5022, bank 5 781, bank 6 199.
+Free, by place: main RAM 3167, main RAM (flight) 282, main RAM (docked) 1228, bank 4 (flight) 159, bank 4 (docked) 2696, bank 7 (flight) 331, bank 7 (docked) 5022, bank 5 781, bank 6 565.

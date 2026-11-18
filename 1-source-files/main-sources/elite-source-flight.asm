@@ -14038,7 +14038,6 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (A ?) = (-X * A + (S R)) / 96
-\       Area: cold 6
 \  Deep dive: Shift-and-subtract division
 \
 \ ------------------------------------------------------------------------------
@@ -27754,7 +27753,6 @@ ENDIF
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Normalise the three-coordinate vector in XX15
-\       Area: cold
 \  Deep dive: Tidying orthonormal vectors
 \             Orientation vectors
 \
@@ -29759,7 +29757,6 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Orthonormalise the orientation vectors for a ship
-\       Area: cold 6
 \  Deep dive: Tidying orthonormal vectors
 \             Orientation vectors
 \
@@ -29929,7 +29926,6 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate A = A / Q
-\       Area: cold 6
 \  Deep dive: Shift-and-subtract division
 \
 \ ------------------------------------------------------------------------------
@@ -30032,7 +30028,6 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate -(nosev_1 * roofv_1 + nosev_2 * roofv_2) / nosev_3
-\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -30108,7 +30103,6 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (P+1 A) = (A P) / Q
-\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
