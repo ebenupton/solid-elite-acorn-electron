@@ -99,7 +99,10 @@ export function bootElectron(disc, pre = +(process.env.BOOTPRE || 0), run = 2000
 export async function runElite(opts) {
     const b = opts.build;
     if (opts.refPatch) throw new Error("elib: the reference's patches (refPatch) are for jsbeeb's Model B");
-    const e = new Clkh({ disc: b.disc, shiftbreak: 1000000 + +(process.env.BOOTPRE || 0) });
+    // (ELK_SOUNDLOG=FILE: clkh's --soundlog; ELK_SOUND=1: the sound left on at
+    // TT170, for listening to a run, which then differs from the reference)
+    const e = new Clkh({ disc: b.disc, shiftbreak: 1000000 + +(process.env.BOOTPRE || 0),
+        extra: process.env.ELK_SOUNDLOG ? ["--soundlog", process.env.ELK_SOUNDLOG] : [] });
     const s = elkSession(e), cpu = s.cpu;
     const regions = regionsFor(b, null);
     const canon = canonFor(b, regions, null);
@@ -335,7 +338,7 @@ export async function runElite(opts) {
                 if (!started) {
                     started = true;
                     e.send("tstart 1");
-                    wr(fsy.DNOIZ, [0xff]);
+                    if (process.env.ELK_SOUND !== "1") wr(fsy.DNOIZ, [0xff]);
                     if (opts.seedBoot) {
                         const bits = e.ask("twritten");
                         const written = { has: a => a < 0x8000 && !!(bits[a >> 3] & (1 << (a & 7))) };
