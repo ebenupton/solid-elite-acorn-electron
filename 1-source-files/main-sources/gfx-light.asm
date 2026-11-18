@@ -60,7 +60,14 @@
 \ written by LL9's part 5 before every use) are written: none of it is game
 \ state.
 \
+\ The file is assembled in two passes (2-build-files/streams.py): L_SUN's
+\ seeding of LV from the sun, which runs once in 32 iterations, in the flight
+\ code's main RAM part (the block LS_SEED of elite-source-flight.asm), and
+\ the rest in bank 4.
+\
 \ ******************************************************************************
+
+\       Area: bank 4
 
 IF LIGHT_SUN            \ (the flight code only: the docked code's light is fixed)
 \ ------------------------------------------------------------------------------
@@ -78,11 +85,13 @@ IF LIGHT_SUN            \ (the flight code only: the docked code's light is fixe
  BPL ls_rot             \ the station and no parked sun: keep rotating LV
 .ls_sun
  BIT lv_ok              \ the sun: seed LV from it when it has just appeared
- BVC ls_seed            \ (bit 6 clear) and every 32nd iteration
+ BVC ls_sd              \ (bit 6 clear) and every 32nd iteration
  INC lv_cnt
  LDA lv_cnt
  AND #31
- BEQ ls_seed
+ BNE ls_rot
+.ls_sd
+ JMP ls_seed            \ (in main RAM; it ends by jumping to ls_rot or lv_ll)
 .ls_rot
  BIT lv_ok
  BMI ls_r1
@@ -110,7 +119,12 @@ IF LIGHT_SUN            \ (the flight code only: the docked code's light is fixe
 .lv_x3   EQUB 0, 3, 6   \ (lse9)
 .lv_defl EQUB LO(&24F3), LO(&24F3), LO(-&24F3)    \ &4000 / sqrt 3
 .lv_defh EQUB HI(&24F3), HI(&24F3), HI(-&24F3)
+ENDIF
 
+\       Area: main part
+
+                        \ (the flight code only: the docked code does not
+                        \ assemble this pass)
 .ls_seed                \ LV = the sun's position (K% + NI%, or SUNPK while the
  LDA #LO(K%+NI%)        \ station holds slot 1), normalised
  LDY #HI(K%+NI%)
@@ -147,7 +161,8 @@ IF LIGHT_SUN            \ (the flight code only: the docked code's light is fixe
  DEX
  BPL lsz
  TAX
- BEQ ls_rot
+ BNE lse2
+ JMP ls_rot
 .lse2
  LDA lv_w+2             \ shift all three left until one has bit 22 set
  ORA lv_w+5
@@ -242,7 +257,11 @@ IF LIGHT_SUN            \ (the flight code only: the docked code's light is fixe
  BPL lse9
  LDA #&C0
  STA lv_ok
+ JMP lv_ll              \ (back in bank 4: set LLT)
 
+\       Area: bank 4
+
+IF LIGHT_SUN
 .lv_ll                  \ LLT = LV * 41 / &4000 = (h >> 1) + (h >> 3) + (h >> 6)
  LDX #2                 \ for h = LV's high byte (arithmetic shifts)
 .lvl1

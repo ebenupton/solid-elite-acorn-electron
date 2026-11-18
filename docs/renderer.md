@@ -218,7 +218,9 @@ What differs from the Master port's frame layer:
   the frame layer never calls (docs/memory-map.md).
 * **The lighting** runs in the game's bank 4 (`L_SUN`, `L_REC`,
   `gfx-light.asm`, with the faces' normals, which the blueprint set
-  carries), where the quarter squares are (the only copy): `F_SHIP` is
+  carries), where the quarter squares are (the only copy; `L_SUN`'s
+  seeding of the light from the sun, once in 32 iterations, is in the
+  flight code's main RAM part, with bank 4 paged): `F_SHIP` is
   given the faces' levels in `XX2`. Its face lists, loaded with the
   blueprint set into `FCSLOT` ([memory-map.md](memory-map.md), "Per-set
   renderer data"), hold no normals.

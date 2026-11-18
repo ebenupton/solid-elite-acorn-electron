@@ -31601,7 +31601,25 @@ ENDIF
 
 LIGHT_SUN = TRUE
 
- INCLUDE "1-source-files/main-sources/gfx-light.asm"
+ INCLUDE "3-assembled-output/gfx-light-bank4.asm"
+
+\ ******************************************************************************
+\
+\       Name: LS_SEED
+\       Type: Subroutine
+\   Category: Drawing ships
+\    Summary: Port: the renderer's lighting: the light seeded from the sun
+\       Area: hot, main
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: L_SUN's seeding of the light from the sun's position (ls_seed, the
+\ main RAM pass of gfx-light.asm), which runs once in 32 iterations: in main
+\ RAM, to leave its room in bank 4 to code that runs more often.
+\
+\ ******************************************************************************
+
+ INCLUDE "3-assembled-output/gfx-light-mainpart.asm"
 
 \ ******************************************************************************
 \

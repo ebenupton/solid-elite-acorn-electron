@@ -1505,7 +1505,7 @@ RFILES = ("gfx-glue.asm", "gfx-raster_poly.asm", "gfx-raster_line.asm", "gfx-ras
           "gfx-raster_init.asm", "gfx-raster_rep.asm", "gfx-raster_dq.asm", "gfx-raster_lcold.asm",
           "gfx-raster_reset.asm", "gfx-planet7.asm", "gfx-merid.asm", "gfx-frame.asm",
           "gfx-flare.asm", "gfx-frame_cold.asm", "gfx-hangar.asm", "gfx-finit.asm",
-          "gfx-raster_disc.asm", "gfx-raster_disc2.asm", "gfx-raster_dpatch.asm")
+          "gfx-raster_disc.asm", "gfx-raster_disc2.asm", "gfx-raster_dpatch.asm", "gfx-light.asm")
 RPLACES = ("bank 4", "bank 4 top", "bank 5 runs", "bank 5", "bank 5 gap", "bank 5 end", "bank 6", "bank 7", "main",
            "main low", "main high", "main part")
 

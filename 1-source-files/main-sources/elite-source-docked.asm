@@ -26193,7 +26193,7 @@ ENDMACRO
 
 LIGHT_SUN = FALSE
 
- INCLUDE "1-source-files/main-sources/gfx-light.asm"
+ INCLUDE "3-assembled-output/gfx-light-bank4.asm"
 
 \ ******************************************************************************
 \

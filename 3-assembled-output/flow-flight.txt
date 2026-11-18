@@ -1,4 +1,4 @@
-hot &8000-&A86D: 76 units, 9669 bytes, 681 free
+hot &8000-&A86D: 76 units, 9410 bytes, 940 free
   &8000    22 S%
   &8016    13 INBAY
   &8023     9 LTLI
@@ -62,49 +62,50 @@ hot &8000-&A86D: 76 units, 9669 bytes, 681 free
   &986C    11 LL42F
   &9877    67 H_LL42..H_EE31
   &98BA    89 S_SHIP
-  &9913   975 L_REC
-  &9CE2  1193 LL9 (Part 1 of 12)..LL9 (Part 9 of 12)
-  &A18B     1 LL9 (Part 9 of 12), drawing
-  &A18C     6 LL9 (Part 10 of 12)
-  &A192     1 LL9 (Part 11 of 12)
-  &A193     2 LL9 (Part 12 of 12)
-  &A195     1 LL9 (Part 12 of 12), drawing
-  &A196   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
-  &A33A    87 MVT1
-  &A391   103 MVS4
-  &A3F8    53 MVT6
-  &A42D   200 MV40
-  &A4F5   208 LYN..SCAN
-hotm &1A94-&1E3F: 14 units, 357 bytes, 583 free
+  &9913   716 L_REC
+  &9BDF  1193 LL9 (Part 1 of 12)..LL9 (Part 9 of 12)
+  &A088     1 LL9 (Part 9 of 12), drawing
+  &A089     6 LL9 (Part 10 of 12)
+  &A08F     1 LL9 (Part 11 of 12)
+  &A090     2 LL9 (Part 12 of 12)
+  &A092     1 LL9 (Part 12 of 12), drawing
+  &A093   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
+  &A237    87 MVT1
+  &A28E   103 MVS4
+  &A2F5    53 MVT6
+  &A32A   200 MV40
+  &A3F2   208 LYN..SCAN
+hotm &1A94-&1E3F: 17 units, 625 bytes, 315 free
   &1A94    15 HLOIN2
   &1AA3    38 MAS3
   &1AC9    24 TAS6
-  &1AE1     3 DET1
-  &1AE4    16 SHD..DENGY
-  &1AF4    17 SUNUP
-  &1B05    78 TT17
-  &1B53    14 DPLT
-  &1B61    23 DKS3
-  &1B78    73 SHPPT
-  &1BC1    11 LL9F
-  &1BCC    14 H_PTCLS
-  &1BDA    14 H_PTCLSE
-  &1BE8    17 H_DOT
-hotx &1100-&18FF: 14 units, 2048 bytes, 0 free
+  &1AE1   113 SUNLAU
+  &1B52     3 DET1
+  &1B55    16 SHD..DENGY
+  &1B65    17 SUNUP
+  &1B76    12 SUNE
+  &1B82    45 PLS22..CIRCLE
+  &1BAF    78 TT17
+  &1BFD    14 DPLT
+  &1C0B   109 EXNO3..KYTB
+  &1C78    23 DKS3
+  &1C8F    73 SHPPT
+  &1CD8    14 H_PTCLS
+  &1CE6    14 H_PTCLSE
+  &1CF4    17 H_DOT
+hotx &1100-&18FF: 12 units, 2048 bytes, 0 free
   &1100   146 BLINE
   &1192   187 DOCKIT
   &124D   255 STARS2..QSMUL
   &134C   123 BUMP2..REDU2
-  &13C7   113 SUNLAU
-  &1438   277 GCASH..DOEXP
-  &154D   231 COMPAS..SP2
-  &1634    12 SUNE
-  &1640   171 NWSHP
-  &16EB    45 PLS22..CIRCLE
-  &1718   126 WPLS2..WPLS
-  &1796    91 RDKEY
-  &17F1   109 EXNO3..KYTB
-  &185E   162 TIDY
+  &13C7   277 GCASH..DOEXP
+  &14DC   231 COMPAS..SP2
+  &15C3   171 NWSHP
+  &166E   126 WPLS2..WPLS
+  &16EC    91 RDKEY
+  &1747   162 TIDY
+  &17E9    11 LL9F
+  &17F4   268 LS_SEED
 hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free
   &2C50    14 MAS2
   &2C5E   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
