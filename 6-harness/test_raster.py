@@ -357,12 +357,97 @@ tr.Tester.draw_line = draw_line
 tr.Tester.test_lines = test_lines
 
 
+class MainCount:
+    """the machine's memory, counting the accesses to main RAM (&0000-&7FFF:
+    on the Electron, 1 MHz and behind the ULA; sideways RAM is 2 MHz)"""
+
+    def __init__(self, mem):
+        self.mem, self.n = mem, 0
+
+    def __getitem__(self, a):
+        if a < 0x8000:
+            self.n += 1
+        return self.mem[a]
+
+    def __setitem__(self, a, v):
+        if a < 0x8000:
+            self.n += 1
+        self.mem[a] = v
+
+    def __len__(self):
+        return len(self.mem)
+
+
+def bench(m, rnd):
+    """cycles (py65's) and main RAM accesses of representative calls, and an
+    Electron estimate: cycles + main RAM accesses (each a 1 MHz cycle, two of
+    the 2 MHz CPU's, at least)"""
+    import math
+    t = tr.Tester(m, rnd)
+    m.guard = False
+    cnt = MainCount(m.mem)
+    m.mpu.memory = cnt
+    rows = []
+
+    def run(name, fn, n, setup=None):
+        c0, a0 = 0, 0
+        for _ in range(n):
+            if setup:
+                setup()
+            k = cnt.n
+            c0 += fn()
+            a0 += cnt.n - k
+        rows.append((name, c0 / n, a0 / n))
+    t.set_clip((2, 253, 1, 191))
+    m.call('R_SETBUF', a=0)
+    m.clearall()
+    t.set_col(0x5A, 0xA5)
+    for w in (8, 64, 252):
+        def sp(w=w):
+            xl = rnd.randrange(2, 254 - w + 1)
+            m.wzp('R_XL', xl)
+            m.wzp('R_XR', xl + w - 1)
+            return m.call('R_SPAN', y=rnd.randrange(1, 192))
+        run('R_SPAN %d px' % w, sp, 40)
+    for h in (16, 64, 160):
+        def pl(h=h):
+            cx, cy = rnd.randrange(h // 2 + 4, 252 - h // 2), rnd.randrange(h // 2 + 2, 190 - h // 2)
+            a = rnd.random() * 6.283
+            vs = tr.convex_hull([(int(cx + h * 0.6 * math.cos(a + 6.283 * i / 4)),
+                                  int(cy + h * 0.5 * math.sin(a + 6.283 * i / 4))) for i in range(4)])
+            return t.draw_poly(vs, 0x5A, 0xA5)
+        run('R_POLY quad ~%d rows' % h, pl, 20)
+    run('R_POLY huge (16-bit)', lambda: t.draw_poly(tr.random_poly(rnd, 'huge'), 0x5A, 0xA5), 20)
+    for name, d in (('horizontal', (60, 0)), ('diagonal', (60, 60)), ('vertical', (0, 60))):
+        run('R_LINE %s 61 px' % name, lambda d=d: t.draw_line(90, 60, 90 + d[0], 60 + d[1], 0xFF, 0xFF), 10)
+    run('R_DOT size 3', lambda: m.call('R_DOT', a=3, x=rnd.randrange(2, 252), y=rnd.randrange(1, 190)), 40)
+    m.call('R_SETBUF', a=1)
+    m.clearall()
+    m.wr('R_SN', tr.NSTARS)
+    for i in range(tr.NSTARS):
+        m.wr('R_SX', rnd.randrange(2, 252), i)
+        m.wr('R_SY', rnd.randrange(1, 190), i)
+        m.wr('R_SS', 1 + i % 3, i)
+    run('R_STARPLOT %d stars' % tr.NSTARS, lambda: m.call('R_STARPLOT'), 1)
+    run('R_STARERASE', lambda: m.call('R_STARERASE'), 1)
+
+    run('R_REPAIR the whole window', lambda: m.call('R_REPAIR', a=0xFF, y=0), 2,
+        lambda: t.draw_poly([(2, 1), (253, 1), (253, 191), (2, 191)], 0x5A, 0xA5))
+    m.mpu.memory = m.mem
+    m.guard = True
+    out = ['%-28s %9s %9s %9s' % ('', 'cycles', 'main RAM', 'Electron')]
+    for name, c, a in rows:
+        out.append('%-28s %9.0f %9.0f %9.0f' % (name, c, a, c + a))
+    return '\n'.join(out)
+
+
 def main():
     import argparse, random
     ap = argparse.ArgumentParser()
     ap.add_argument('--seed', type=int, default=1)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--only', default='')
+    ap.add_argument('--bench', action='store_true')
     a = ap.parse_args()
     scale = 0.2 if a.quick else 1.0
     nsites = check_patch_sites()
@@ -384,6 +469,9 @@ def main():
                 (a_ & 255, a_ >> 8, (a_ - scr + buf0) >> 8):
             raise SystemExit('R_INIT: row table entry %d is not as made' % y)
     print('R_INIT   ok (the 24 row runs made)')
+    if a.bench:
+        print(bench(m, rnd))
+        return
     t = tr.Tester(m, rnd)
     only = a.only.split(',') if a.only else None
 

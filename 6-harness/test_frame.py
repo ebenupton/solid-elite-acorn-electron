@@ -170,6 +170,7 @@ class Mem:
         self.okgame = game
         self.guard = ok
         self.bad = []
+        self.nmain = 0                           # main RAM accesses (counted)
 
     def blueprints(self, name):
         """the blueprint set D.MOx into the home bank's slot, and its face
@@ -184,12 +185,16 @@ class Mem:
     def __getitem__(self, a):
         if 0x8000 <= a < 0xC000:
             return self.banks[self.sel][a - 0x8000]
+        if a < 0x8000:
+            self.nmain += 1                      # (main RAM: 1 MHz on the Electron)
         return self.main[a]
 
     def __setitem__(self, a, v):
         if 0x8000 <= a < 0xC000:
             self.banks[self.sel][a - 0x8000] = v
             return
+        if a < 0x8000:
+            self.nmain += 1
         if a == ROMSEL:
             self.sel = v & 15
             return
@@ -217,6 +222,7 @@ class Machine:
         m[0xF4] = HOME
         self.mpu = MPU(memory=self.mem)
         self.cycles = {}
+        self.mains = {}
 
     def __getitem__(self, name):
         return self.mem.main[self.S[name]]
@@ -244,6 +250,7 @@ class Machine:
         mpu.a, mpu.x, mpu.y, mpu.p, mpu.sp = a & 255, 0x55, y & 255, 0x24 | (c & 1), 0xFF
         mpu.pc = STUB
         c0 = mpu.processorCycles
+        n0 = mem.nmain
         step = mpu.step
         end = STUB + 5
         while mpu.pc != end:
@@ -252,6 +259,7 @@ class Machine:
                 raise RuntimeError('runaway in %s at &%04X' % (entry, mpu.pc))
         cyc = mpu.processorCycles - c0
         self.cycles.setdefault(entry, []).append(cyc)
+        self.mains.setdefault(entry, []).append(mem.nmain - n0)
         if mem.bad:
             FAILS.append('%s wrote outside its areas: %s' % (entry, ' '.join('&%04X' % b for b in sorted(set(mem.bad))[:12])))
             print('  FAIL', FAILS[-1])
@@ -1159,8 +1167,12 @@ def main():
     flare_tests()
     pmath_tests('--quick' in args)
 
+    fr = m.mains['F_FRAME']
     print('cycles: F_FRAME %s (frame 1 includes clearing buffer 0); F_CHAR %d' % (
         ', '.join(str(c) for c in (cyc1, cyc2, cyc3, cyc5)), max(m.cycles['F_CHAR'])))
+    print('main RAM accesses: F_FRAME %s; Electron estimate (cycles + main RAM accesses): %s' % (
+        ', '.join(str(fr[i]) for i in (0, 1, 2, 4)),
+        ', '.join(str(c + fr[i]) for c, i in ((cyc1, 0), (cyc2, 1), (cyc3, 2), (cyc5, 4)))))
     print('PNGs in %s: frame-1.png, frame-2.png, frame-3.png' % png_dir)
     if FAILS:
         print('%d check(s) failed' % len(FAILS))
