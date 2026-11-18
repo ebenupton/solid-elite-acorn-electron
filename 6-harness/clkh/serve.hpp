@@ -86,11 +86,16 @@ struct Server {
 	std::vector<int32_t> lab_rom = std::vector<int32_t>(16 * 16384, -1);
 	std::vector<std::string> lab_names;
 	std::map<std::string, int> lab_index;
-	// per label: 6 categories' accesses, then their cycles; [12] cycles run at the label
-	std::vector<std::array<uint64_t, 13>> acc;
+	// per label: 6 categories' accesses, then their cycles; [12] cycles run at the label,
+	// [13] the times its first byte was fetched as an opcode (its entries, and a loop's passes)
+	std::vector<std::array<uint64_t, 14>> acc;
+	std::vector<uint8_t> lab_start_ram = std::vector<uint8_t>(32768, 0);
+	std::vector<uint8_t> lab_start_rom = std::vector<uint8_t>(16 * 16384, 0);
 	std::array<uint64_t, 12> acc_tot{};
 	uint64_t prof_last = 0;
 	int prof_lab = -1;
+	int call_from = -2;		// the label of a JSR just fetched (-2: none), for the call counts
+	std::map<std::pair<int, int>, uint64_t> calls;	// (caller's label, callee's label): JSRs
 
 	explicit Server(Elk &mm) : m(mm) {}
 
@@ -150,6 +155,9 @@ struct Server {
 			const uint64_t now = m.total_cycles;
 			if(prof_lab >= 0) acc[size_t(prof_lab)][12] += now - prof_last;
 			prof_last = now; prof_lab = label_of(pc, rom);
+			if(call_from != -2) { calls[{call_from, prof_lab}]++; call_from = -2; }
+			if(view(pc) == 0x20) call_from = prof_lab;
+			if(prof_lab >= 0 && (pc < 0x8000 ? lab_start_ram[pc] : pc < 0xc000 ? lab_start_rom[size_t(rom & 15) * 16384 + (pc & 0x3fff)] : 0)) acc[size_t(prof_lab)][13]++;
 		}
 		lpc = pc; lrom = rom;
 		histv[histp++ & 4095] = uint32_t(pc) | uint32_t(rom) << 16;
@@ -358,7 +366,11 @@ struct Server {
 			send(out); return false;
 		}
 		// main-RAM traffic and the profile
-		if(c == "labclear") { std::fill(lab_ram.begin(), lab_ram.end(), -1); std::fill(lab_rom.begin(), lab_rom.end(), -1); return false; }
+		if(c == "labclear") {
+			std::fill(lab_ram.begin(), lab_ram.end(), -1); std::fill(lab_rom.begin(), lab_rom.end(), -1);
+			std::fill(lab_start_ram.begin(), lab_start_ram.end(), 0); std::fill(lab_start_rom.begin(), lab_start_rom.end(), 0);
+			return false;
+		}
 		if(c == "labfile") {	// labfile PATH: lines "slot start end name" (slot -1 main RAM, -2 the OS), [start, end)
 			FILE *f = std::fopen(a.size() > 1 ? a[1].c_str() : "", "r");
 			if(!f) { std::fprintf(stderr, "clkh serve: cannot read %s\n", a.size() > 1 ? a[1].c_str() : ""); return false; }
@@ -366,6 +378,8 @@ struct Server {
 			while(std::fscanf(f, "%d %x %x %255s", &slot, &s0, &e0, nm) == 4) {
 				const int k = intern(nm);
 				if(slot == -2) { os_label = k; continue; }
+				if(slot < 0 && s0 < 0x8000) lab_start_ram[s0] = 1;
+				else if(slot >= 0 && s0 >= 0x8000 && s0 < 0xc000) lab_start_rom[size_t(slot & 15) * 16384 + (s0 & 0x3fff)] = 1;
 				for(unsigned x = s0; x < e0 && x < 0x10000; x++) {
 					if(slot < 0 && x < 0x8000) lab_ram[x] = k;
 					else if(slot >= 0 && x >= 0x8000 && x < 0xc000) lab_rom[size_t(slot & 15) * 16384 + (x & 0x3fff)] = k;
@@ -379,13 +393,23 @@ struct Server {
 			m.ram_access_hook = [this](uint16_t ad, bool wr, bool op, int cyc) { on_access(ad, wr, op, cyc); };
 			return false;
 		}
+		if(c == "accreset") {	// zero the counts (labels kept)
+			for(auto &v : acc) v.fill(0);
+			acc_tot.fill(0); prof_last = m.total_cycles; prof_lab = -1; calls.clear(); call_from = -2;
+			return false;
+		}
 		if(c == "accoff") { acc_on = prof_on = false; m.ram_access_hook = nullptr; return false; }
 		if(c == "acctot") {		// the 6 categories' accesses, then their cycles
 			std::string out;
 			for(int k = 0; k < 12; k++) out += std::to_string(acc_tot[size_t(k)]) + (k == 11 ? "\n" : " ");
 			send(out); return false;
 		}
-		if(c == "accdump") {	// per label: name, 6 accesses, 6 cycles, cycles run
+		if(c == "acccalls") {	// per (caller, callee) label pair: the JSRs from one to the other
+			std::string out;
+			for(const auto &e : calls) out += (e.first.first >= 0 ? lab_names[size_t(e.first.first)] : std::string("?")) + " " + (e.first.second >= 0 ? lab_names[size_t(e.first.second)] : std::string("?")) + " " + std::to_string(e.second) + "\n";
+			send(out); return false;
+		}
+		if(c == "accdump") {	// per label: name, 6 accesses, 6 cycles, cycles run, entries
 			std::string out;
 			for(size_t k = 0; k < lab_names.size(); k++) {
 				bool any = false; for(auto v : acc[k]) any |= v != 0;

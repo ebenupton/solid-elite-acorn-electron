@@ -29,9 +29,10 @@
 //    is another format; opts.shots gives PNG screenshots (640 x 256).
 // A run of the candidate is the same function of the build and the pilot as
 // blib's, and its results have the same fields.
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 import { Clkh, ELK_KEYS } from "./clkh.mjs";
-import { regionsFor, canonFor, progHooks, DEAD_AFTER, PATCHES } from "./blib.mjs";
+import { regionsFor, canonFor, progHooks, DEAD_AFTER, PATCHES, loadSyms } from "./blib.mjs";
 
 // the machine a build.json names: "electron", or "modelb" (the default)
 export function machineOf(buildOrFile) {
@@ -400,6 +401,55 @@ export function elkBanks(b, e) {
         return cache[map] ??= e.rb(addr[map]);
     };
     return { bankOf, live: h => !!h && (h.map === "m" || (e.reg.rom & 15) === bankOf(h.map)) };
+}
+
+// The profiler's labels for a program (eramacc.mjs, bbench.mjs --prof): the
+// program's symbols, the loader's, and any bankN-symbols.txt beside the build
+// (bank N's slot from the loader's BANKN), each label's range running to the
+// next in its slot; a slot holding a ROM is named by its title. Uploaded to
+// clkh (labclear, labfile) through a file in its directory.
+export function elkLabeller(b, buildFile) {
+    const labelsOf = prog => {
+        const out = [];
+        for (const [k, v] of Object.entries(prog.sy)) {
+            if (v < 0x200 || v >= 0xc000) continue;
+            const m = v < 0x8000 ? "m" : (prog.bank[k] || prog.images.find(im => v >= im.base && v < im.base + im.data.length)?.map);
+            if (m) out.push([m, v, k]);
+        }
+        return out;
+    };
+    const extra = [];
+    // (the loader's own labels, but not those of its boot code in the main
+    // RAM that the programs' parts take over, PROGM% on, below the screens)
+    const progm = b.progs.flight.sy["PROGM%"] ?? 0x1900;
+    for (const [k, v] of Object.entries(b.loader)) if (v >= 0x200 && v < 0x8000 && !(v >= progm && v < 0x3000)) extra.push(["m", v, k]);
+    const dir = dirname(buildFile);
+    for (const f of readdirSync(dir)) {
+        const m = f.match(/^bank(\d+)-symbols\.txt$/);
+        if (!m || b.loader["BANK" + m[1]] === undefined) continue;
+        for (const [k, v] of Object.entries(loadSyms(join(dir, f)))) if (v >= 0x8000 && v < 0xc000) extra.push(["#" + m[1], v, k]);
+    }
+    const progLabels = { flight: labelsOf(b.progs.flight), docked: labelsOf(b.progs.docked) };
+    return (e, bk, prog) => {
+        const slotOf = map => map === "m" ? -1 : map[0] === "#" ? e.rb(b.loader["BANK" + map.slice(1)]) : bk.bankOf(map);
+        const lines = ["-1 0 8000 ram:?", "-2 c000 10000 MOS"];
+        for (let s = 0; s < 16; s++) {
+            const h = e.read(0x8000, 64, s), off = h[7];
+            const rom = off < 60 && h[off] === 0 && String.fromCharCode(...h.subarray(off + 1, off + 4)) === "(C)";
+            const title = rom ? String.fromCharCode(...h.subarray(9, h.indexOf(0, 9))).replace(/[^\w.-]/g, "_") : "";
+            lines.push(`${s} 8000 c000 ${rom ? `rom${s}:${title}` : `slot${s}:?`}`);
+        }
+        const all = progLabels[prog].concat(extra).map(([m, a, n]) => [slotOf(m), a, n, m]);
+        all.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+        for (let i = 0; i < all.length; i++) {
+            const [s, a, n, m] = all[i];
+            const end = i + 1 < all.length && all[i + 1][0] === s ? all[i + 1][1] : (s < 0 ? 0x8000 : 0xc000);
+            if (end > a) lines.push(`${s} ${a.toString(16)} ${end.toString(16)} ${m === "m" ? "" : m + ":"}${n.replace(/\s/g, "_")}`);
+        }
+        const f = join(e.dir, "labels.txt");
+        writeFileSync(f, lines.join("\n") + "\n");
+        e.send("labclear"); e.send(`labfile ${f}`);
+    };
 }
 
 // For the tools that press real keys (bredock.mjs, bsavetest.mjs): an

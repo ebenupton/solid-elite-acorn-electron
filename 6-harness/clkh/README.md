@@ -67,7 +67,7 @@ Numbers are decimal or `0x` hex.
 | `twritten`, `twoff` | 4096 bytes; | the main RAM written since `tgame 1`, a bit an address; stop recording |
 | `t0d`, `tpage1` | text | page `&0D` writes by game code (iteration, PC, address); page 1's figures |
 | `labclear`, `labfile PATH` | | labels: lines `SLOT START END NAME` (hex; SLOT -1 main RAM, -2 the MOS) |
-| `accon SCREENLO`, `accoff`, `acctot`, `accdump` | ; ; text; text | count main-RAM accesses and cycles by label |
+| `accon SCREENLO`, `accoff`, `accreset`, `acctot`, `accdump` | ; ; ; text; text | count main-RAM accesses and cycles by label (`accreset` zeroes the counts) |
 | `quit` | | |
 
 An event is `B|E|R cycles pc slot a x y s p f4 watchgen ids`: `B` a

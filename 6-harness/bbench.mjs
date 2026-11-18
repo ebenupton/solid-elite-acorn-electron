@@ -42,11 +42,11 @@
 import { runElite, loadBuild, regionsFor, physRead, progHooks, CAND_BUILD } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
-import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
+import { isElectron, runElite as runEliteElectron, elkBanks, elkLabeller } from "./elib.mjs";
 import { writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 
-const a = parseArgs({ build: "value", scene: "value", n: "value", warm: "value", out: "value", shots: "value" });
+const a = parseArgs({ build: "value", scene: "value", n: "value", warm: "value", out: "value", shots: "value", prof: "value" });
 const BUILD = resolve(a.build || CAND_BUILD);
 const b = loadBuild(BUILD);
 const sy = b.progs.flight.sy;
@@ -132,7 +132,14 @@ function pose(sc) {
 
 const results = {};
 let si = 0, k = -1, snap = null, times = [], posed = false, rand, many, slsp, junk, slspTop = 0, launchedAt = -1, used = null;
-opts.onBoot = s => { cpu = s._machine.processor; ph = progHooks(b, cpu); };
+// --prof FILE (an Electron build): each scene's profile over its N iterations,
+// as eramacc.mjs's by label (main-RAM accesses and their cycles by category,
+// the cycles run at each label and the times it was entered, and the JSRs
+// from label to label), per iteration, into FILE as JSON
+const CAT = ["zp", "stack", "low", "scrrd", "scrwr", "code"];
+let elk = null, labelled = false;
+const prof = {};
+opts.onBoot = s => { cpu = s._machine.processor; ph = progHooks(b, cpu); if (a.prof && s.clkh) elk = { e: s.clkh, bk: elkBanks(b, s.clkh), lab: elkLabeller(b, BUILD) }; };
 opts.onIter = (i, s, res) => {
     const ram = cpu.ramRomOs;
     if (!benching) {
@@ -147,6 +154,10 @@ opts.onIter = (i, s, res) => {
     k++;
     if (!posed) { used = pose(sc); posed = true; k = 0; return; }
     if (k === WARM) {
+        if (elk) {
+            if (!labelled) { elk.lab(elk.e, elk.bk, "flight"); elk.e.send("accon 12288"); labelled = true; }
+            elk.e.send("accreset");
+        }
         snap = regions.map(([q, n]) => Array.from(ram.subarray(q, q + n)));
         rand = Array.from(ram.subarray(sy.RAND, sy.RAND + 4)); many = Array.from(ram.subarray(sy.MANY, sy.MANY + 32));
         slsp = [ram[sy.SLSP], ram[sy.SLSP + 1]]; junk = ram[sy.JUNK];
@@ -157,6 +168,16 @@ opts.onIter = (i, s, res) => {
         if (a.shots && times.length === M / 2 && s && s.shot) { mkdirSync(a.shots, { recursive: true }); writeFileSync(`${a.shots}/${which[si]}.png`, s.shot()); }
         if (times.length > N) {
             const per = (times[times.length - 1] - times[0]) / (times.length - 1) * 2e6;
+            if (elk) {
+                const n = times.length - 1, rows = {};
+                const tot = elk.e.ask("acctot").toString().trim().split(" ").map(Number).map(x => x / n);
+                for (const l of elk.e.ask("accdump").toString().split("\n").filter(Boolean)) {
+                    const f = l.split(" "), v = f.slice(1).map(Number).map(x => x / n);
+                    rows[f[0]] = { accesses: v.slice(0, 6), cycles: v.slice(6, 12), run: v[12], entries: v[13] };
+                }
+                const calls = elk.e.ask("acccalls").toString().split("\n").filter(Boolean).map(l => { const f = l.split(" "); return [f[0], f[1], +f[2] / n]; });
+                prof[which[si]] = { cyclesPerIteration: per, categories: CAT, accesses: tot.slice(0, 6), cycles: tot.slice(6), byLabel: rows, calls };
+            }
             results[which[si]] = { cycles: Math.round(per), its: +(2e6 / per).toFixed(3), n: times.length - 1, ships: used };
             console.log(`${which[si].padEnd(10)} ${String(Math.round(per)).padStart(7)} cycles/iteration  ${(2e6 / per).toFixed(2).padStart(6)} it/s   (ships ${used.join(",") || "none"})`);
             si++; k = -1; snap = null; times = []; posed = false;
@@ -175,5 +196,6 @@ opts.onIter = (i, s, res) => {
 // romOffset, so the scenes are put in as they are on the Model B)
 const r = await (isElectron(b) ? runEliteElectron : runElite)(opts);
 if (r.error) console.log(`error: ${r.error}`);
+if (a.prof) writeFileSync(a.prof, JSON.stringify(prof, null, 1));
 if (a.out) writeFileSync(a.out, JSON.stringify({ build: BUILD, N, WARM, results }, null, 1));
 process.exit(Object.keys(results).length === which.length ? 0 : 1);
