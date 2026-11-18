@@ -2020,8 +2020,7 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BIT f_d2c
  BPL fdb8
  BVC fdb7
- JSR f_snap             \ and its boundaries
- JMP fdb8
+ JMP f_snap             \ and its boundaries (f_snap, which goes on at fdb8)
 .fdb6
  LDA #&FF               \ an empty span
  STA DB_NL,X
@@ -2067,31 +2066,57 @@ FC_PLLE = &5F : FC_PLLO = &AF
 \ 7), and two that land together go. So every edge of the layer's rows is
 \ between two MODE 5 pixels, and the painter, which writes the pixels whose
 \ colour changed, game x by game x, always writes whole MODE 5 pixels: a
-\ pixel is never half one colour. Keeps X and Y.
+\ pixel is never half one colour. Part of f_dbat's loop (it jumps here, and
+\ this goes on at fdb8, with X and Y as they were), with each boundary's
+\ test in line (FSNAP: X counts the boundaries out, f_sbo keeps them, and
+\ its entries past the count keep earlier rows' values, as the painter
+\ reads all four).
+
+MACRO FSNAP i
+ LDA R_NDX0 + 192 * i,Y \ boundary i, on a pixel's edge
+ AND #&FE
+ CMP f_sl
+ BNE n1
+ LDA f_sbc              \ at the span's left end: the colour there flips
+ EOR #&80
+ STA f_sbc
+ BCS n9                 \ (always: C set by the CMP)
+.n1
+ CPX #0
+ BEQ n3
+ CMP f_sbo-1,X
+ BNE n3
+ DEX                    \ with the last: both go
+ BCS n9                 \ (always: C set by the CMP)
+.n3
+ STA f_sbo,X
+ INX
+.n9
+ENDMACRO
 
 .f_snap
  STX f_sbx
- LDA R_NDN,Y
+ LDX #0                 \ (none out yet)
+ LDA R_NDN,Y            \ the colour at the left end, and the count
  AND #&80
  STA f_sbc
- LDA R_NDN,Y
- AND #&7F
+ EOR R_NDN,Y
  STA f_sbn
- LDA #0
- STA f_sbk
-FOR i, 0, 3
- LDA f_sbn
- CMP #i + 1
- BCC fsn9
- LDA R_NDX0 + 192 * i,Y
- AND #&FE
- JSR fsn1
-NEXT
+ BNE fsn0
+ JMP fsn9
+.fsn0
+ FOR i, 0, 3
+ FSNAP i
+IF i < 3
+ DEC f_sbn
+ BEQ fsn9
+ENDIF
+ NEXT
  ASSERT R_NDX1 = R_NDX0 + 192 AND R_NDX2 = R_NDX1 + 192 AND R_NDX3 = R_NDX2 + 192
 .fsn9
- LDX f_sbx
- LDA f_sbk
+ TXA
  ORA f_sbc
+ LDX f_sbx
  STA DB_NN,X
  LDA f_sbo
  STA DB_X0,X
@@ -2101,31 +2126,12 @@ NEXT
  STA DB_X2,X
  LDA f_sbo+3
  STA DB_X3,X
- RTS
-.fsn1                   \ boundary A (on a pixel's edge)
- CMP f_sl
- BNE fsn2
- LDA f_sbc              \ at the span's left end: the colour there flips
- EOR #&80
- STA f_sbc
- RTS
-.fsn2
- LDX f_sbk
- BEQ fsn3
- CMP f_sbo-1,X
- BNE fsn3
- DEC f_sbk              \ with the last: both go
- RTS
-.fsn3
- STA f_sbo,X
- INC f_sbk
- RTS
+ JMP fdb8
 
 .f_sl    EQUB 0         \ f_snap's: the span's left end, the slot, the colour
 .f_sbx   EQUB 0         \ at the left end (bit 7), the boundaries in, out
 .f_sbc   EQUB 0
 .f_sbn   EQUB 0
-.f_sbk   EQUB 0
 .f_sbo   EQUB 0, 0, 0, 0
 
 .f_dpbegin              \ the painter's entries, in the flight code's bank 7
