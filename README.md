@@ -61,6 +61,20 @@ In the gate's flight run (a deterministic pilot's launch, fights, a hyperspace j
 | Lave, just after launch | 586 | 7.91 | 5.14 | 15.70 |
 | Planet close | 134 | 6.52 | 7.15 | 7.14 |
 
+The gate's run is the game's own, so its figures move whenever the game's random numbers do. `6-harness/bbench.mjs` times seven frozen scenes instead, in cycles per iteration, here for the previous release (4a0b769) and this build; its noise is about ±1.5%:
+
+| Scene | Previous release | This build |
+|---|---:|---:|
+| Flight | 232,819 | 227,289 |
+| Combat | 122,603 | 118,957 |
+| Beach ball | 269,798 | 266,741 |
+| Sun | 392,375 | 266,224 |
+| Docking | 499,057 | 479,984 |
+| Station's zone | 454,633 | 417,851 |
+| Rear view | 257,538 | 254,519 |
+
+The sun scene takes 32.2% fewer cycles, the station's zone 8.1% and docking 3.8%.
+
 ## Testing
 
 Every commit was checked against the released game (the Stairway to Hell disc), running both side by side in an emulated Model B on the same inputs and comparing the game state at every main-loop iteration:
