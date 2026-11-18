@@ -78,7 +78,7 @@ for prog, sy in (("flight", FL), ("docked", DK)):
 row("main RAM", C["MBOX"], C["MBOX_END"], "the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`)")
 row("main RAM", C["MISSILE_P"], C["GVARS"], "the missile's blueprint")
 row("main RAM", C["GVARS"], C["RESH_P"], "`GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's)", C["PF_CLS"] + 1 - C["GVARS"])
-row("main RAM", C["RESH_P"], C["PFVH_P"], "the interrupt's variables", 0)
+row("main RAM", C["RESH_P"], C["PFVH_P"], "`SNDH`, the interrupt's hook into the sound engine (copied there by the loader's `LOAD`)", C["SNDHSZ"])
 pfvh_used = FL.get("PFVH_END%", C["PFVH_P"]) - C["PFVH_P"]
 row("main RAM", C["PFVH_P"], C["VEC"], "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
 row("main RAM", C["VEC"], C["VEC"] + 2, "`VEC`")
@@ -129,10 +129,10 @@ row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: c
 row("bank 6", B6["F_START"], B6["F_CODEEND"], "the frame layer's code (bank 6 passes)")
 row("bank 6", B6["F_CODEEND"], B6["F_TABEND"], "the faces' and the lighting's tables")
 row("bank 6", B6["F_TABEND"], B6["f_plm"] + 1, "the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept")
-row("bank 6", B6["f_plm"] + 1, B6["F_HW"], "(free: the page-aligned state that follows is placed as high as it goes)", 0)
-row("bank 6", B6["F_HW"], fcslot, "the state, page aligned: the discs' half-widths, the text map, the discs' rows", B6["F_END"] - B6["F_HW"])
+row("bank 6", B6["f_plm"] + 1, B6["F_HW"], "the sound engine's code, `slen` and `sdiv` (`gfx-sound.asm`), in the page alignment of the state that follows", B6["SND_CODEEND"] - B6["SND_CODE"])
+row("bank 6", B6["F_HW"], fcslot, "the state, page aligned: the discs' half-widths, the text map, the discs' rows; the sound engine's state and `sflag`", B6["F_END"] - B6["F_HW"])
 row("bank 6", fcslot, fjt, "`FCSLOT`: the face lists of the set loaded")
-row("bank 6", fjt, 0xC000, "`FJT`, the dispatcher", B6["FJT_END"] - fjt)
+row("bank 6", fjt, 0xC000, "`FJT`, the dispatcher; the sound engine's `sdel`, and `SNDJ`, its tick's `JMP` (`&BFFD`)", B6["sdel"] + 9 - fjt + 3)
 
 L = ["| Place | Addresses | Holds | Used | Free |", "|---|---|---|---:|---:|"]
 for space, s, e, what, u, f in rows:

@@ -28382,12 +28382,12 @@ ENDIF
  BNE KYTB               \ If DNOIZ is non-zero, then sound is disabled, so
                         \ return from the subroutine (as KYTB contains an RTS)
 
- LDX #LO(XX16)          \ Otherwise set (Y X) to point to the sound block in
- LDY #HI(XX16)          \ XX16
-
- LDA #7                 \ Call OSWORD 7 to makes the sound, as described in the
- JMP OSWORD             \ documentation for variable SFX, and return from the
-                        \ subroutine using a tail call
+ INY                    \ Port: start the sound in the sound engine (bank 6,
+ TYA                    \ gfx-sound.asm) through GCALL, with A = the sound's
+ LSR A                  \ number / 8 (NOS1 leaves Y = the number / 2 - 1, and
+ LSR A                  \ its BBC channel in XX16), in place of OSWORD 7 with
+ LDX #FG_SOUND          \ the block in XX16, and return from the subroutine
+ JMP GCALL              \ using a tail call (with A = 7, as OSWORD 7 left it)
 
 \ ******************************************************************************
 \

@@ -148,22 +148,70 @@ and the disc and MOS work at load time.
 | `&5800-&7FFF` | buffer 1 (the direct-mode screen) |
 | banks 4-7 | as the Model B port: 4 home, 7 cold, 5 the rasteriser, 6 the frame layer |
 
-## Gate
+## Sound
 
-The gate (`6-harness/verify.sh`) runs the reference (the released disc,
-patched as for the Model B port) on jsbeeb's Model B as before, and the
-candidate on clkh (`6-harness/elib.mjs`, `clkh`'s serve mode), comparing the
-game state at every main-loop iteration with the same pilot and keys.
+The Electron's ULA has one square-wave tone channel: `&FE06` is its counter
+(1 MHz / (16 * (n + 1))) and bits 1-2 of `&FE07` switch it on (01) or off;
+there is no volume and no noise. Acornsoft's Electron Elite played the BBC's
+sounds through the MOS's OSWORD 7 on that channel, with a priority and a
+minimum duration for each sound (its `SFX2`) to choose which one played. The
+port has its own engine instead (`gfx-sound.asm`), with no MOS sound queue:
 
-## Main-RAM traffic
+* **Where it runs.** In bank 6, which is loaded once at boot and never
+  reloaded, so its tick is safe during the disc loads that reload banks 4
+  and 7. `IRQG` (the resident block's interrupt handler) ticks it on both
+  the display-end and the real-time clock interrupts, about half a field
+  apart: 100 ticks a second. It calls `SNDH` (14 bytes at `&1F50`, the
+  interrupt's place in main RAM, copied there by `LOAD`), which pages ROM 12
+  then bank 6 in (the ULA ignores a ROM 0-7 while the keyboard's ROM 8 is
+  paged) and jumps through `SNDJ` (bank 6's `JMP` at `&BFFD`) to `SND_TICK`;
+  `IRQG` then pages the interrupted bank back in from `&F4`.
+* **Voices.** Four, one per BBC channel (0, the noise channel; 1-3, the
+  tones), so that sounds the BBC makes together stay together; a sound
+  replaces the one on its voice, as the BBC's flush did. The tone channel
+  plays the active voices in turn, one a tick: two sounds at once are an
+  arpeggio (the death's whistle and crackle, a hit's crack and whistle), and
+  a short sound over a long one (a laser over the E.C.M.'s siren) is heard
+  with it, the long one carrying on alone when the short one ends. No sound
+  is dropped, so Electron Elite's priorities are not needed.
+* **Sounds.** Each is one sweep: a start counter, a signed step added each
+  tick and a length in ticks (`slen`, `sdiv`, `sdel`); a noise sound flips
+  the counter's bits in its mask (`sflag`) at random each tick (the engine's
+  own 8-bit LFSR, not the game's `RAND`); the E.C.M.'s siren repeats while
+  `ECMA` is set, until E.C.M. off.
+* **Starting a sound.** Each program's `NO3` (after `NOS1`, which still
+  fills `XX16` from the original's `SFX`, so the game state is the
+  original's) calls `GCALL`'s entry `FG_SOUND` with the sound's number / 8
+  (from `NOS1`'s Y) in place of OSWORD 7, and returns with A = 7, as OSWORD 7
+  did. With `DNOIZ` non-zero `NO3` returns first, as before, and the engine
+  writes only its own state in bank 6 and `&FE06`/`&FE07` (`&FE07` from the
+  MOS's copy at `&0282`, so the screen mode, the caps LED and the motor bit
+  stay the MOS's).
+* **Room.** 162 bytes of code and tables in the page alignment below bank
+  6's page-aligned state (`slen`, `sdiv`), 23 bytes of state and `sflag` at
+  the state's end, `sdel` (9) and `SNDJ` (3) after the dispatcher `FJT`, and
+  `FJT`'s entry (2): bank 6 is left with 8 bytes free. In main RAM, `SNDH`
+  (14) and 12 bytes of `IRQG`. One copy serves both programs.
 
-`6-harness/eramacc.mjs`, over iterations 100 to 1099 of the gate's run (998
-flight iterations), main-RAM bus accesses and the cycles they take, per
-flight iteration:
+| Sound (`SFX` row) | Electron Elite (OSWORD 7, its envelopes) | Here |
+|---|---|---|
+| 0, our laser | a 40 ms buzz at the bottom (counter 252), then 49 to 126 in eight 10 ms steps | 49 to 130 in nine 10 ms steps (a falling "pew"), no buzz |
+| 8, hit by lasers | 108 down to 5 (rising, 150 ms), then 210 to 114 | 114 down to 18 in 18 ticks with the bottom two bits noisy (a rising zap with grit) |
+| 16, a kill's whistle / death 1 | 6 and 5 (about 10 kHz) for 300 ms with low blips | 19 to 106 over 300 ms (a falling whistle from 3.1 kHz) |
+| 24, a hit's crack / death 2 | random counters 64-120 for 250 ms | noise around 70 rising to 244 (falling pitch) over 300 ms, 6-bit mask |
+| 32, short beep | counter 15 (3.9 kHz), 40 ms | counter 33 (1.8 kHz, the BBC's pitch), 40 ms |
+| 40, long low beep | counter 210, 390 ms | the same |
+| 48, missile or ship launched | random counters 64-120 for 290 ms | a noise whoosh, 30 to 233 over 300 ms, 5-bit mask |
+| 56, hyperspace | noise, 800 ms | rising noise, 250 to 13 over 800 ms, 5-bit mask |
+| 64, E.C.M. on | a jumpy 180 ms cycle through 5-246, until E.C.M. off | a siren, 40 to 74 every 180 ms, while the E.C.M. is on |
+| 72, E.C.M. off | silences the channel | stops the siren's voice |
+| 16 + 24 together (death, a kill), 24 + 16 (a hit) | one channel: the later sound only | the two in turn, a tick each |
 
-| Build | zero page | stack | other low | screen reads | screen writes | code | total accesses | cycles | of all cycles |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| before the migration (7b49dd2) | 25,964 | 14,717 | 8,726 | 1,433 | 553 | 7,444 | 58,837 | 128,330 | 36% of 359,128 |
+The noise of Electron Elite's MOS shown here was logged at BASIC's prompt,
+where the MOS rewrites the counter about every 0.25 ms; during the game the
+MOS's own noise could change only on its interrupts. `6-harness/esound.mjs`
+makes every sound in turn on clkh and writes the log and WAV files
+(`soundwav.py`); clkh's `--soundlog FILE` logs every `&FE06`/`&FE07` write.
 
 ## Status
 

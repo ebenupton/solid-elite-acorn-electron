@@ -231,8 +231,11 @@
  FG_CLOUD    = 14
  FG_SETLD    = 15
  FG_PFHOLD   = 16
- FG_DCHAR    = 17        \ (the game's direct-mode text: TT26, CHPR)
+ FG_SOUND    = 17       \ (the sound engine's: gfx-sound.asm)
  FG_N        = 18
+
+ SNDJ = &BFFD           \ Bank 6's JMP to the sound engine's tick (gfx-bank6.asm),
+                        \ which the interrupt handler's hook SNDH enters
 
                         \ The fixed colours of the frame layer's lines and dots
                         \ (indices into its F_CPE, gfx-frame.asm)
@@ -256,9 +259,13 @@
                         \ which hold nothing between two calls of R_POLY, and
                         \ nothing draws during a disc command
 
- RESH% = GVARS + 16     \ The interrupt's variables (16 bytes, after the
-                        \ renderer's shared variables: the flip's state and the
-                        \ MOS's handler, elite-resident.asm's IRQG)
+ RESH% = GVARS + 16     \ The interrupt's 16 bytes, after the renderer's
+                        \ shared variables: SNDH, its hook into the sound
+                        \ engine
+
+ SNDH = RESH%           \ IRQG's hook into the sound engine (bank 6's SND_TICK
+ SNDHSZ = 14            \ through SNDJ): SNDHSZ bytes of code, which the
+                        \ loader's LOAD copies here (elite-loader3.asm)
 
  GLUE% = &0724          \ The glue the game calls the frame layer through, and
                         \ the trampolines into bank 5 (gfx-glue.asm): at a

@@ -612,8 +612,14 @@ NEXT
  INX
  BNE ldp1
 
- JSR b0fix              \ Make buffer 0 black, with a copy of buffer 1's last
-                        \ eight rows (the staging has been through it)
+ LDX #SNDHSZ - 1        \ Port: copy the interrupt's hook into the sound
+                        \ engine to SNDH
+.lsh
+
+ LDA sndh,X
+ STA SNDH,X
+ DEX
+ BPL lsh
 
  SEI                    \ Disable interrupts while we change the screen
 
@@ -649,6 +655,26 @@ NEXT
  STA ROMSEL
 
  JMP S%+3               \ Jump to the second entry in the main docked code's S%
+
+.sndh
+
+                        \ Port: SNDH, the hook into the sound engine that IRQG
+                        \ calls, copied to SNDH above (it refers to no address
+                        \ of its own, so it runs there as assembled here): page
+                        \ bank 6 in and go to its tick, SND_TICK (through bank
+                        \ 6's JMP at SNDJ), which returns to IRQG, which pages
+                        \ the interrupted bank back in. ROM 12 is paged first:
+                        \ the ULA ignores a ROM 0 to 7 while ROM 8 (the
+                        \ keyboard) is paged, as it is while the MOS scans the
+                        \ keyboard
+
+ LDX #12
+ STX ROMSEL
+ LDX BANK6
+ STX ROMSEL
+ JMP SNDJ
+
+ ASSERT P% - sndh = SNDHSZ
 
 .LTLI
 

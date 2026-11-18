@@ -115,7 +115,7 @@ order("main RAM", [
     ("the mailbox", C["MBOX"], C["MBOX_END"]),
     ("the missile's blueprint", C["MISSILE_P"], C["GVARS"]),
     ("the shared variables", C["GVARS"], C["RESH_P"]),
-    ("the interrupt's variables", C["RESH_P"], C["PFVH_P"]),
+    ("the interrupt's sound hook", C["RESH_P"], C["PFVH_P"]),
     ("the circle engine's variables (main high)", C["PFVH_P"], FL.get("PFVH_END%", C["PFVH_P"])),
     ("VEC", C["VEC"], C["VEC"] + 2),
     ("the staging area", C["STAGE_P"], C["BUF0"]),

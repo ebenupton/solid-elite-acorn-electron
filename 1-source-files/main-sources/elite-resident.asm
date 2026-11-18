@@ -716,16 +716,27 @@ ENDIF
 \ Hz clock among them) goes on to the MOS. The loader's LOAD routine installs
 \ it.
 \
+\ Port: both this and the real-time clock interrupt (half a field later) tick
+\ the sound engine first (gfx-sound.asm, in bank 6, through the hook SNDH),
+\ so that it runs 100 times a second.
+\
 \ ******************************************************************************
 
 .IRQG
 
- LDA &FE00              \ If this is not the display end (bit 2 of the ULA's
- AND #%00000100         \ interrupt status), pass it straight to the MOS
- BEQ irqm
+ LDA &FE00              \ If this is neither the display end nor the real-time
+ AND #%00001100         \ clock (bits 2 and 3 of the ULA's interrupt status),
+ BEQ irqm               \ pass it straight to the MOS
 
  TXA                    \ Store X on the stack
  PHA
+
+ JSR SNDH               \ Tick the sound engine (SNDH pages bank 6 in and goes
+ LDX &F4                \ to SND_TICK, which returns with A = the interrupt
+ STX ROMSEL             \ status), and page the interrupted bank back in
+
+ AND #%00000100         \ If this is the real-time clock, that is all
+ BEQ irqx
 
  LDA #30                \ Set the line scan counter to a non-zero value, as
  STA DL                 \ LINSCN did, so WSCAN can wait for it to change
@@ -761,10 +772,7 @@ ENDIF
  LDA ssa,X              \ for BUF0, 1 for SCREEN%)
  STA &FE03
 
- LDA &F4                \ Clear the display-end interrupt (bit 4 of &FE05),
- ORA #%00010000         \ writing the paged bank's number with it, so that the
- STA &FE05              \ paging is unchanged (&F4, below 16, always matches
-                        \ the paged bank, and is written first)
+.irqx
 
  PLA                    \ Restore X from the stack
  TAX

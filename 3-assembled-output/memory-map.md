@@ -3,7 +3,7 @@
 | main RAM | `&0000-&00FF` | zero page: the game's (the rasteriser's &06-&27 and the frame layer's &D2-&E1 during a frame, kept) | 256 | 0 |
 | main RAM | `&0100-&01FF` | the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched) | 256 | 0 |
 | main RAM | `&0300-&03CF` | `UP`, the game's workspace | 208 | 0 |
-| main RAM | `&0400-&06E5` | resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` | 736 | 6 |
+| main RAM | `&0400-&06E5` | resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` | 741 | 1 |
 | main RAM | `&06E6-&0723` | the circle engine's variables (main low: `gfx-merid.asm`) | 62 | 0 |
 | main RAM | `&0724-&07BF` | the glue: the trampolines into bank 5, `GCALL`; then `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`) | 155 | 1 |
 | main RAM | `&07C0-&07FF` | `SNE`, `ACT` | 64 | 0 |
@@ -12,13 +12,13 @@
 | main RAM | `&0D7A-&0D9D` | `CATD` | 36 | 0 |
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
-| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` and `hotx` | 1323 | 21 |
-| main RAM (docked) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` and `hotx` | 16 | 1328 |
-| main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
-| main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
-| main RAM | `&1F80-&1F8F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
-| main RAM | `&1F90-&1F9F` | the interrupt's variables | 0 | 16 |
-| main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 59 | 35 |
+| main RAM (flight) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 1248 | 16 |
+| main RAM (docked) | `&1900-&1DEF` | the main RAM part: the low pass, then `hotm` and `hotx` | 16 | 1248 |
+| main RAM | `&1E00-&1E9F` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
+| main RAM | `&1EA0-&1F3F` | the missile's blueprint | 160 | 0 |
+| main RAM | `&1F40-&1F4F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
+| main RAM | `&1F50-&1F5F` | `SNDH`, the interrupt's hook into the sound engine (copied there by the loader's `LOAD`) | 14 | 2 |
+| main RAM | `&1F60-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 59 | 99 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&2FFF` | the staging area (`STAGE%`, on over buffer 0 for a program's images) | 0 | 4096 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
@@ -42,17 +42,17 @@
 | bank 5 | `&8000-&90FF` | the 24 row runs, a page each, made at start by `R_INIT` (not in `R.BANK`); in their tails the stars' records and variables and `R_LINE`'s (free: the 19 tails with nothing in them, 65 bytes each, and the rest of the others) | 5022 | -670 |
 | bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE` | 5188 | 700 |
 | bank 5 | `&A800-&ADFF` | the state: the dirty and written extents, `R_POLY`'s edge tables | 1536 | 0 |
-| bank 5 | `&AE00-&B11F` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 800 | 0 |
-| bank 5 | `&B120-&B3FF` | the room below the per-x tables: `R_LINE`'s cold part, the private state, `R_RESETBUF`, `r_wq`, `pf_tilt` | 692 | 44 |
-| bank 5 | `&B400-&BEAD` | the per-x tables, the row pages, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY`, `R_INIT` | 2734 | 0 |
-| bank 5 | `&BEAE-&BFFF` | `RJT`, the jump table | 45 | 293 |
-| bank 6 | `&8000-&8245` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 575 | 7 |
-| bank 6 | `&8246-&A808` | the frame layer's code (bank 6 passes) | 9667 | 0 |
-| bank 6 | `&A809-&AC86` | the faces' and the lighting's tables | 1150 | 0 |
-| bank 6 | `&AC87-&AF64` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
-| bank 6 | `&AF65-&AFFF` | (the page alignment of the state that follows) | 0 | 155 |
-| bank 6 | `&B000-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 536 |
+| bank 5 | `&AE00-&B132` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 819 | 0 |
+| bank 5 | `&B133-&B3FF` | the room below the per-x tables: `R_LINE`'s cold part, the private state, `R_RESETBUF`, `r_wq`, `pf_tilt` | 692 | 25 |
+| bank 5 | `&B400-&BFD4` | the per-x tables, the row pages, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY`, `R_INIT` | 3029 | 0 |
+| bank 5 | `&BFD5-&BFFF` | `RJT`, the jump table | 42 | 1 |
+| bank 6 | `&8000-&8245` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 582 | 0 |
+| bank 6 | `&8246-&AB5E` | the frame layer's code (bank 6 passes) | 10521 | 0 |
+| bank 6 | `&AB5F-&AE7C` | the faces' and the lighting's tables | 798 | 0 |
+| bank 6 | `&AE7D-&B15A` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
+| bank 6 | `&B15B-&B1FF` | the sound engine's code, `slen` and `sdiv` (`gfx-sound.asm`), in the page alignment of the state that follows | 162 | 3 |
+| bank 6 | `&B200-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows; the sound engine's state and `sflag` | 2672 | 1 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
-| bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
+| bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher; the sound engine's `sdel`, and `SNDJ`, its tick's `JMP` (`&BFFD`) | 60 | 4 |
 
-Free, by place: main RAM 4154, main RAM (flight) 21, main RAM (docked) 1328, bank 4 (flight) 40, bank 4 (docked) 2696, bank 7 (flight) 353, bank 7 0, bank 7 (docked) 4784, bank 5 367, bank 6 348.
+Free, by place: main RAM 4203, main RAM (flight) 16, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 2994, bank 7 (flight) 78, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 8.

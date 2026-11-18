@@ -86,11 +86,13 @@ F_SRN = MAXSH * 15      \ (the most faces is 15)
 .f_plt  SKIP 1
 .f_plv  SKIP 1
 .f_plm  SKIP 1
-.F_SMEND                \ (the end of the state that need not be aligned)
-F_ALSZ = 2 * 256 + 768 + 7 * 192 + 24 + 1   \ the aligned state's size (from F_HW
-F_AL = (FCSLOT - F_ALSZ) AND &FF00          \ to F_END), as high as it goes
- ASSERT P% <= F_AL
- SKIP F_AL - P%
+
+.SND_CODE               \ The sound engine's code and tables (gfx-sound.asm:
+ INCLUDE "1-source-files/main-sources/gfx-sound.asm"   \ ticked by IRQG through
+.SND_CODEEND            \ SNDJ, started through GCALL's FG_SOUND), in the room
+                        \ that the alignment below leaves
+
+ ALIGN &100
 .F_HW   SKIP 256        \ the planet's half-widths (f_hwbuild)
 .F_HW2  SKIP 256        \ the sun's
 .F_TM   SKIP 768        \ the text map: desired characters, 24 rows of 32
@@ -107,6 +109,14 @@ IF HI(P%) <> HI(P% + 23) \ (F_TMR whole in a page: f_text2 reads it every
 ENDIF
 .F_TMR  SKIP 24         \ the text map's non-empty cells per row
 .f_tcol SKIP 1          \ (f_char1's column)
+
+.SND_STATE              \ The sound engine's state (gfx-sound.asm):
+.svlen  SKIP 4          \ each voice's ticks left (0: idle),
+.svdiv  SKIP 4          \ its divider,
+.sveff  SKIP 4          \ its sound;
+.srnd   EQUB 1          \ the noise's LFSR (never 0);
+.srr    SKIP 1          \ the voice played last (bits 0-1);
+.sflag  SND_SFLAG       \ the sounds' noise masks (gfx-sound.asm)
 .F_END
  ASSERT F_END - F_HW = F_ALSZ
  ASSERT F_END <= FCSLOT \ the face lists of the blueprint set loaded, to FJT
@@ -125,18 +135,25 @@ ENDIF
  EQUB LO(F_LINE-1), LO(F_PDOT-1), LO(F_PLANET-1), LO(F_SHPPT-1)
  EQUB LO(F_CHAR-1), LO(F_DELCHAR-1), LO(F_CLRTEXT-1), LO(F_GUN-1)
  EQUB LO(F_HANG0-1), LO(F_HANGAR-1), LO(F_CLOUD-1), LO(F_SETLD-1)
- EQUB LO(F_PFHOLD-1), LO(F_DCHAR-1)
+ EQUB LO(F_PFHOLD-1), LO(SND_START-1)
 .fjt_hi
  EQUB HI(F_INIT-1), HI(F_DIRECT-1), HI(F_FRAME-1), HI(F_SHIP-1)
  EQUB HI(F_LINE-1), HI(F_PDOT-1), HI(F_PLANET-1), HI(F_SHPPT-1)
  EQUB HI(F_CHAR-1), HI(F_DELCHAR-1), HI(F_CLRTEXT-1), HI(F_GUN-1)
  EQUB HI(F_HANG0-1), HI(F_HANGAR-1), HI(F_CLOUD-1), HI(F_SETLD-1)
- EQUB HI(F_PFHOLD-1), HI(F_DCHAR-1)
+ EQUB HI(F_PFHOLD-1), HI(SND_START-1)
 .FJT_END
  ASSERT fjt_hi - fjt_lo = FG_N AND FJT_END <= &C000
 
+.sdel   SND_SDEL        \ The sounds' steps (gfx-sound.asm)
+ ASSERT P% <= SNDJ
 
-PRINT "Bank 6: the flight code's cold 6 pass &8000-", ~F_START-1, ", the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_SMEND-1, " and ", ~F_HW, "-", ~F_END-1, ", free ", F_AL-F_SMEND+FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
+ ORG SNDJ               \ The sound engine's tick, at a fixed address for the
+ JMP SND_TICK           \ resident block's interrupt hook (SNDH, elite-map.asm)
+
+
+PRINT "Bank 6: the flight code's cold 6 pass &8000-", ~F_START-1, ", the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_END-1, ", free ", FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
+PRINT "Sound engine (gfx-sound.asm): code and tables ", ~SND_CODE, "-", ~SND_CODEEND-1, " (", SND_CODEEND-SND_CODE, " bytes), state ", ~SND_STATE, "-", ~F_END-1, " (", F_END-SND_STATE, ")"
 PRINT "Glue (main RAM): ", ~GLUE%, "-", ~GLUE_TOP-1, " (", GLUE_TOP-GLUE%, " bytes: trampolines ", rtramp_end-GLUE%, ", GCALL ", GLUE_END-GCALL, ", pcb_o ", GLUE_TOP-GLUE_END, ")"
  ASSERT F_END <= FCSLOT
 
