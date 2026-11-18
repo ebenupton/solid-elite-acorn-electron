@@ -381,8 +381,9 @@ class MainCount:
 
 def bench(m, rnd):
     """cycles (py65's) and main RAM accesses of representative calls, and an
-    Electron estimate: cycles + main RAM accesses (each a 1 MHz cycle, two of
-    the 2 MHz CPU's, at least)"""
+    Electron estimate: cycles + 1.5 x main RAM accesses (a main RAM access is
+    a 1 MHz cycle, two or three of the 2 MHz CPU's, as Clock Signal's Electron
+    times it in MODE 5; sideways RAM's take one)"""
     import math
     t = tr.Tester(m, rnd)
     m.guard = False
@@ -438,7 +439,7 @@ def bench(m, rnd):
     m.guard = True
     out = ['%-28s %9s %9s %9s' % ('', 'cycles', 'main RAM', 'Electron')]
     for name, c, a in rows:
-        out.append('%-28s %9.0f %9.0f %9.0f' % (name, c, a, c + a))
+        out.append('%-28s %9.0f %9.0f %9.0f' % (name, c, a, c + 1.5 * a))
     return '\n'.join(out)
 
 

@@ -146,6 +146,8 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 {
   STA dp_buf
   STX dp_fl
+  LDY #&FF                \ (no character row's address in r_sw's operands)
+  STY r_pcrow
   LDA DPB_E               \ (in transit, in zero page)
   STA R_DBE
   LDA DPB_O
@@ -610,8 +612,9 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   JSR r_sql
   BCC c9
 .m1
-  LDA RZ_SA               \ the last byte's offset
+  LDA RZ_SA               \ the last byte's offset (+ the line)
   AND #&F8
+  ORA r_pline
   STA RZ_SA+1
   TXA                     \ the first byte's mask
   LSR A
@@ -636,8 +639,9 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   LDX RZ_SA               \ (its byte: the same as X's)
   CLC
 .m2
-  TXA                     \ the first byte (C kept)
+  TXA                     \ the first byte (+ the line; C kept)
   AND #&F8
+  ORA r_pline
   TAY
   LDA RZ_COL
 .^r_swa
@@ -735,22 +739,27 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 .r_lm4  EQUB &FF, &77, &33, &11   \ MODE 5 pixels p .. 3 of a byte
 .r_rm4  EQUB &88, &CC, &EE, &FF   \ pixels 0 .. p
 
-\ r_rowp: X = row: RZ_Y, and its screen address in the buffer, its byte in
-\ column 0, into r_sw's operands: the buffer + 320 (row DIV 8) + 32 + (row
-\ AND 7), the low byte 64 ((row DIV 8) AND 3) + 32 + (row AND 7) (no carry),
-\ the high byte the buffer's + row DIV 8 + row DIV 32.  Keeps X and Y.
+\ r_rowp: X = row: RZ_Y, its line (r_pline: row AND 7), and its character
+\ row's address in the buffer, its byte in column 0, line 0, in r_sw's
+\ operands (only when the character row is not the last one's, r_pcrow:
+\ DP_BEGIN forgets it): the buffer + 320 (row DIV 8) + 32, the low byte 64
+\ ((row DIV 8) AND 3) + 32, the high byte the buffer's + row DIV 8 + row DIV
+\ 32.  Keeps X and Y.
 .r_rowp
   STX RZ_Y
   TXA
+  AND #7
+  STA r_pline
+  TXA
+  AND #&F8
+  CMP r_pcrow
+  BEQ rp9
+  STA r_pcrow
   AND #&18
   ASL A
   ASL A
   ASL A
   ORA #32
-  STA RZ_PP
-  TXA
-  AND #7
-  ORA RZ_PP
   STA r_swa+1
   STA r_swb+1
   STA r_swc+1
@@ -776,7 +785,10 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   STA r_swe+2
   STA r_swf+2
   STA r_swg+2
+.rp9
   RTS
+.r_pline EQUB 0           \ (r_rowp's: the row's line, its character row)
+.r_pcrow EQUB &FF
 
 \ ============================================================================
 \ r_dpe: X = row of a two-colour disc, no dirty, its span, count or colour

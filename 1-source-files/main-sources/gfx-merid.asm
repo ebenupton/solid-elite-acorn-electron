@@ -1333,29 +1333,29 @@ ENDMACRO
 \ down, and, unless every row is wholly outside its region, its rows from Yc
 \ out, down and up.
 \ Called by f_bounds (bank 6; the Master port's through T_CAPS), during
-\ the frame, with this bank paged; it uses the rasteriser's scratch zero page
-\ &10-&27 (F_FRAME has saved it).
+\ the frame, with this bank paged; its scratch is this bank's (PZB,
+\ gfx-bank6.asm: at PZB + its old zero page address - &10).
 \
 \ ******************************************************************************
 
-ZD  = &10               \ D(k) / 2, 16.16 (its low byte is not used)
-ZT0 = &10               \ (pr_nx's, before the records: the colour, the row,
-ZT1 = &11               \ the next toggle)
-ZT2 = &12
-ZT3 = &13               \ (NMOS: pcr1's record, for PHX, PLX)
-ZDL = &14               \ (D(k) - D(k+1)) / 2, 16.16, saturated
-ZCD = &18               \ the centre line, 16.16 signed: row Yc + k
-ZC2 = &1C               \ 2 C0 (16-bit)
-pr_H = &10              \ (s^2 - s) / 2: its low byte (ZD's, not used once
-pr_Hh = &1E             \ halved) and its high byte
-pr_t = &1F              \ a row's flags (pr_row, pr_side)
-mt_x = &23              \ (mpi)
-ZK  = &20               \ k
-ZYD = &21               \ Yc + k, Yc - k (their low bytes)
-ZYU = &22
-ZC  = &24               \ the row's centre, ceil(C)
-ZS  = &26               \ s = round(sqrt(D(k)))
-ZSS = &27               \ the half-chord used: s, or 0 once past
+ZD  = PZB + &10-&10               \ D(k) / 2, 16.16 (its low byte is not used)
+ZT0 = PZB + &10-&10               \ (pr_nx's, before the records: the colour, the row,
+ZT1 = PZB + &11-&10               \ the next toggle)
+ZT2 = PZB + &12-&10
+ZT3 = PZB + &13-&10               \ (NMOS: pcr1's record, for PHX, PLX)
+ZDL = PZB + &14-&10               \ (D(k) - D(k+1)) / 2, 16.16, saturated
+ZCD = PZB + &18-&10               \ the centre line, 16.16 signed: row Yc + k
+ZC2 = PZB + &1C-&10               \ 2 C0 (16-bit)
+pr_H = PZB + &10-&10              \ (s^2 - s) / 2: its low byte (ZD's, not used once
+pr_Hh = PZB + &1E-&10             \ halved) and its high byte
+pr_t = PZB + &1F-&10              \ a row's flags (pr_row, pr_side)
+mt_x = PZB + &23-&10              \ (mpi)
+ZK  = PZB + &20-&10               \ k
+ZYD = PZB + &21-&10               \ Yc + k, Yc - k (their low bytes)
+ZYU = PZB + &22-&10
+ZC  = PZB + &24-&10               \ the row's centre, ceil(C)
+ZS  = PZB + &26-&10               \ s = round(sqrt(D(k)))
+ZSS = PZB + &27-&10               \ the half-chord used: s, or 0 once past
 
 .PC_ROWS
  LDX #0
@@ -1495,14 +1495,14 @@ ZSS = &27               \ the half-chord used: s, or 0 once past
  ROR ZDL+1
  ROR ZDL
  LDY #0                 \ K2 and a into the row loop's ADC #s
- CLC                    \ (six bytes apart; NMOS: C clear throughout, X = 0)
+ CLC                    \ (eight bytes apart; NMOS: C clear throughout, X = 0)
 .pcr11
  LDA pr_c+R_K2,Y
  STA prk0+1,X
  LDA pr_c+R_A,Y
  STA pra0+1,X
  TXA
- ADC #6
+ ADC #8
  TAX
  INY
  CPY #4
@@ -1671,7 +1671,7 @@ ZSS = &27               \ the half-chord used: s, or 0 once past
  DEC ZYU
  INC ZK
  JMP pr_loop
-ASSERT prk1 = prk0 + 6 AND prk3 = prk0 + 18 AND pra3 = pra0 + 18
+ASSERT prk1 = prk0 + 8 AND prk3 = prk0 + 24 AND pra3 = pra0 + 24
 
 \ pr_pst: past the ellipse: s = 0 from now on, and only the rows with one
 \ crossing at most (a new segment next). pr_lim: the last rows the loop may

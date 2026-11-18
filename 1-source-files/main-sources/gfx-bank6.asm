@@ -56,6 +56,7 @@
                         \ the zero page's &D2-&E1), first, as the code's
                         \ instructions take it as absolute
 .f_fo   SKIP 1          \ f_ship's offset in the face list
+.PZB    SKIP &18        \ PC_ROWS' scratch (gfx-merid.asm: once &10-&27)
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"

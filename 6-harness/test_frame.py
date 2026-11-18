@@ -1168,11 +1168,12 @@ def main():
     pmath_tests('--quick' in args)
 
     fr = m.mains['F_FRAME']
-    print('cycles: F_FRAME %s (frame 1 includes clearing buffer 0); F_CHAR %d' % (
+    print('cycles (py65\'s): F_FRAME %s (frame 1 includes clearing buffer 0); F_CHAR %d' % (
         ', '.join(str(c) for c in (cyc1, cyc2, cyc3, cyc5)), max(m.cycles['F_CHAR'])))
-    print('main RAM accesses: F_FRAME %s; Electron estimate (cycles + main RAM accesses): %s' % (
-        ', '.join(str(fr[i]) for i in (0, 1, 2, 4)),
-        ', '.join(str(c + fr[i]) for c, i in ((cyc1, 0), (cyc2, 1), (cyc3, 2), (cyc5, 4)))))
+    print('main RAM accesses: F_FRAME %s; Electron estimate (cycles + 1.5 x main RAM accesses: two or '
+          'three 2 MHz cycles each, against one): %s' % (
+              ', '.join(str(fr[i]) for i in (0, 1, 2, 4)),
+              ', '.join('%.0f' % (c + 1.5 * fr[i]) for c, i in ((cyc1, 0), (cyc2, 1), (cyc3, 2), (cyc5, 4)))))
     print('PNGs in %s: frame-1.png, frame-2.png, frame-3.png' % png_dir)
     if FAILS:
         print('%d check(s) failed' % len(FAILS))
