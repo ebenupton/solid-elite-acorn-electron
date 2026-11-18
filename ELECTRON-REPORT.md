@@ -148,6 +148,23 @@ and the disc and MOS work at load time.
 | `&5800-&7FFF` | buffer 1 (the direct-mode screen) |
 | banks 4-7 | as the Model B port: 4 home, 7 cold, 5 the rasteriser, 6 the frame layer |
 
+## Gate
+
+The gate (`6-harness/verify.sh`) runs the reference (the released disc,
+patched as for the Model B port) on jsbeeb's Model B as before, and the
+candidate on clkh (`6-harness/elib.mjs`, `clkh`'s serve mode), comparing the
+game state at every main-loop iteration with the same pilot and keys.
+
+## Main-RAM traffic
+
+`6-harness/eramacc.mjs`, over iterations 100 to 1099 of the gate's run (998
+flight iterations), main-RAM bus accesses and the cycles they take, per
+flight iteration:
+
+| Build | zero page | stack | other low | screen reads | screen writes | code | total accesses | cycles | of all cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| before the migration (7b49dd2) | 25,964 | 14,717 | 8,726 | 1,433 | 553 | 7,444 | 58,837 | 128,330 | 36% of 359,128 |
+
 ## Status
 
 Work in progress.

@@ -27874,7 +27874,7 @@ ENDIF
  JSR kbtest
 .rdk9
  LDY #0                 \ (the index is patched above)
- BCS rdk7+2             \ A digit is held with FUNC: its function key
+ BCS rdk7               \ A digit is held with FUNC: its function key
  DEY
  BPL rdk8
 
@@ -27886,19 +27886,8 @@ ENDIF
  TXA                    \ If nothing is pressed, set A = %10000000, as the
  BMI rdk5               \ original's loop leaves it
 
- CMP #&47               \ The Electron's 0 key reads as both 0 (&27) and the
- BNE P%+4               \ BBC Micro's @ (&47), its shifted symbol: it is @
- LDA #&27               \ with SHIFT, else 0
- CMP #&27
- BNE rdk10
- LDX #0                 \ (SHIFT is key 0)
- JSR kbtest
- LDA #&27
- BCC rdk10
- LDA #&47
- BNE rdk6               \ (this BNE is effectively a JMP)
-
-.rdk10
+                        \ (The docked code's RDKEY also tells @, SHIFT with the
+                        \ Electron's 0 key, from 0: flight has no use for @)
 
  LDY #9                 \ If the key is a digit, held with FUNC, it is the
                         \ function key of its number
@@ -27912,14 +27901,15 @@ ENDIF
 
 .rdk4
 
- STY rdk7+1             \ (the digit's index)
+ STY rdk11+1            \ (the digit's index)
  LDX #&40
  JSR kbtest
- TXA                    \ (A = the digit again, in case FUNC is not held)
+.rdk11
+ LDY #0                 \ (the index is patched above)
+ LDA kbdg,Y             \ (A = the digit again, in case FUNC is not held)
  BCC rdk6
 .rdk7
- LDY #0                 \ FUNC is held: the function key (the index is patched
- LDA kbfk,Y             \ above)
+ LDA kbfk,Y             \ FUNC is held: the function key of digit Y
 
 .rdk6
 
@@ -28627,8 +28617,10 @@ ENDIF
 
  STY dksy+1             \ Store Y in the LDY at dksy, to restore it at the end
 
- TXA                    \ Keep the key in the LDA at dksk
- STA dksk+1
+ TXA                    \ Keep the key in the LDA at dksk, without bit 7 (the
+ AND #%01111111         \ primary flight keys' entries in KYTB have it set, which
+ STA dksk+1             \ the original's keyboard hardware ignored)
+ TAX
 
  LDY #9                 \ If it is a function key, jump to dks3 with its index
                         \ in Y

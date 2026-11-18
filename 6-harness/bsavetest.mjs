@@ -78,8 +78,9 @@ async function elkSession(b, tag, full) {
     key("SPACE", 0.15, 2); key("F8", 0.15, 2); snap("after-error");
     key("AT", 0.15, 1.5); key("K3", 0.15, 1.5); key("K0", 0.15, 6); snap("catalogue");
     key("SPACE", 0.15, 2); key("F8", 0.15, 2);
-    key("F0", 0.2, 15); snap("launched");
-    res.flying = d.n.flying;
+    key("F0", 0.2, 30); snap("launched");     // (the Electron's launch: the
+    res.flying = d.n.flying;                  // flight code's load and the
+                                              // tunnel take longer)
     console.log("flight loop iterations after the launch:", res.flying);
     d.kill();
     return res;

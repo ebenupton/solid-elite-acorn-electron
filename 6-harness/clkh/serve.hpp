@@ -55,6 +55,8 @@ struct Server {
 	// wlog: writes to logged addresses, with the writer's PC and slot (a text list)
 	std::vector<uint8_t> wlogm = std::vector<uint8_t>(32768, 0);
 	std::string wlogtxt;
+	// hist: the last 4096 opcode fetches (pc, slot)
+	uint32_t histv[4096] = {}; uint32_t histp = 0;
 
 	// write tracking (blib.mjs's runElite)
 	std::vector<uint8_t> region = std::vector<uint8_t>(32768, 0);	// the compared regions
@@ -147,6 +149,7 @@ struct Server {
 			prof_last = now; prof_lab = label_of(pc, rom);
 		}
 		lpc = pc; lrom = rom;
+		histv[histp++ & 4095] = uint32_t(pc) | uint32_t(rom) << 16;
 		if(!has[pc] || quit) return;
 		std::string ids;
 		for(const auto &b : bps[pc]) {
@@ -296,6 +299,7 @@ struct Server {
 		if(c == "cyc") { send(std::to_string(m.total_cycles)); return false; }
 		if(c == "fields") { send(std::to_string(m.video_.fields_completed)); return false; }
 		if(c == "wlog") { for(size_t i = 1; i < a.size(); i++) wlogm[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
+		if(c == "hist") { std::string t; char b[32]; for(uint32_t k = 0; k < 4096; k++) { const uint32_t v = histv[(histp + k) & 4095]; std::snprintf(b, sizeof b, "%04x %u\n", v & 0xffff, v >> 16); t += b; } send(t); return false; }
 		if(c == "wlogget") { send(wlogtxt); wlogtxt.clear(); return false; }
 		if(c == "watch") { for(size_t i = 1; i < a.size(); i++) watch[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
 		if(c == "dump") { dump(m, a.size() > 1 ? a[1] : "dump"); send("ok"); return false; }

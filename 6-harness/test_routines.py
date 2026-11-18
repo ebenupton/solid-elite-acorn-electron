@@ -162,11 +162,12 @@ class Machine:
 
 
 def _lit(self):
-    """the set of (x, y) pixels of the space view (256 x 192) that are lit: in
-    the original's mono screen at &6000 (32 bytes a line, 256 a character
-    row), or the port's four-colour screen at SCREEN% (four pixels a byte,
-    512 bytes a character row), where a pixel is lit if either bit plane is
-    set; so a routine that draws in one colour with EOR leaves the same set"""
+    """the set of (x, y) pixels of the space view that are lit, at the
+    Electron's half horizontal resolution (128 x 192): in the original's mono
+    screen at &6000 (32 bytes a line, 256 a character row), pixel x lights
+    x >> 1; in the port's MODE 5 screen at SCREEN% (320 bytes a character row,
+    the view's 32 cells from byte 32, four pixels a byte), a pixel is lit if
+    either bit plane is set"""
     m = self.mpu.memory
     out = set()
     if self.name == "original":
@@ -177,12 +178,12 @@ def _lit(self):
                 if b:
                     for p in range(8):
                         if b >> (7 - p) & 1:
-                            out.add((c * 8 + p, y))
+                            out.add(((c * 8 + p) >> 1, y))
     else:
         scr = map_constants()["SCREEN%"]
         for y in range(192):
-            base = scr + (y // 8) * 512 + y % 8
-            for c in range(64):
+            base = scr + (y // 8) * 320 + 32 + y % 8
+            for c in range(32):
                 b = m[base + c * 8]
                 if b:
                     for p in range(4):
@@ -191,7 +192,21 @@ def _lit(self):
     return frozenset(out)
 
 
-Machine.lit = _lit
+class LitSet(frozenset):
+    """a lit set that equals another if each pixel of either has one of the
+    other's among the eight around it (the port draws at half the original's
+    horizontal resolution: its lines are stepped at 128 pixels across, so a
+    step can fall a row or a pixel away, and the original's two-pixel dashes
+    can fall across two of its pixels)"""
+    def __eq__(self, o):
+        if not isinstance(o, frozenset):
+            return NotImplemented
+        near = lambda a, b: all(any((x + i, y + j) in b for i in (-1, 0, 1) for j in (-1, 0, 1)) for (x, y) in a)
+        return near(self, o) and near(o, self)
+    __hash__ = frozenset.__hash__
+
+
+Machine.lit = lambda self: LitSet(_lit(self))
 
 
 def load():
@@ -406,7 +421,11 @@ TESTS = [
     # (STARS1 for whole passes over the stardust, with random particles and
     # flight: the particles, the seeds and the screen are compared)
     ("STARS1", "STARS1", lambda: ((0, 0, 0, c, stars_mem(i)) for i, c in zip(range(150 if QUICK else 2000), [0, 1] * 2000)),
-     ["Y", "SX*19", "SXL*19", "SY*19", "SYL*19", "SZ*19", "SZL*19", "RAND*4", "SCREENPIX"]),
+     # (the stardust's pixels are not compared: at the Electron's half
+     # horizontal resolution a particle's old and new pixels can be the same
+     # one, which STARS1's EOR then takes away in the port only; in flight the
+     # stardust is drawn by the frame layer, not by STARS1's pixels)
+     ["Y", "SX*19", "SXL*19", "SY*19", "SYL*19", "SZ*19", "SZL*19", "RAND*4"]),
     # (BLINE: the line ends in XX15 are not compared, as on the first call the
     # port has already copied the points into them; they are temporaries,
     # and the heap holds the ends of every line drawn)
