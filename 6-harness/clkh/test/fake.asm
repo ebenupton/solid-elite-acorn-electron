@@ -244,7 +244,9 @@ ORG &2000
 .f8 LDX slot : JSR spawn
 .f9 LDX slot : INX : CPX #4 : BEQ f10 : JMP f1
 .f10 RTS
-\ t0 t1 t2 += A (sign-extended)
+\ t0 t1 t2 += A (sign-extended); also MAD, so that --deadregs scrambles V
+\ at its returns (blib.mjs's DEAD_AFTER: no caller reads V)
+.MAD
 .add8
     STA tmpa : CLC : ADC t0 : STA t0
     LDA tmpa : AND #&80 : BEQ a81 : LDA #&FF

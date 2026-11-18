@@ -14,11 +14,12 @@ import { resolve } from "path";
 import { runElite, loadBuild, CAND_BUILD } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
 const args = parseArgs({ build: "value", iters: "value", out: "value" });
 const b = loadBuild(resolve(args.build || CAND_BUILD));
 const sy = b.progs.flight.sy;
 const rows = [];
-const r = await runElite({ build: b, pilot: makePilot(), iters: +(args.iters || 10000), maxSecs: 40000, patch: patchCommander, onIter: (i, s, res) => {
+const r = await (isElectron(b) ? runEliteElectron : runElite)({ build: b, pilot: makePilot(), iters: +(args.iters || 10000), maxSecs: 40000, patch: patchCommander, onIter: (i, s, res) => {
     const m = s._machine.processor.ramRomOs, K = sy["K%"];
     const blk = n => { const a = K + 37 * n; return { x: m[a + 1] | ((m[a + 2] & 127) << 8), y: m[a + 4] | ((m[a + 5] & 127) << 8), z: m[a + 7] | ((m[a + 8] & 127) << 8), zs: m[a + 8] >> 7 }; };
     let ships = 0; for (let k = 2; k < 12; k++) if (m[sy.FRIN + k]) ships++;

@@ -155,6 +155,10 @@ export async function runElite(opts) {
         add("DEAD", { prog: P.flight, name: n, a, map: img.map, sig: [0, 1, 2].map(i => img.data[a + i - img.base]), regs, n });
     }
     add("LAS", lasHook); add("LASN", lasNext);
+    // opts.hooks: a tool's own, [{ a, map, sig, fn(ctx) }] (map "m" or a bank
+    // role; fn is called at the stop with { e, cpu, s, iter, pc }: the
+    // breakpoints that blib's tools make with cpu.debugInstruction)
+    for (const x of opts.hooks || []) add("USER", { prog: null, ...x });
     for (const name of b.patches) {
         if (!PATCHES[name]) throw new Error(`unknown patch ${name}`);
         for (const pt of [].concat(PATCHES[name](P.flight))) add("PATCH", { prog: P.flight, name, ...pt });
@@ -265,6 +269,7 @@ export async function runElite(opts) {
                 break;
             }
             case "PATCH": h.apply(cpu); break;
+            case "USER": if (h.fn({ e, cpu, s, iter, pc })) { done = true; return true; } break;
             case "DEAD": {
                 const ret = (stackWord(1) + 1) & 0xffff;
                 deadPend.push({ ret, s: (e.s + 2) & 255, regs: h.regs, n: h.n });

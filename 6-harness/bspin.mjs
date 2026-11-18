@@ -13,12 +13,13 @@ import { resolve } from "path";
 import { runElite, loadBuild, CAND_BUILD } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
+import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
 const args = parseArgs({ build: "value", iters: "value" });
 const b = loadBuild(resolve(args.build || CAND_BUILD));
 const sy = b.progs.flight.sy;
 const rows = [];
 const vec = (m, a) => [0, 1, 2].map(j => { const lo = m[a + 2 * j], hi = m[a + 2 * j + 1]; const v = lo | (hi & 127) << 8; return hi & 128 ? -v : v; });
-const r = await runElite({ build: b, pilot: makePilot(), iters: +(args.iters || 10000), maxSecs: 40000, patch: patchCommander, onIter: (i, s) => {
+const r = await (isElectron(b) ? runEliteElectron : runElite)({ build: b, pilot: makePilot(), iters: +(args.iters || 10000), maxSecs: 40000, patch: patchCommander, onIter: (i, s) => {
     const m = s._machine.processor.ramRomOs, K = sy["K%"], t = m[sy.FRIN];
     if (m[sy.QQ11] !== 0 || t < 128 || t === 129) return;
     rows.push({ i, n: vec(m, K + 9), r: vec(m, K + 15), s: vec(m, K + 21), mcnt: m[sy.MCNT], still: !(m[sy.ALP1] & 127) && !(m[sy.BET1] & 127) });
