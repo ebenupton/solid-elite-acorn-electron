@@ -28,7 +28,7 @@
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 4 (docked) | `&8000-&ADBF` | `S%` and the hot pass | 9122 | 2590 |
+| bank 4 (docked) | `&8000-&ADBF` | `S%` and the hot pass | 9115 | 2597 |
 | bank 4 (docked) | `&ADC0-&B2FF` | the main RAM part's image | 1344 | 0 |
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
@@ -46,13 +46,13 @@
 | bank 5 | `&B120-&B3FF` | the room below the per-x tables: `R_LINE`'s cold part, the private state, `R_RESETBUF`, `r_wq`, `pf_tilt` | 692 | 44 |
 | bank 5 | `&B400-&BEAD` | the per-x tables, the row pages, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY`, `R_INIT` | 2734 | 0 |
 | bank 5 | `&BEAE-&BFFF` | `RJT`, the jump table | 45 | 293 |
-| bank 6 | `&8000-&8445` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 948 | 146 |
-| bank 6 | `&8446-&AA08` | the frame layer's code (bank 6 passes) | 9667 | 0 |
-| bank 6 | `&AA09-&AE86` | the faces' and the lighting's tables | 1150 | 0 |
-| bank 6 | `&AE87-&B164` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
-| bank 6 | `&B165-&B1FF` | (the page alignment of the state that follows) | 0 | 155 |
-| bank 6 | `&B200-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 24 |
+| bank 6 | `&8000-&8245` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`) | 575 | 7 |
+| bank 6 | `&8246-&A808` | the frame layer's code (bank 6 passes) | 9667 | 0 |
+| bank 6 | `&A809-&AC86` | the faces' and the lighting's tables | 1150 | 0 |
+| bank 6 | `&AC87-&AF64` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 734 | 0 |
+| bank 6 | `&AF65-&AFFF` | (the page alignment of the state that follows) | 0 | 155 |
+| bank 6 | `&B000-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 536 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 4154, main RAM (flight) 8, main RAM (docked) 1328, bank 4 (flight) 40, bank 4 (docked) 2750, bank 7 (flight) 58, bank 7 0, bank 7 (docked) 4784, bank 5 367, bank 6 707.
+Free, by place: main RAM 4154, main RAM (flight) 8, main RAM (docked) 1328, bank 4 (flight) 40, bank 4 (docked) 2757, bank 7 (flight) 58, bank 7 0, bank 7 (docked) 4784, bank 5 367, bank 6 714.

@@ -18461,10 +18461,13 @@ ENDIF
 
 .DET1
 
- TXA                    \ Port: the dashboard is the second CRTC frame of the
- SEC                    \ rupture (the resident block's IRQG), which shows PANR
- SBC #24                \ of its rows: X - 24, so 0 hides it (X = 24) and 7
- STA PANR               \ shows it (X = 31); IRQG sets R6 from it
+                        \ Port: the Electron's screen has no row count to cut
+                        \ (it is a whole MODE 5 screen in each buffer, with no
+                        \ split), and hiding the dashboard would mean clearing
+                        \ it in both buffers and putting the image back after,
+                        \ which the program does not keep: the dashboard stays
+                        \ on show while we die, its indicators still drawn, so
+                        \ X is ignored
 
  LDA #6                 \ Return with A = 6, as the original does
 
