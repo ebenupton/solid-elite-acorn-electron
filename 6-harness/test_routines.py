@@ -559,6 +559,21 @@ def ll9_parts(ref, cand):
         r = ref.out(outs)
         cand.call("LL17", 0, 0, 0, 0, dict(mem, H_LL42=0x60), stop="LL72")
         k = cand.out(outs)
+        if "hll5" in cand.sy and r == k:
+            # (the gun vertex alone, as H_LL42 projects it for a ship firing
+            # at us: with XX16 and the faces' visibility as parts 3 and 5
+            # left them, it must be as the whole loop left it; the other
+            # vertices are not written)
+            g = bp[6]
+            mem2 = dict(mem, **{"XX2+15": 255})
+            mem2.update({"XX2+%d" % i: v for i, v in enumerate(k[outs[0]])})
+            mem2.update({"XX16+%d" % i: v for i, v in enumerate(cand.out(["XX16*18"])["XX16*18"])})
+            cand.call("hll5", 0, 0, 0, 0, mem2, stop="LL72")
+            x3 = cand.out([outs[1]])[outs[1]]
+            want = tuple(v if g <= i < g + 4 else 0 for i, v in enumerate(k[outs[1]]))
+            if x3 != want:
+                k = dict(k, **{outs[1]: x3})
+                r = dict(r, **{outs[1]: want})
         n += 1
         if r != k:
             fails += 1
