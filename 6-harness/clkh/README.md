@@ -17,12 +17,16 @@ from this folder's copy, `Electron.cpp`, whose changes are marked `clkh:`
 (the machine's 2 MHz cycle count). The build directory is ignored by git.
 The harness finds the binary at `6-harness/clkh/build/clkh`, or `$CLKH`.
 
+`--soundlog F` writes every write to the tone channel's registers (`&FE06`,
+`&FE07`) to F, a line each: the 2 MHz cycle, the register (6 or 7) and the
+value in hex (`6-harness/soundwav.py` renders it as WAV).
+
 ROMs: `--rompath DIR` holding `os.rom`, `basic.rom` and `DFS-1770-2.20.rom`
 (`~/elite-electron-roms`, the harness's default, or `$ELK_ROMS`).
 
 ## Use
 
-    clkh --rompath DIR [--media X.ssd] [--hostdisc X.ssd] [--oldrow] CMD...
+    clkh --rompath DIR [--media X.ssd] [--hostdisc X.ssd] [--oldrow] [--soundlog F] CMD...
 
 The commands are listed at the top of `main.cpp`: `boot SECS`, `cycles N`,
 `type TEXT`, `key NAME down|up`, `peek`, `poke`, `dump PREFIX` (the last

@@ -25,7 +25,8 @@
 //                        hardware's bits 14..6 (default new)
 //   serve CMD REP        the harness's mode (serve.hpp): commands from the FIFO CMD,
 //                        answers on the FIFO REP
-// Options: --shiftbreak N: SHIFT+BREAK after N cycles (the disc's !Boot run);
+// Options: --soundlog FILE: every write to &FE06/&FE07 (cycle, register, value)
+//          --shiftbreak N: SHIFT+BREAK after N cycles (the disc's !Boot run);
 //                        0: no autoboot even for a disc the analyser would boot
 
 #include <algorithm>
@@ -171,6 +172,7 @@ int main(int argc, char **argv) {
 	std::vector<std::string> args(argv + 1, argv + argc);
 	std::string media, hostdisc_path;
 	long shiftbreak = -1;
+	std::string soundlog;
 	static HostDisc hostdisc;
 	size_t i = 0;
 	while(i < args.size() && args[i].rfind("--", 0) == 0) {
@@ -178,6 +180,7 @@ int main(int argc, char **argv) {
 		else if(args[i] == "--oldrow") { Electron::VideoOutput::row_register_14_6 = false; i++; }
 		else if(args[i] == "--media") { media = args[i + 1]; i += 2; }
 		else if(args[i] == "--hostdisc") { hostdisc_path = args[i + 1]; i += 2; }
+		else if(args[i] == "--soundlog") { soundlog = args[i + 1]; i += 2; }
 		else if(args[i] == "--shiftbreak") { shiftbreak = std::atol(args[i + 1].c_str()); i += 2; }
 		else { std::fprintf(stderr, "clkh: unknown option %s\n", args[i].c_str()); return 1; }
 	}
@@ -227,6 +230,14 @@ int main(int argc, char **argv) {
 	// (--shiftbreak N: SHIFT+BREAK after N cycles, the disc's !Boot run, for
 	// any disc; 0: none, even for a disc the analyser would autoboot)
 	if(shiftbreak >= 0) m->shift_restart_counter_ = int(shiftbreak);
+	// (--soundlog FILE: every write to &FE06 and &FE07, a line each: the 2 MHz
+	// cycle, the register (6 or 7) and the value, hex)
+	static FILE *sndf = nullptr;
+	if(!soundlog.empty()) {
+		sndf = std::fopen(soundlog.c_str(), "w");
+		if(!sndf) { std::fprintf(stderr, "clkh: cannot write %s\n", soundlog.c_str()); return 1; }
+		m->sound_hook = [](uint64_t c, int r, uint8_t v) { std::fprintf(sndf, "%llu %d %02x\n", (unsigned long long)c, r, v); std::fflush(sndf); };
+	}
 	auto cap = std::make_unique<Electron::VideoOutput::Capture>();
 	auto done = std::make_unique<Electron::VideoOutput::Capture>();
 	m->video_.capture = cap.get();

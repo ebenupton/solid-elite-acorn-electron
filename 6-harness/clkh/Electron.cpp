@@ -291,6 +291,9 @@ public:
 				break;
 				case 0xfe07:
 					if(!is_read(operation)) {
+#ifdef CLK_HEADLESS
+						if(sound_hook) sound_hook(total_cycles, 7, *value);	// clkh: the sound log
+#endif
 						// update speaker mode
 						bool new_speaker_is_enabled = (*value & 6) == 2;
 						if(new_speaker_is_enabled != speaker_is_enabled_) {
@@ -348,6 +351,9 @@ public:
 				break;
 				case 0xfe06:
 					if(!is_read(operation)) {
+#ifdef CLK_HEADLESS
+						if(sound_hook) sound_hook(total_cycles, 6, *value);	// clkh: the sound log
+#endif
 						update_audio();
 						sound_generator_.set_divider(*value);
 						tape_.set_counter(*value);
@@ -814,6 +820,7 @@ private:
 	std::function<void(uint16_t, uint8_t, uint8_t)> opcode_hook;		// every opcode fetch: PC, paged slot, S
 	std::function<void(uint8_t, uint16_t, uint8_t)> swram_write_hook;	// a store into sideways RAM: slot, address, value
 	std::function<void(uint16_t, bool, bool, int)> ram_access_hook;		// every main-RAM bus cycle: address, write, opcode fetch, its cycles
+	std::function<void(uint64_t, int, uint8_t)> sound_hook;	// clkh: a write to &FE06 or &FE07: the cycle (2 MHz), 6 or 7, the value
 	std::function<void(uint16_t, uint8_t)> ram_write_hook;			// a store into main RAM: address, value
 	int count_from_line = 200;
 	bool rom_image_[16] = {};	// clkh: the slots that hold a ROM's image (the others: sideways RAM, or empty)
