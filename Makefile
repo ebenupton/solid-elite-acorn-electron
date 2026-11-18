@@ -136,6 +136,7 @@ all:
 	$(PYTHON) 2-build-files/elite-checksum.py
 	$(PYTHON) 2-build-files/mapcheck.py
 	$(PYTHON) 2-build-files/bmap.py
+	$(PYTHON) 2-build-files/dialscol.py 1-source-files/images/P.DIALS.bin 3-assembled-output/P.DIALS.bin
 	$(BEEBASM) -i 1-source-files/main-sources/elite-disc.asm -do 5-compiled-game-discs/elite-electron.ssd -boot ELITE4 -title "E L I T E"
 	cp 5-compiled-game-discs/elite-electron.ssd solid-elite-acorn-electron.ssd
 ifneq ($(verify), no)

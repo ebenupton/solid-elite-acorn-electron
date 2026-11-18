@@ -8301,9 +8301,11 @@ ENDIF
                         \ 15 and 16, so this effectively switches off the colour
                         \ change for the altitude indicator
 
- STA K+1                \ Set K+1 (the colour we should show for low values) to
-                        \ 240, or &F0 (dashboard colour 2, yellow/white), so the
-                        \ altitude indicator always shows in this colour
+ LDA #&FF               \ Set K+1 (the colour we should show for low values) to
+ STA K+1                \ dashboard colour 2, yellow/white, so the altitude
+                        \ indicator always shows in this colour (Port: &FF, the
+                        \ Electron's yellow, where the original stores the 240
+                        \ in A, &F0)
 
  LDA ALTIT              \ Draw the altitude indicator using a range of 0-255,
  JMP DILX               \ returning from the subroutine using a tail call
@@ -8346,7 +8348,10 @@ ENDIF
 
 .PZW
 
- LDX #&F0               \ Set X to dashboard colour 2 (yellow/white)
+ LDX #&FF               \ Set X to dashboard colour 2 (yellow/white; Port: &FF,
+                        \ yellow, the Electron's colour 3: the original's colour
+                        \ 1 red is magenta, 2 yellow is yellow and 3 green is
+                        \ cyan, as 2-build-files/dialscol.py maps the image)
 
  LDA MCNT               \ A will be non-zero for 8 out of every 16 main loop
  AND #%00001000         \ counts, when bit 4 is set, so this is what we use to
@@ -8362,10 +8367,10 @@ ENDIF
                         \ return from the subroutine
 
  EQUB &2C               \ Skip the next instruction by turning it into
-                        \ &2C &A9 &0F, or BIT &0FA9, which does nothing apart
+                        \ &2C &A9 &F0, or BIT &F0A9, which does nothing apart
                         \ from affect the flags
 
- LDA #&0F               \ Set A to dashboard colour 1 (red)
+ LDA #&F0               \ Set A to dashboard colour 1 (red; Port: &F0, magenta)
 
  RTS                    \ Return from the subroutine
 
@@ -8652,13 +8657,12 @@ ENDIF
                         \ position at X, so the pixel is at the offset that we
                         \ want for our vertical bar
 
- AND #&F0               \ The four-pixel mode 5 colour byte &F0 represents four
-                        \ pixels of colour %10 (3), which is yellow in the
-                        \ normal dashboard palette and white if we have an
-                        \ escape pod fitted. We AND this with A so that we only
-                        \ keep the pixel that matches the position of the
-                        \ vertical bar (i.e. A is acting as a mask on the
-                        \ four-pixel colour byte)
+                        \ The original ANDs this with &F0, four pixels of
+                        \ colour %10 (2), which is yellow in the normal
+                        \ dashboard palette and white if we have an escape pod
+                        \ fitted, to keep the pixel that matches the position of
+                        \ the vertical bar in that colour (Port: the pixel byte
+                        \ as it is, in colour %11, the Electron's yellow)
 
  JMP DLL12              \ Jump to DLL12 to skip the code for drawing a blank,
                         \ and move on to drawing the indicator
@@ -19091,14 +19095,14 @@ ENDIF
 
 .SPBT
 
- EQUB %11100000         \ x x x .
- EQUB %11100000         \ x x x .
- EQUB %10000000         \ x . . .
- EQUB %11100000         \ x x x .
- EQUB %11100000         \ x x x .
- EQUB %00100000         \ . . x .
- EQUB %11100000         \ x x x .
- EQUB %11100000         \ x x x .
+ EQUB %11101110         \ x x x .
+ EQUB %11101110         \ x x x .
+ EQUB %10001000         \ x . . .
+ EQUB %11101110         \ x x x .
+ EQUB %11101110         \ x x x .
+ EQUB %00100010         \ . . x .
+ EQUB %11101110         \ x x x .
+ EQUB %11101110         \ x x x .
 
 \ ******************************************************************************
 \
@@ -19180,6 +19184,29 @@ ENDIF
                         \ example, a green block has Y = &EE, or %11101110, so
                         \ the missile blocks are 3 pixels wide, with the
                         \ fourth pixel on the character row being empty)
+
+                        \ Port: map the original's colours to the Electron's,
+                        \ as 2-build-files/dialscol.py maps the dashboard's
+                        \ image (1 red to 2 magenta, 2 yellow to 3 yellow, 3
+                        \ green to 1 cyan): each pixel's bits (h, l) become
+                        \ (h EOR l, h), so with H the high nibble and L the low
+                        \ one, A = (H EOR L) * 16 + H (green &EE to &0E, yellow
+                        \ &E0 to &EE, red &0E to &E0), with T as scratch
+
+ LSR A                  \ Set T = H
+ LSR A
+ LSR A
+ LSR A
+ STA T
+
+ TYA                    \ Set A = (L EOR H) * 16 + H
+ AND #%00001111
+ EOR T
+ ASL A
+ ASL A
+ ASL A
+ ASL A
+ ORA T
 
  LDY #5                 \ We now want to draw this line five times, so set a
                         \ counter in Y

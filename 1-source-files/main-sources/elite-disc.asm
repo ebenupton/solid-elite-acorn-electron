@@ -51,7 +51,10 @@
 
  PUTFILE "3-assembled-output/ELITE4.bin", "ELITE4", &FF1900, &FF1900
 
- PUTFILE "1-source-files/images/P.DIALS.bin", "P.DIALS", STAGE%, STAGE%
+ \ Port: the dashboard's image in the Electron's colours (the original's,
+ \ 1-source-files/images/P.DIALS.bin, recoloured by 2-build-files/dialscol.py)
+
+ PUTFILE "3-assembled-output/P.DIALS.bin", "P.DIALS", STAGE%, STAGE%
 
  \ Port: the flight code's overlays next, near the catalogue on track 0,
  \ which CATD reads before each load: ovload loads them in flight, at any
