@@ -72,6 +72,8 @@ struct Server {
 	unsigned ov_lo = 1, ov_hi = 0; int ov_slot = -1;		// the overlay loader's code (ovload_C to its file name)
 	unsigned dfs_lo = 1, dfs_hi = 0;						// dfsin/dfsout's copy loops (dfs2..dfs3)
 	unsigned stash_lo = 1, stash_hi = 0;					// the overlay loader's stash of WP and zero page
+	std::vector<uint8_t> staint = std::vector<uint8_t>(0x400, 0);	// its taint when the stash is in sideways RAM (the Electron port's, in bank 7)
+	uint8_t stash_taint(int addr) const { return stash_lo >= 0x8000 ? (addr >= int(stash_lo) && addr < int(stash_lo) + 0x400 ? staint[size_t(addr - int(stash_lo))] : 0) : taint[unsigned(addr) & 0x7fff]; }
 	struct P0D { int iter; unsigned pc, a; };
 	std::vector<P0D> page0d;
 	struct P1 { unsigned stack_low = 0x200, data_high = 0xff, sys_high = 0xff; bool seen = false; };
@@ -181,7 +183,7 @@ struct Server {
 		const bool sys = sys_writer();
 		if(in_game) {
 			if(region[a]) {
-				const bool restored = a < 0x100 && stash_base >= 0 && in_ovload() && taint[unsigned(stash_base + 0x200 + a) & 0x7fff] == 1;
+				const bool restored = a < 0x100 && stash_base >= 0 && in_ovload() && stash_taint(stash_base + 0x200 + a) == 1;
 				dirty[a] = (sys || restored) ? 1 : 0;
 			}
 			if(rec_written) written[a] = 1;
@@ -208,7 +210,7 @@ struct Server {
 		}
 		taint[a] = t;
 		if(!sys && stash_base >= 0 && ov && (a < 0x100 || (a >= 0x0e00 && a < 0x1000))) {
-			fsbit[a] = taint[unsigned(stash_base + (a < 0x100 ? 0x200 + a : a - 0x0e00)) & 0x7fff] == 1 ? 1 : 0;
+			fsbit[a] = stash_taint(stash_base + (a < 0x100 ? 0x200 + a : a - 0x0e00)) == 1 ? 1 : 0;
 			return;
 		}
 		fsbit[a] = sys ? 1 : 0;
@@ -240,7 +242,14 @@ struct Server {
 	void install() {
 		m.opcode_hook = [this](uint16_t pc, uint8_t rom, uint8_t) { on_opcode(pc, rom); };
 		m.ram_write_hook = [this](uint16_t a, uint8_t v) { on_write(a, v); };
-		m.swram_write_hook = [this](uint8_t rom, uint16_t a, uint8_t v) { if(swl_on && rom == swl_slot && a == swl_addr && wlogtxt.size() < 200000) { char b[80]; std::snprintf(b, sizeof b, "sw %u:%04x=%02x pc=%04x slot=%u\n", rom, a, v, lpc, unsigned(lrom)); wlogtxt += b; } };
+		m.swram_write_hook = [this](uint8_t rom, uint16_t a, uint8_t v) {
+			if(stash_lo >= 0x8000 && int(rom) == ov_slot && a >= stash_lo && a < stash_hi && in_ovload()) {	// (the stash in bank 7)
+				const unsigned x = m.m6502_.value_of(R::X);
+				if(stash_base < 0) stash_base = int(a) - int(x);
+				const int k = (int(a) - int(x) - stash_base) >> 8;
+				if(unsigned(a - stash_lo) < staint.size()) staint[a - stash_lo] = fsbit[k == 0 ? 0x0e00 + x : k == 1 ? 0x0f00 + x : x] ? 1 : 2;
+			}
+			if(swl_on && rom == swl_slot && a == swl_addr && wlogtxt.size() < 200000) { char b[80]; std::snprintf(b, sizeof b, "sw %u:%04x=%02x pc=%04x slot=%u\n", rom, a, v, lpc, unsigned(lrom)); wlogtxt += b; } };
 		m.fe05_hook = [this](uint8_t v) { histv[histp++ & 4095] = 0xFE050000u | uint32_t(lpc); histv[histp++ & 4095] = 0xFE060000u | v; };
 		m.ram_access_hook = nullptr;
 	}

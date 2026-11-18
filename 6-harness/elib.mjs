@@ -215,7 +215,7 @@ export async function runElite(opts) {
     { let o = 0; for (const [a, n] of regions) { e.send(`treg ${a} ${n}`); for (let i = 0; i < n; i++) offOfAddr.set(a + i, o + i); o += n; } }
     const total = regions.reduce((t, [, n]) => t + n, 0);
     if (b.loader.dfs2 !== undefined) e.send(`tdfs ${b.loader.dfs2} ${b.loader.dfs3}`);
-    const stash = fsy.OVSTASH ?? b.loader.OVSTASH;
+    const stash = fsy.OVSTASH ?? fsy.ovstash ?? b.loader.OVSTASH;
     if (stash !== undefined) e.send(`tstash ${stash} ${stash + 0x2e2}`);
     const ovC = P.flight.sy.ovload_C, ovRole = P.flight.bank.ovload_C || "C";
     let ovEnd = ovC;

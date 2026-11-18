@@ -198,3 +198,9 @@ ENDIF
  PRINT "Flight cold 6: ", ~C6%, "-", ~C6_END%-1, " (", C6_END%-C6%, " bytes), free ", C6% + C6SZ - C6_END%
  ASSERT C6_END% <= C6% + C6SZ
  SAVE "3-assembled-output/C6.bin", C6%, C6% + C6SZ, C6%
+
+ ASSERT ECMA = SND_ECMA   \ (the sound engine reads ECMA: gfx-sound.asm)
+
+ ORG OVSTASH            \ Port: a label at the overlay loader's stash (in bank
+.ovstash                \ 7's workspace), for the harness's tracking of the
+                        \ filing system's bytes through it (6-harness/elib.mjs)

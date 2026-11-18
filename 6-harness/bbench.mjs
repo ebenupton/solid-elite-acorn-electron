@@ -43,10 +43,10 @@ import { runElite, loadBuild, regionsFor, physRead, progHooks, CAND_BUILD } from
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { parseArgs } from "./args.mjs";
 import { isElectron, runElite as runEliteElectron } from "./elib.mjs";
-import { writeFileSync } from "fs";
+import { writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 
-const a = parseArgs({ build: "value", scene: "value", n: "value", warm: "value", out: "value" });
+const a = parseArgs({ build: "value", scene: "value", n: "value", warm: "value", out: "value", shots: "value" });
 const BUILD = resolve(a.build || CAND_BUILD);
 const b = loadBuild(BUILD);
 const sy = b.progs.flight.sy;
@@ -153,6 +153,8 @@ opts.onIter = (i, s, res) => {
     }
     if (snap) {
         times.push(res.iterTimes[res.iterTimes.length - 1]);
+        // --shots DIR (an Electron build): the scene's screen, once, mid-window
+        if (a.shots && times.length === M / 2 && s && s.shot) { mkdirSync(a.shots, { recursive: true }); writeFileSync(`${a.shots}/${which[si]}.png`, s.shot()); }
         if (times.length > N) {
             const per = (times[times.length - 1] - times[0]) / (times.length - 1) * 2e6;
             results[which[si]] = { cycles: Math.round(per), its: +(2e6 / per).toFixed(3), n: times.length - 1, ships: used };

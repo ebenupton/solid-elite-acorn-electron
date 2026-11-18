@@ -26588,6 +26588,7 @@ S.ELTF &969B  &83AD  &8000  &969B
 .C6_END%
 Flight cold 6: &8000 -&823E  (575  bytes), free 7 
 Saving file '3-assembled-output/C6.bin'
+.ovstash
 sunref: the sun's parking (passive): slot 0, code 217 bytes at &8000-&80D8, station heap &80D9-&813D, parked sun &0FD3-&0FF8, 7 sites
   &15B9           part 14: JSR WPLS      20 30 3C -> 20 D3 80
   &3D89           KS4: JSR ZINF          20 26 3F -> 4C AD 80
