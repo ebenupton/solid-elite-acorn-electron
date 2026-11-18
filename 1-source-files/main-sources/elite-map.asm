@@ -231,7 +231,8 @@
  FG_CLOUD    = 14
  FG_SETLD    = 15
  FG_PFHOLD   = 16
- FG_N        = 17
+ FG_DCHAR    = 17        \ (the game's direct-mode text: TT26, CHPR)
+ FG_N        = 18
 
                         \ The fixed colours of the frame layer's lines and dots
                         \ (indices into its F_CPE, gfx-frame.asm)

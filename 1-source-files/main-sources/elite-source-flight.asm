@@ -8872,31 +8872,11 @@ ENDIF
  LDA QQ11
  ORA GFORCE
  BEQ RR4
- TYA                    \ (YC is below 24, so the ASL A below clears the C flag)
-
-                        \ A contains the value of YC - the screen row where we
-                        \ want to print this character - so now we need to
-                        \ convert this into a screen address, so we can poke
-                        \ the character data to the right place in screen
-                        \ memory
-                        \
-                        \ Port: on the four-colour screen, a character row is
-                        \ two pages, from SCREEN% + 512 * YC, the second for
-                        \ columns 16 to 31, and each pixel row of a character
-                        \ is two bytes of four pixels, the left one at SC and
-                        \ the right one at SC + 8, so the character's row bits
-                        \ go through NIB, four at a time; the text is yellow
-                        \ (logical colour 3, both bit planes)
-
- ASL A                  \ Set SC+1 = SCREEN% / 256 + 2 * YC, plus 1 if the
- ADC #HI(SCREEN%)       \ column was 16 or more (XC is now the column plus 1)
- LDX XC
- CPX #17
- ADC #0
- STA SC+1
-
- JMP RRC                \ Draw the character's rows at RRC (Port: after R5,
-                        \ to keep TT26's branches in range)
+ LDA K3                 \ Port: draw it outside record mode on buffer 1, the
+ CLC                    \ direct-mode screen, through the frame layer, which
+ LDX #FG_DCHAR          \ EORs its glyph (the 4 x 8 font, C clear) into the
+ JSR GCALL              \ cell at (XC - 1, YC), as the original's RRC did (Y =
+                        \ YC, kept)
 
 .RR4
 
@@ -8915,55 +8895,6 @@ ENDIF
 
  JMP RR4                \ Jump to RR4 to restore the registers and return from
                         \ the subroutine using a tail call
-
-.RRC
-
- LDY #7                 \ Draw the left halves of the character's eight rows
-
-.RRC1
-
- LDA (P+1),Y            \ Fetch the character's row Y and EOR the MODE 1 byte
- LSR A                  \ of its left four pixels into the screen
- LSR A
- LSR A
- LSR A
- TAX
- LDA NIB,X
- EOR (SC),Y
- STA (SC),Y
-
- DEY                    \ Loop back for the next row
- BPL RRC1
-
- LDA SC                 \ Move SC(1 0) on to the right character block (SC is a
- ORA #8                 \ multiple of 16, so this adds 8)
- STA SC
-
- LDY #7                 \ Draw the right halves of the character's eight rows
-
-.RRC2
-
- LDA (P+1),Y            \ Fetch the character's row Y and EOR the MODE 1 byte
- AND #%00001111         \ of its right four pixels into the screen
- TAX
- LDA NIB,X
- EOR (SC),Y
- STA (SC),Y
-
- DEY                    \ Loop back for the next row
- BPL RRC2
-
- JMP RR4                \ Restore the registers and return
-
-.NIB
-
-                        \ Port: four pixels of a character row (bit 3 the left
-                        \ one) as a MODE 1 byte in yellow: the bits in both bit
-                        \ planes
-
- FOR I%, 0, 15
-  EQUB I% * 16 + I%
- NEXT
 
 \ ******************************************************************************
 \

@@ -273,6 +273,9 @@ entry. Not from an interrupt.
 | 12 | `F_HANG0`: empty the lists before the hangar's ships are recorded | |
 | 13 | `F_HANGAR`: the hangar's frame | |
 | 14 | `F_CLOUD`: an explosion cloud in record mode (`H_PTCLS`, C set: noted for the frame; `H_PTCLSE`, C clear): what the game keeps of `PTCLS` | `XX19`, `INF`, `XSAV` |
+| 15 | `F_SETLD`: a blueprint set's face lists into `FCSLOT` (`LOMOD`) | |
+| 16 | `F_PFHOLD`: whether the planet's circles of the last iteration are kept (`PF_HOOK`) | A = the radius |
+| 17 | `F_DCHAR`: the game's direct-mode text (`TT26`, `CHPR`): character A's glyph (the 4 x 8 font, `F_FONT`) in yellow into the cell at (`XC` - 1, Y) of buffer 1, all eight rows, EORed (C clear: `TT26`) or ORed (C set: `CHPR`) | A = the character, Y = the row, C |
 
 Limits per frame: `MAXSH` (`NOSH`, 12) ships, as many beams and as many
 dots (distant ships and clouds). The stars are recorded by the hooks straight into the mailbox
@@ -675,7 +678,7 @@ particle the original draws.
 | `MVS5` | home | (every mode) for the planet, half the angle: its own pitch and roll (`MVEIT` part 8) by 1/32 radian a step, every iteration: its half spin; the reference is patched to match |
 | `SIGHT` | cold | `GSIGHT` is set to the laser power, `QQ19` as `TT15` leaves it |
 | `TTX66` | cold | (every mode) `F_DIRECT`: direct mode, buffer 1 on show, the text map cleared; for an in-system jump in space mode (`WARP` sets `GWARP`), the frames go on, and `TTX66` neither clears the screen nor draws the border |
-| `TT26` (`RR3`) | cold | (every mode) the character goes to the text map (`F_CHAR`); in record mode it is not drawn |
+| `TT26` (`RR3`) | cold | (every mode) the character goes to the text map (`F_CHAR`); in record mode it is not drawn, otherwise the frame layer draws it on buffer 1 (`F_DCHAR`: the font's one copy is bank 6's) |
 | `CLYNS` | cold | (every mode) rows 21 and 22 of the text map are cleared (`F_CLRTEXT`); in record mode the screen is not touched |
 | `HFS1` | cold | sets `GFORCE` while it draws the rings |
 | `LOMOD`, `DEATH2` | cold, home | `CATD` is called with DFS's workspace put back at `&1000` (`dfsin`) and kept afterwards (`dfsout`), as `PCLI` does, as buffer 0 is drawn over it |

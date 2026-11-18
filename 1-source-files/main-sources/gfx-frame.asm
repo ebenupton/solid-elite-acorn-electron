@@ -62,7 +62,6 @@ fz_q    = FZ+2          \ second pointer (2)
 fz_dl   = FZ+4          \ ship's levels in F_SR (2)
 fz_v3   = FZ+6          \ general pointer (2), used by the text overlay
 fz_ft   = FZ+8          \ face list pointer (2)
-fz_nm   = FZ+10         \ general pointer (2), used by the text overlay
 fz_dt   = FZ+10         \ ship's fin / detail list pointer (2)
 fz_i    = FZ+12
 fz_n    = FZ+13
@@ -3273,51 +3272,26 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 \ column (four MODE 5 pixels, eight game x) of a character row: buffer +
 \ 320 * row + 32 + 8 * column; a glyph is eight rows of four pixels, two
 \ rows a byte (F_FONT, gfx-font.asm), f_nib making each row's MODE 5 byte.
+\ The glyph's rows go through f_gl, which F_DCHAR (the game's direct-mode
+\ text) shares.
 
 .f_glyph
- SEC
- SBC #32                 \ glyph address = F_FONT + 4 * (char - 32)
- LDX #HI(F_FONT)
- ASL A
- ASL A
- BCC P%+3
- INX
- CLC
- ADC #LO(F_FONT)
- BCC P%+3
- INX
- STA fgl1+1
- STX fgl1+2
- LDA fz_i                \ screen: base + 320 * row + 32 + 8 * col: the high
- LSR A                   \ byte base + row + row DIV 4 (+ the carry below)
- LSR A
- CLC
- ADC fz_i
- ADC f_scr               \ (the back buffer's base, f_bufpatch)
- STA fz_nm+1
- TYA                     \ 8 * col (C = 0: col < 32)
- ASL A
- ASL A
- ASL A
- STA fz_nm
- LDA fz_i                \ + 64 * (row AND 3) + 32
- AND #3
- LSR A
- ROR A
- ROR A                   \ (C = 0)
- ORA #32
- ADC fz_nm
- STA fz_nm
- BCC P%+4
- INC fz_nm+1
+ STY f_gc
+ JSR f_gfont            \ the glyph
+ LDA fz_i               \ its cell in the back buffer
+ LDX f_gc
+ LDY f_scr
+ JSR f_gcell
  LDA #&FF               \ the mask for a border column (patched into the loop)
- CPY #0
+ LDX f_gc
  BNE P%+4
  LDA #&77               \ pixel 0 of column 0 is the border
- CPY #31
+ CPX #31
  BNE P%+4
  LDA #&EE               \ pixel 3 of column 31 is the border
  STA fglm+1
+ LDA #&19               \ ORA abs,Y: the glyph's pixels set in the ink
+ STA fglo
  ASSERT F_TCOL = &FF    \ ink is all-ones: (m AND ink) OR (NOT m AND s) = m OR s
  LDA fz_i               \ first line y = 8*row
  ASL A
@@ -3339,13 +3313,18 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  LDA #6                 \ (NMOS: 6 + 1 + C = 1)
  ADC #1                 \ (no overflow: V = 0 still)
  STA fgl4+1
- BNE fgl3
+ BNE fgl3               \ (always)
+
+\ f_gl: the glyph's rows Y + 1 to (fgl4) - 1, from f_gfont's glyph into
+\ f_gcell's cell, each row's pixels masked (fglm) and combined with the
+\ screen by the operation at fglo (ORA or EOR abs,Y)
+
 .fgl0
  TYA                    \ row Y: the high nibble of byte Y DIV 2 (Y even) or
  LSR A                  \ the low one
  TAX
 .fgl1
- LDA F_FONT,X           \ patched
+ LDA F_FONT,X           \ (patched: the glyph)
  BCS fgl2
  LSR A
  LSR A
@@ -3359,17 +3338,101 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  LDA f_nib,X
  BEQ fgl3
 .fglm
- AND #&FF               \ patched (a border column's mask)
- ORA (fz_nm),Y
- STA (fz_nm),Y
+ AND #&FF               \ (patched: a border column's mask)
+.fglo
+ ORA &FFFF,Y            \ (patched: the operation, and the cell's address)
+.fgls
+ STA &FFFF,Y            \ (patched: the cell's address)
 .fgl3
  INY
 .fgl4
- CPY #8                 \ patched (last line + 1)
+ CPY #8                 \ (patched: last line + 1)
  BCC fgl0
 .fgl9
  RTS
 
+\ f_gfont: character A's glyph into f_gl's load (fgl1)
+
+.f_gfont
+ SEC
+ SBC #32                 \ glyph address = F_FONT + 4 * (char - 32)
+ LDX #HI(F_FONT)
+ ASL A
+ ASL A
+ BCC P%+3
+ INX
+ CLC
+ ADC #LO(F_FONT)
+ BCC P%+3
+ INX
+ STA fgl1+1
+ STX fgl1+2
+ RTS
+
+\ f_gcell: the cell at text row A, column X, of the buffer whose base's high
+\ byte is Y, into f_gl's operands: base + 320 * row + 32 + 8 * column, the
+\ high byte base + row + row DIV 4 (+ the carry below)
+
+.f_gcell
+ STA f_gr
+ STY f_gb
+ LSR A
+ LSR A
+ CLC
+ ADC f_gr
+ ADC f_gb
+ STA fglo+2
+ STA fgls+2
+ TXA                     \ 8 * col (C = 0: col < 32)
+ ASL A
+ ASL A
+ ASL A
+ STA f_gb
+ LDA f_gr                \ + 64 * (row AND 3) + 32
+ AND #3
+ LSR A
+ ROR A
+ ROR A                   \ (C = 0)
+ ORA #32
+ ADC f_gb
+ STA fglo+1
+ STA fgls+1
+ BCC fgc9
+ INC fglo+2
+ INC fgls+2
+.fgc9
+ RTS
+
+\ F_DCHAR (FG_DCHAR): the game's direct-mode text (TT26, CHPR): character
+\ A (32 to 127) at column XC - 1 of text row Y, in buffer 1 (SCREEN%, the
+\ direct-mode screen), all eight of the glyph's rows in yellow, EORed (C
+\ clear: the flight code's TT26) or ORed (C set: the docked code's CHPR), as
+\ the original's character printers. Keeps Y.
+
+.F_DCHAR
+ STY f_ysav
+ LDX #&59               \ EOR abs,Y, or (C set) ORA abs,Y
+ BCC P%+4
+ LDX #&19
+ STX fglo
+ JSR f_gfont
+ LDX XC
+ DEX
+ LDA f_ysav
+ LDY #HI(SCREEN%)
+ JSR f_gcell
+ LDA #&FF               \ no mask, rows 0 to 7
+ STA fglm+1
+ LDA #8
+ STA fgl4+1
+ LDY #0
+ JSR fgl0
+ LDY f_ysav
+ RTS
+
+.f_gc EQUB 0            \ f_glyph's column, f_gcell's row and base
+.f_gr EQUB 0
+.f_gb EQUB 0
 .f_gy EQUB 0
 
 .f_nib                  \ a font row's four pixels (bit 3 the leftmost) -> the

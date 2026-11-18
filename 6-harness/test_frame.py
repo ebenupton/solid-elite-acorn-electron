@@ -70,7 +70,8 @@ STUB = None                                      # where the test's caller runs:
                                                  # the hot pass's last container, or in
                                                  # page &0D (main())
 FG = ['F_INIT', 'F_DIRECT', 'F_FRAME', 'F_SHIP', 'F_LINE', 'F_PDOT', 'F_PLANET', 'F_SHPPT',
-      'F_CHAR', 'F_DELCHAR', 'F_CLRTEXT', 'F_GUN', 'F_HANG0', 'F_HANGAR', 'F_CLOUD', 'F_SETLD', 'F_PFHOLD']
+      'F_CHAR', 'F_DELCHAR', 'F_CLRTEXT', 'F_GUN', 'F_HANG0', 'F_HANGAR', 'F_CLOUD', 'F_SETLD', 'F_PFHOLD',
+      'F_DCHAR']
 # the drawing's temporaries, which game code the frame runs may leave changed
 # (blib.mjs's DRAW_EXCLUDE): name, length
 DRAWTMP = [('SC', 2), ('T1', 1), ('P', 3), ('Q', 1), ('R', 1), ('S', 1), ('T', 1), ('U', 1), ('XX15', 6),
@@ -230,7 +231,7 @@ class Machine:
         a = self.S[name] + off
         self.mem.main[a], self.mem.main[a + 1] = v & 255, (v >> 8) & 255
 
-    def call(self, entry, a=0, y=0, maxcyc=40_000_000):
+    def call(self, entry, a=0, y=0, maxcyc=40_000_000, c=0):
         """LDX #n : JSR GCALL : (stop) from main RAM, the home bank paged"""
         n = FG.index(entry)
         mpu, mem = self.mpu, self.mem
@@ -240,7 +241,7 @@ class Machine:
         zp = bytes(mem.main[0:0x100])
         mem.bad = []
         mem.guard = mem.okgame if entry == 'F_FRAME' else mem.ok
-        mpu.a, mpu.x, mpu.y, mpu.p, mpu.sp = a & 255, 0x55, y & 255, 0x24, 0xFF
+        mpu.a, mpu.x, mpu.y, mpu.p, mpu.sp = a & 255, 0x55, y & 255, 0x24 | (c & 1), 0xFF
         mpu.pc = STUB
         c0 = mpu.processorCycles
         step = mpu.step
@@ -882,6 +883,36 @@ def hold_tests(png_dir):
             png(want, os.path.join(png_dir, 'hold-%d-want.png' % f))
 
 
+def dchar_tests():
+    """F_DCHAR (FG_DCHAR, the game's direct-mode text): each character's glyph
+    (font4.py's) in yellow in its cell of buffer 1, EORed with C clear (twice:
+    gone) and ORed with C set, nothing else written"""
+    import font4, random
+    print('the direct-mode text (F_DCHAR)')
+    m = Machine()
+    m.call('F_INIT')
+    base, rnd = m.S['SCREEN%'], random.Random(3)
+    bad = []
+    for i in range(200):
+        ch, col, row = rnd.randrange(32, 128), rnd.randrange(32), rnd.randrange(24)
+        before = bytes(rnd.randrange(256) for _ in range(SCRSZ))
+        m.mem.main[base:base + SCRSZ] = before
+        m['XC'] = col + 1
+        orr = i & 1
+        m.call('F_DCHAR', a=ch, y=row, c=orr)
+        got, want = m.buffer(1), bytearray(before)
+        for k, r in enumerate(font4.rows(chr(ch))):
+            a = addr(8 * col, 8 * row + k)
+            want[a] = (want[a] | r * 0x11) if orr else (want[a] ^ r * 0x11)
+        if got != bytes(want):
+            bad.append((ch, col, row, orr))
+        if not orr:
+            m.call('F_DCHAR', a=ch, y=row)
+            if m.buffer(1) != before:
+                bad.append((ch, col, row, 'twice'))
+    check(not bad, 'F_DCHAR: glyphs EORed and ORed into their cells of buffer 1%s' % ('' if not bad else ' (wrong for %r)' % bad[:3]))
+
+
 def flare_tests():
     """the lens flare's probe test (gfx-flare.asm's fl_inpl, in bank 5): the
     probe (fl_vx, row Y) is inside the planet's disc when dx^2 + dy^2 <= r^2,
@@ -1124,6 +1155,7 @@ def main():
 
     disc_tests(png_dir)
     hold_tests(png_dir)
+    dchar_tests()
     flare_tests()
     pmath_tests('--quick' in args)
 

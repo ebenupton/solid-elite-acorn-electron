@@ -7929,27 +7929,10 @@ ENDIF
  JSR GCALL              \ kept in Y
  JSR DRAWQ
  BEQ RR4
- TYA
- CLC
-
-                        \ A contains the value of YC - the screen row where we
-                        \ want to print this character
-                        \
-                        \ Port: on the four-colour screen, a character row is
-                        \ two pages, from SCREEN% + 512 * YC, the second for
-                        \ columns 16 to 31, and each pixel row of a character
-                        \ is two bytes of four pixels, eight bytes apart, which
-                        \ RRC ORs into the screen from NIB (yellow)
-
- ASL A                  \ Set SC+1 = SCREEN% / 256 + 2 * YC, plus 1 if the
- ADC #HI(SCREEN%)       \ column was 16 or more (XC is now the column plus 1)
- LDX XC
- CPX #17
- ADC #0
- STA SC+1
-
- JMP RRC                \ Draw the character's rows at RRC (after R5, to keep
-                        \ CHPR's branches in range)
+ LDA K3                 \ Port: draw it on buffer 1, the direct-mode screen,
+ SEC                    \ through the frame layer, which ORs its glyph (the
+ LDX #FG_DCHAR          \ 4 x 8 font, C set) into the cell at (XC - 1, YC), as
+ JSR GCALL              \ the original's RRC did (Y = YC, kept)
 
 .RR4
 
@@ -7978,27 +7961,35 @@ ENDIF
  BEQ rrd9
  LDA YC
 
-                        \ Port: on the four-colour screen, clear the sixteen
-                        \ bytes of the character cell at column XC of row YC
-                        \ (A = YC and the C flag is set), at SCREEN% + 512 *
-                        \ YC + 16 * XC
+                        \ Port: on the MODE 5 screen, clear the eight bytes
+                        \ of the character cell at column XC of row YC (A =
+                        \ YC), at SCREEN% + 320 * YC + 32 + 8 * XC
 
- ASL A                  \ Set SC+1 = SCREEN% / 256 + 2 * YC, plus 1 if XC >= 16
+ STA SC+1               \ Set SC+1 = SCREEN% / 256 + YC + YC DIV 4 (and the
+ LSR A                  \ carry below)
+ LSR A
  CLC
+ ADC SC+1
  ADC #HI(SCREEN%)
- LDX XC
- CPX #16
- ADC #0
  STA SC+1
 
- TXA                    \ Set SC = 16 * XC (mod 256)
- ASL A
- ASL A
+ LDA XC                 \ Set SC = 64 * (YC MOD 4) + 32 + 8 * XC, carrying into
+ ASL A                  \ SC+1
  ASL A
  ASL A
  STA SC
+ LDA YC
+ AND #3
+ LSR A
+ ROR A
+ ROR A
+ ORA #32
+ ADC SC
+ STA SC
+ BCC P%+4
+ INC SC+1
 
- LDY #15                \ Zero the sixteen bytes
+ LDY #7                 \ Zero the eight bytes
  LDA #0
 
 .rrdl
@@ -8011,55 +8002,6 @@ ENDIF
 
  LDY #0                 \ We are done deleting, so restore the registers and
  JMP RR4                \ return from the subroutine
-
-.RRC
-
- LDY #7                 \ Draw the left halves of the character's eight rows
-
-.RRC1
-
- LDA (P+1),Y            \ Fetch the character's row Y and OR the MODE 1 byte of
- LSR A                  \ its left four pixels into the screen
- LSR A
- LSR A
- LSR A
- TAX
- LDA NIB,X
- ORA (SC),Y
- STA (SC),Y
-
- DEY                    \ Loop back for the next row
- BPL RRC1
-
- LDA SC                 \ Move SC(1 0) on to the right character block (SC is a
- ORA #8                 \ multiple of 16, so this adds 8)
- STA SC
-
- LDY #7                 \ Draw the right halves of the character's eight rows
-
-.RRC2
-
- LDA (P+1),Y            \ Fetch the character's row Y and OR the MODE 1 byte of
- AND #%00001111         \ its right four pixels into the screen
- TAX
- LDA NIB,X
- ORA (SC),Y
- STA (SC),Y
-
- DEY                    \ Loop back for the next row
- BPL RRC2
-
- JMP RR4                \ Restore the registers and return
-
-.NIB
-
-                        \ Port: four pixels of a character row (bit 3 the left
-                        \ one) as a MODE 1 byte in yellow: the bits in both bit
-                        \ planes
-
- FOR I%, 0, 15
-  EQUB I% * 16 + I%
- NEXT
 
 \ ******************************************************************************
 \
