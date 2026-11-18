@@ -2149,32 +2149,79 @@ FC_PLLE = &5F : FC_PLLO = &AF
 \ go. So every edge of the layer's rows is between two MODE 5 pixels, and
 \ the painter, which writes the bytes whose pixels changed, never has a
 \ pixel half one colour. Part of f_lbat's loop (it jumps here, and this
-\ goes on at flb5, with X and Y for it), with each
-\ boundary's test in line (FSNAP: X counts the boundaries out, f_sbo keeps
-\ them), then the count and colour, the boundaries and the right end into
-\ the record.
-
-MACRO FSNAP i
- LDA R_NDX0 + 192 * i,Y \ boundary i, on a pixel's edge
- AND #&FE
- CMP f_sl
- BNE n1
- LDA f_sbc              \ at the span's left end: the colour there flips
- EOR #&80
- STA f_sbc
- BCS n9                 \ (always: C set by the CMP)
-.n1
- CMP f_sbo-1,X          \ (before the first: f_sb1, which is odd)
- BNE n3
- DEX                    \ with the last: both go
- BCS n9                 \ (always: C set by the CMP)
-.n3
- STA f_sbo,X
- INX
-.n9
-ENDMACRO
+\ goes on at flb5, with X and Y for it): a row of none, one or two has its
+\ own code, straight into the record; one of three or four goes through a
+\ loop (X counts the boundaries out, f_sbo keeps them), then the count and
+\ colour, the boundaries and the right end into the record.
 
 .f_snap
+ LDA R_NDN,Y            \ the count: none, one and two each in line
+ AND #&7F
+ BEQ fsk0
+ CMP #2
+ BEQ fsk2
+ BCC P%+5
+ JMP fsn0
+ LDA R_NDX0,Y           \ one boundary
+ AND #&FE
+ CMP f_sl
+ BEQ fsk1a
+ STA DB_R+2,X
+ LDA R_NDN,Y
+ STA DB_R,X
+.fsk1
+ LDA R_NDISCR,Y         \ (the right end after one)
+ ORA #1
+ STA DB_R+3,X
+ INX
+ JMP flb5
+.fsk1a
+ LDA R_NDN,Y            \ at the span's left end: none, the other colour
+ EOR #&81
+ JMP fsk0a
+.fsk2b
+ LDA R_NDN,Y            \ (two gone: none, the same colour)
+ AND #&80
+ JMP fsk0a
+.fsk0
+ LDA R_NDN,Y            \ no boundaries
+.fsk0a
+ STA DB_R,X
+ LDA R_NDISCR,Y
+ ORA #1
+ STA DB_R+2,X
+ JMP flb5
+.fsk2
+ LDA R_NDX0,Y           \ two boundaries
+ AND #&FE
+ CMP f_sl
+ BEQ fsk2a
+ STA DB_R+2,X
+ STA f_sbo
+ LDA R_NDX1,Y
+ AND #&FE
+ CMP f_sbo
+ BEQ fsk2b              \ (together: both go)
+ STA DB_R+3,X
+ LDA R_NDN,Y
+ STA DB_R,X
+ LDA R_NDISCR,Y
+ ORA #1
+ STA DB_R+4,X
+ INX
+ INX
+ JMP flb5
+.fsk2a
+ LDA R_NDX1,Y           \ the first at the span's left end: the other
+ AND #&FE               \ colour, and the second alone, unless it is there
+ CMP f_sl               \ too
+ BEQ fsk2b
+ STA DB_R+2,X
+ LDA R_NDN,Y
+ EOR #&83
+ STA DB_R,X
+ BNE fsk1               \ (always: the count is one)
+.fsn0                   \ three or four
  STX f_sbx
  LDX #0                 \ (none out yet)
  LDA R_NDN,Y            \ the colour at the left end, and the count
@@ -2182,16 +2229,37 @@ ENDMACRO
  STA f_sbc
  EOR R_NDN,Y
  STA f_sbn
- BNE fsn0
- JMP fsn9
-.fsn0
- FOR i, 0, 3
- FSNAP i
-IF i < 3
+ LDA #LO(R_NDX0)
+ STA fsn1+1
+ LDA #HI(R_NDX0)
+ STA fsn1+2
+.fsn1
+ LDA R_NDX0,Y           \ (patched) the next boundary, on a pixel's edge
+ AND #&FE
+ CMP f_sl
+ BNE fsn2
+ LDA f_sbc              \ at the span's left end: the colour there flips
+ EOR #&80
+ STA f_sbc
+ BCS fsn4               \ (always: C set by the CMP)
+.fsn2
+ CMP f_sbo-1,X          \ (before the first: f_sb1, which is odd)
+ BNE fsn3
+ DEX                    \ with the last: both go
+ BCS fsn4               \ (always: C set by the CMP)
+.fsn3
+ STA f_sbo,X
+ INX
+.fsn4
  DEC f_sbn
  BEQ fsn9
-ENDIF
- NEXT
+ CLC                    \ (its array is 192 on)
+ LDA fsn1+1
+ ADC #192
+ STA fsn1+1
+ BCC fsn1
+ INC fsn1+2
+ BCS fsn1               \ (always)
  ASSERT R_NDX1 = R_NDX0 + 192 AND R_NDX2 = R_NDX1 + 192 AND R_NDX3 = R_NDX2 + 192
 .fsn9
  STX f_so

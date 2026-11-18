@@ -429,10 +429,11 @@ since the last frame.
   painter is given is between two MODE 5 pixels: the batches widen each
   span to an even left end and an odd right end, and put each boundary on
   a pixel's left edge (`f_snap`: x AND `&FE`, one landing on the span's
-  left end folded into the colour there, two landing together gone), and
-  bank 5 widens the dirty extents it lists the same way. A pixel is never
-  half one colour and half another. `PC_ROWS`' rows are the circle engine's
-  own, before this.
+  left end folded into the colour there, two landing together gone; a row
+  of none, one or two boundaries has its own code), and bank 5 widens the
+  dirty extents it lists the same way. A pixel is never half one colour
+  and half another. `PC_ROWS`' rows are the circle engine's own, before
+  this.
 * **The batches** are a stream of records in the mailbox (`gfx-rws.asm`,
   `DB_R`, `&00` to `&63`), a row each, in the order of the row's edges: the
   count and colour (with boundaries), the left end, the boundaries, the
