@@ -61,3 +61,6 @@
 .M_HOTX
  ORG PROGM_END%
 .M_HOTX_END
+ ORG PROGL%             \ (the docked code has no second main RAM part)
+.M_HOTL
+.M_HOTL_END

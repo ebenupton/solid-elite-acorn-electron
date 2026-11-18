@@ -48,6 +48,12 @@
 #   * ", runs on" after any of these: a table that code reads past its end
 #     into the next block, which must therefore follow it, in the same pass
 #     and unit, as if it fell through.
+#   * ", main" after "hot" ("Area: hot, main"): a hot block that runs too
+#     rarely in flight to earn its place in bank 4, by measurement
+#     (ELECTRON-REPORT.md, "Memory map"): its unit goes in main RAM, in the
+#     flight code's second main RAM part (hotl, D.LOW, which DEEOR loads, so
+#     no such block may run before DEEOR) or else in hotm or hotx, leaving
+#     bank 4's room to the hot code. Untagged units never go in hotl.
 #
 # A block runs from its header to the next header (or to a separator line of
 # stars, which starts an untagged block: the original's PRINT and SAVE
@@ -154,7 +160,12 @@ HOTSIDE = ("low", "hot", "blueprints")
 # (elite-map.asm and elite-layout-<program>.asm, as the measure assembles
 # them): (copy, start, end); each unit goes in the first with room for it,
 # the largest units first
-CONTAINERS = (("hot", "M_HOT", "M_HOT_END"), ("hotm", "M_HOTM", "M_HOTM_END"), ("hotx", "M_HOTX", "M_HOTX_END"))
+CONTAINERS = (("hot", "M_HOT", "M_HOT_END"), ("hotm", "M_HOTM", "M_HOTM_END"), ("hotx", "M_HOTX", "M_HOTX_END"),
+              ("hotl", "M_HOTL", "M_HOTL_END"))
+LOWER = 3       # (hotl: the second main RAM part, D.LOW, which the flight code
+                # loads at its start, DEEOR: only blocks tagged ", main" go
+                # there, which never run before it is loaded, and they go
+                # there first)
 
 # NORETURN: the targets that never return to their caller, so that their
 # stubs jump (farCj, farHj) and leave no far-call frame on the stack: the
@@ -181,7 +192,7 @@ def code_part(line):
 class Block:
     def __init__(self, start, default):
         self.s, self.e, self.name, self.area = start, None, None, default
-        self.again = self.runson = False
+        self.again = self.runson = self.main = False
 
 
 def blocks(lines, tags, path, default):
@@ -218,6 +229,9 @@ def blocks(lines, tags, path, default):
                     elif t.endswith(", runs on"):
                         t = t[:-len(", runs on")]
                         out[-1].runson = True
+                    elif t.endswith(", main"):
+                        t = t[:-len(", main")]
+                        out[-1].main = True
                     else:
                         break
                 m2 = re.match(r"^overlay (\d)$", t)
@@ -1306,9 +1320,9 @@ def program(prog, phase, errors):
                             mainonly.add(pos[k2])
         where = {}
         for size, u0, u1, names in [sized[0]] + sorted(sized[1:], key=lambda s: (-s[0], s[1])):
-            cur = 1 if any(n in mainonly for n in range(u0, u1 + 1)) else 0
-            while cur < len(conts) and conts[cur][1] + used[conts[cur][0]] + size > conts[cur][2]:
-                cur += 1
+            tagged = any(bl[hot[n]].main for n in range(u0, u1 + 1))
+            order = [LOWER, 1, 2] if tagged else [1, 2] if any(n in mainonly for n in range(u0, u1 + 1)) else [0, 1, 2]
+            cur = next((c for c in order if conts[c][1] + used[conts[c][0]] + size <= conts[c][2]), len(conts))
             if cur == len(conts):
                 errors.append("%s: the hot pass does not fit: %s (%d bytes) has no room" % (prog, names, size))
                 continue

@@ -43,6 +43,8 @@
  ASSERT P% <= FCSLOT + FCSLOT_SIZE
  COPYBLOCK FCSLOT, P%, SETF%
  SETF_END% = SETF% + P% - FCSLOT
+ ASSERT STAGE% + SETF_END% - BPSLOT% <= PROGL%   \ (as staged in flight, the file
+                        \ ends below the flight code's second main RAM part)
  COPYBLOCK &3000, &3000 + SETF% - BPSLOT%, BPSLOT%
 
  PRINT "Set ", SETN, ": slot free ", SETFREE%, ", face lists ", P% - FCSLOT, " of ", FCSLOT_SIZE

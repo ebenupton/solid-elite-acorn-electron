@@ -79,6 +79,17 @@ ENDIF
 
  ASSERT PROGM_USED% <= PROGM_END%
 
+ ORG PROGL%             \ The second main RAM part, hotl (elite-map.asm),
+                        \ saved as D.LOW, which DEEOR loads (LOWLD)
+
+ INCLUDE "3-assembled-output/elite-flight-hotl.asm"
+
+.PROGL_USED%
+
+ ASSERT PROGL_USED% <= PROGL_END%
+
+ SAVE "3-assembled-output/D.LOW.bin", PROGL%, PROGL_USED%, PROGL%
+
  CLEAR &8000, &C000
  ORG HOME%
 
@@ -119,6 +130,7 @@ ENDIF
 
  PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", BPSLOT%-HOME_END%
  PRINT "Flight main RAM part: low pass ", ~PROGM%, "-", ~LOW_END%-1, ", hot pass to ", ~PROGM_USED%-1, ", free ", PROGM_END%-PROGM_USED%
+ PRINT "Flight second main RAM part (D.LOW): ", ~PROGL%, "-", ~PROGL_USED%-1, ", free ", PROGL_END%-PROGL_USED%
  ASSERT HOME_END% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
 
  ORG PROGI%             \ the main RAM part's image, at the start of the

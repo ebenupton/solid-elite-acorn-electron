@@ -2102,6 +2102,9 @@ IF _STH_DISC OR _IB_DISC
                         \ there is nothing to decrypt, as in the sideways RAM
                         \ variant
 
+ JSR LOWLD              \ Port: load the second main RAM part, D.LOW, which
+                        \ the program's load has staged over (elite-map.asm)
+
  JMP RSHIPS             \ Jump to RSHIPS
 
 ELIF _SRAM_DISC
@@ -5876,6 +5879,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing circles
 \    Summary: Draw a circle segment and add it to the ball line heap
+\       Area: hot, main
 \  Deep dive: The ball line heap
 \             Drawing circles
 \
@@ -9848,6 +9852,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Tactics
 \    Summary: Apply tactics: Process missiles, both enemy missiles and our own
+\       Area: hot, main
 \  Deep dive: Program flow of the tactics routine
 \
 \ ------------------------------------------------------------------------------
@@ -10841,6 +10846,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Apply docking manoeuvres to the ship in INWK
+\       Area: hot, main
 \  Deep dive: The docking computer
 \
 \ ******************************************************************************
@@ -12417,6 +12423,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Stardust
 \    Summary: Process the stardust for the left or right view
+\       Area: hot, main
 \  Deep dive: Stardust in the side views
 \
 \ ------------------------------------------------------------------------------
@@ -14633,6 +14640,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Bump up the value of the pitch or roll dashboard indicator
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21460,6 +21468,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Add a new ship to our local bubble of universe
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -24663,6 +24672,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Scan the keyboard for cursor key or joystick movement
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27261,6 +27271,37 @@ ENDIF
 
  EQUS "L.D.MO0"         \ This is short for "*LOAD D.MO0"
  EQUB 13
+
+\ ******************************************************************************
+\
+\       Name: LOWLD
+\       Type: Subroutine
+\   Category: Loader
+\    Summary: Port: load the flight code's second main RAM part, D.LOW
+\       Area: cold
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: called by DEEOR each time the flight code starts, as the program's load
+\ stages its images over the part (elite-map.asm, PROGL%): the file loads to its
+\ own address, after CATD has reloaded the catalogue, as LOMOD does.
+\
+\ ******************************************************************************
+
+.LOWLD
+
+ JSR dfsin              \ Put DFS's workspace back and reload the catalogue
+ JSR CATD
+ JSR dfsout
+
+ LDX #LO(LOWI)          \ Load D.LOW (to its own address, through the MOS:
+ LDY #HI(LOWI)          \ PCLI passes it on), and return from the subroutine
+ JMP OSCLI              \ using a tail call
+
+.LOWI
+
+ EQUS "LOAD D.LOW"      \ (in full: the ACP 1770 DFS takes *L. for another
+ EQUB 13                \ command)
 
 \ ******************************************************************************
 \

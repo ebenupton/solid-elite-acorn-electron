@@ -82,7 +82,8 @@ row("main RAM", C["RESH_P"], C["PFVH_P"], "`SNDH`, the interrupt's hook into the
 pfvh_used = FL.get("PFVH_END%", C["PFVH_P"]) - C["PFVH_P"]
 row("main RAM", C["PFVH_P"], C["VEC"], "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
 row("main RAM", C["VEC"], C["VEC"] + 2, "`VEC`")
-row("main RAM", C["STAGE_P"], C["BUF0"], "the staging area (`STAGE%`, on over buffer 0 for a program's images)", 0)
+row("main RAM", C["STAGE_P"], C["PROGL_P"], "the staging area (`STAGE%`, on over buffer 0 for a program's images; the files loaded in flight end here)", 0)
+row("main RAM (flight)", C["PROGL_P"], C["PROGL_END_P"], "the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`)", FL["PROGL_USED%"] - C["PROGL_P"])
 row("main RAM", C["BUF0"], C["SCREEN_P"], "buffer 0: a MODE 5 screen, the space view and the dashboard")
 row("main RAM", C["SCREEN_P"], 0x8000, "buffer 1, the direct-mode screen: the same")
 

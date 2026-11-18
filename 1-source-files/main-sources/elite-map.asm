@@ -78,6 +78,15 @@
  FC_NORMTAB = NORMTAB
 
 
+ PROGL% = &2C50         \ The flight code's second main RAM part (D.LOW), to
+ PROGL_END% = &3000     \ PROGL_END%: its hot pass's blocks tagged "Area: hot,
+                        \ main", which run too rarely to earn their place in bank
+                        \ 4 (2-build-files/streams.py, hotl), loaded by DEEOR
+                        \ whenever the flight code starts (LOWLD), as each
+                        \ program's load stages over it; the staging of the
+                        \ files loaded in flight (the blueprint sets, the
+                        \ overlays) ends below it (elite-shipset.asm checks)
+
  STAGE% = &2000         \ Where files are loaded before they are copied into
                         \ their bank (main RAM &2000 to &57FF, over buffer 0
                         \ for a program's images, which F_DIRECT has taken off

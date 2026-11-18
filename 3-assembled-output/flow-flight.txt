@@ -1,97 +1,98 @@
-hot &8000-&A86D: 44 units, 10350 bytes, 0 free
+hot &8000-&A86D: 86 units, 9816 bytes, 534 free
   &8000    22 S%
-  &8016     3 DEEOR
-  &8019   519 Main flight loop (Part 1 of 16)..Main flight loop (Part 8 of 16)
-  &8220   204 Main flight loop (Part 11 of 16)..Main flight loop (Part 12 of 16)
-  &82EC   349 Main flight loop (Part 13 of 16)..SPIN
-  &8449   122 PIX1..PIXEL2
-  &84C3   146 BLINE
-  &8555   615 STARS..STARS1
-  &87BC   258 STARS6
-  &88BE    92 MVT3
-  &891A   182 MVS5
-  &89D0   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
-  &8C13   187 DOCKIT
-  &8CCE   255 STARS2..QSMUL
-  &8DCD   266 MU5..MULT3
-  &8ED7   100 SQUA..MU11
-  &8F3B   257 FMLTU2..MLTU2
-  &903C   131 TAS3..ADD
-  &90BF   180 DVID3B2
-  &9173   128 BUMP2..REDU2
-  &91F3   277 GCASH..DOEXP
-  &9308   114 CPIX4..CPIX2
-  &937A   166 NWSHP
-  &9420   136 PROJ..PL9 (Part 3 of 3)
-  &94A8   126 WPLS2..WPLS
-  &9526    98 CHKON..PLS6
-  &9588   320 TT17..SFX
-  &96C8   202 ZINF..Main game loop (Part 6 of 6)
-  &9792   165 TT102
-  &9837    91 RDKEY
-  &9892   121 DKS1..DKS2
-  &990B   331 DKJ1..DK4
-  &9A56   110 LL28
-  &9AC4    87 LL51
-  &9B1B    86 H_CIRC
-  &9B71    89 S_SHIP
-  &9BCA   975 L_REC
-  &9F99  1193 LL9 (Part 1 of 12)..LL9 (Part 9 of 12)
-  &A442   305 MVEIT (Part 1 of 9)..MVEIT (Part 6 of 9)
-  &A573   115 MVEIT (Part 7 of 9)..MVEIT (Part 9 of 9)
-  &A5E6    87 MVT1
-  &A63D   103 MVS4
-  &A6A4    53 MVT6
-  &A6D9   405 MV40..SCAN
-hotm &1942-&1DDF: 33 units, 1182 bytes, 0 free
-  &1942    13 INBAY
-  &194F    20 DOENTRY..DEATH2
-  &1963    41 SUNSC
-  &198C    26 UNIV
-  &19A6    15 HLOIN2
-  &19B5    14 MAS2
-  &19C3    38 MAS3
-  &19E9    59 VCSU1..TAS1
-  &1A24    24 TAS6
-  &1A3C    85 HITCH
-  &1A91    76 MLS2..MLS1
-  &1ADD     5 MU6
-  &1AE2    77 MUT1..MULT1
-  &1B2F    43 DV42..DVID4
-  &1B5A    23 cntr
-  &1B71    16 SHD..DENGY
-  &1B81    18 SPS3
-  &1B93    19 GINF
-  &1BA6    12 SUNE
-  &1BB2    45 PLS22..CIRCLE
-  &1BDF    13 FAROF..FAROF2
-  &1BEC    14 DPLT
-  &1BFA    76 SPS1..TAS2
-  &1C46    82 EXNO3..KYTB
-  &1C98    23 DKS3
-  &1CAF    73 SHPPT
-  &1CF8    60 LL5
-  &1D34    32 LL38
-  &1D54    28 MFRAME
-  &1D70    14 H_PTCLS
-  &1D7E    14 H_PTCLSE
-  &1D8C    17 H_DOT
-  &1D9D    67 H_LL42..H_EE31
-hotx &1DE0-&1E3F: 17 units, 83 bytes, 13 free
-  &1DE0     9 LTLI
-  &1DE9    10 CTWOS
-  &1DF3     1 FLKB
-  &1DF4     1 MUT2
-  &1DF5    10 MULT12
-  &1DFF     1 PLS1
-  &1E00     1 PLS2
-  &1E01     7 MAS4
-  &1E08     4 SHCOL
-  &1E0C     6 RECM
-  &1E12    11 LL9F
-  &1E1D    11 LL42F
-  &1E28     1 LL9 (Part 9 of 12), drawing
-  &1E29     6 LL9 (Part 10 of 12)
-  &1E2F     1 LL9 (Part 11 of 12)
-  &1E30     2 LL9 (Part 12 of 12)
-  &1E32     1 LL9 (Part 12 of 12), drawing
+  &8016    13 INBAY
+  &8023     9 LTLI
+  &802C     6 DEEOR
+  &8032    20 DOENTRY..DEATH2
+  &8046   519 Main flight loop (Part 1 of 16)..Main flight loop (Part 8 of 16)
+  &824D   204 Main flight loop (Part 11 of 16)..Main flight loop (Part 12 of 16)
+  &8319    41 SUNSC
+  &8342   349 Main flight loop (Part 13 of 16)..SPIN
+  &849F    10 CTWOS
+  &84A9     1 FLKB
+  &84AA    15 HLOIN2
+  &84B9   122 PIX1..PIXEL2
+  &8533   615 STARS..STARS1
+  &879A   258 STARS6
+  &889C    14 MAS2
+  &88AA    38 MAS3
+  &88D0    92 MVT3
+  &892C   182 MVS5
+  &89E2    59 VCSU1..TAS1
+  &8A1D    24 TAS6
+  &8A35    85 HITCH
+  &8A8A   266 MU5..MULT3
+  &8B94    76 MLS2..MLS1
+  &8BE0   100 SQUA..MU11
+  &8C44     5 MU6
+  &8C49   257 FMLTU2..MLTU2
+  &8D4A     1 MUT2
+  &8D4B    77 MUT1..MULT1
+  &8D98    10 MULT12
+  &8DA2   131 TAS3..ADD
+  &8E25    43 DV42..DVID4
+  &8E50   180 DVID3B2
+  &8F04    23 cntr
+  &8F1B   277 GCASH..DOEXP
+  &9030    16 SHD..DENGY
+  &9040   114 CPIX4..CPIX2
+  &90B2    18 SPS3
+  &90C4    19 GINF
+  &90D7    12 SUNE
+  &90E3   136 PROJ..PL9 (Part 3 of 3)
+  &916B     1 PLS1
+  &916C     1 PLS2
+  &916D    45 PLS22..CIRCLE
+  &919A   126 WPLS2..WPLS
+  &9218    98 CHKON..PLS6
+  &927A   202 ZINF..Main game loop (Part 6 of 6)
+  &9344   165 TT102
+  &93E9    13 FAROF..FAROF2
+  &93F6     7 MAS4
+  &93FD    19 DPLT
+  &9410    76 SPS1..TAS2
+  &945C    91 RDKEY
+  &94B7    82 EXNO3..KYTB
+  &9509   121 DKS1..DKS2
+  &9582    23 DKS3
+  &9599   331 DKJ1..DK4
+  &96E4    73 SHPPT
+  &972D    60 LL5
+  &9769   110 LL28
+  &97D7    32 LL38
+  &97F7    87 LL51
+  &984E     4 SHCOL
+  &9852     6 RECM
+  &9858    86 H_CIRC
+  &98AE    28 MFRAME
+  &98CA    11 LL9F
+  &98D5    14 H_PTCLS
+  &98E3    14 H_PTCLSE
+  &98F1    17 H_DOT
+  &9902    11 LL42F
+  &990D    67 H_LL42..H_EE31
+  &9950    89 S_SHIP
+  &99A9   975 L_REC
+  &9D78  1193 LL9 (Part 1 of 12)..LL9 (Part 9 of 12)
+  &A221     1 LL9 (Part 9 of 12), drawing
+  &A222     6 LL9 (Part 10 of 12)
+  &A228     1 LL9 (Part 11 of 12)
+  &A229     2 LL9 (Part 12 of 12)
+  &A22B     1 LL9 (Part 12 of 12), drawing
+  &A22C   305 MVEIT (Part 1 of 9)..MVEIT (Part 6 of 9)
+  &A35D   115 MVEIT (Part 7 of 9)..MVEIT (Part 9 of 9)
+  &A3D0    87 MVT1
+  &A427   103 MVS4
+  &A48E    53 MVT6
+  &A4C3   405 MV40..SCAN
+hotm &1942-&1DDF: 6 units, 908 bytes, 274 free
+  &1942    26 UNIV
+  &195C   146 BLINE
+  &19EE   187 DOCKIT
+  &1AA9   255 STARS2..QSMUL
+  &1BA8   128 BUMP2..REDU2
+  &1C28   166 NWSHP
+hotx &1DE0-&1E3F: 0 units, 0 bytes, 96 free
+hotl &2C50-&2FFF: 2 units, 899 bytes, 45 free
+  &2C50   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
+  &2E93   320 TT17..SFX
