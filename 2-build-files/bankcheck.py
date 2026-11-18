@@ -45,10 +45,10 @@ SRC = "1-source-files/main-sources/"
 PROGS = ("flight", "docked")
 FAR = ("farH", "farHj", "farC", "farCj", "farC6", "ovf1", "ovf2", "ovf3")
 HOTCOPIES = ("config", "low", "hot", "hotm", "hotx", "blueprints")   # (the hot side's copies: streams.py)
-WINDOW7 = {"flight": (OUT + "gfx-raster_disc-bank7.asm", SRC + "gfx-raster_strips.asm",
+WINDOW7 = {"flight": (OUT + "gfx-raster_disc-bank7.asm",
                       OUT + "gfx-raster_disc2-bank7.asm", OUT + "gfx-raster_dpatch-bank7.asm")}
-                        # (bank 7's renderer window: the renderer's bank 7 passes, and the file
-                        # gfx-raster_disc.asm INCLUDEs; elite-layout-flight.asm)
+                        # (bank 7's renderer window: the renderer's bank 7 passes;
+                        # elite-layout-flight.asm)
 MNEM = set(("ADC AND ASL BCC BCS BEQ BIT BMI BNE BPL BRK BVC BVS CLC CLD CLI CLV CMP CPX CPY "
             "DEC DEX DEY EOR INC INX INY JMP JSR LDA LDX LDY LSR NOP ORA PHA PHP PLA PLP "
             "ROL ROR RTI RTS SBC SEC SED SEI STA STX STY TAX TAY TSX TXA TXS TYA").split())

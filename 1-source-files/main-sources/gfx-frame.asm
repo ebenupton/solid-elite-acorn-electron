@@ -78,6 +78,10 @@ R_DCE   = &0E           \ (the disc layer's colour pair, for the painter in
 R_DCO   = &0F           \ bank 7: f_ddraw)
 RZ_T0   = &20           \ (DP_BEGIN's colour B pair)
 RZ_T1   = &21
+RZ_T2   = &22           \ (DP_BEGIN's rows of the layer)
+RZ_T3   = &23
+RZ_T4   = &24           \ (DP_BEGIN's text rows)
+RZ_T5   = &25
 
 MAXSH = NOSH            \ ships per frame: LL9 records a ship at most once an
                         \ iteration, and only the ships in the NOSH slots
@@ -926,8 +930,9 @@ RPN = 4
 \ incremental too (f_disc2). After the wait (f_ddraw) bank 5 repairs the
 \ dirty rows outside the band of the layer's rows, old and new (T_REPAIR),
 \ and the painter takes the band's rows a batch at a time in the mailbox
-\ (gfx-rws.asm: DB_*), with their dirty extents from bank 5, whose row
-\ extents then get what it wrote (T_GETW: f_dbat). Each buffer's rows of
+\ (gfx-rws.asm: DB_R; f_lbat), asking bank 5 itself for their dirty extents
+\ and keeping what it wrote for the second disc (f_dbat) and for the text
+\ and the sights (f_wq). Each buffer's rows of
 \ the layer (f_dlt, f_dlb), its colour (F_DCOL), whether its rows had
 \ boundaries (f_bmode) and the second disc's rows and colour (R_S2T, R_S2B,
 \ R_S2C) are kept here; a blanked buffer's are forgotten (f_dforget), and
@@ -1877,6 +1882,8 @@ FC_PLLE = &5F : FC_PLLO = &AF
 \ disc layer and the second disc on this buffer
 
 .f_ddraw
+ LDA #0                 \ (the painter has not drawn yet)
+ STA f_dpf
  LDA R_NDT              \ the layer's new rows, within the window (none:
  CMP R_CT               \ 255, 0), as R_DISCROWS' R_PRNT, R_PRNB
  BCS fdw1
@@ -1957,16 +1964,37 @@ FC_PLLE = &5F : FC_PLLO = &AF
  ORA #PB_RESET
  STA f_dfl
 .fdw11
- LDA #FC_PLLE           \ colour B (DP_BEGIN takes it in RZ_T0, RZ_T1)
- STA RZ_T0
+ LDA f_tlo              \ the text rows whose cells the layer's writes may
+ STA RZ_T4              \ be over, first to last (f_tlo, f_thi; none: &FF,
+ LDA f_thi              \ 0), which the painter keeps for them (DP_BEGIN
+ STA RZ_T5              \ takes them in RZ_T4, RZ_T5); with a second disc
+ LDA f_sec              \ on this buffer or to come, which wants them too,
+ BNE fdw12              \ all
+ LDA R_S2B,X
+ CMP R_S2T,X
+ BCC fdw12d
+.fdw12
+ LDA #0
+ STA RZ_T4
+ LDA #23
+ STA RZ_T5
+.fdw12d
+ LDA #FC_PLLE           \ colour B (DP_BEGIN takes it in RZ_T0, RZ_T1) and
+ STA RZ_T0              \ the layer's rows (RZ_T2, RZ_T3)
  LDA #FC_PLLO
  STA RZ_T1
- LDA #0                 \ nothing queued or put yet
- STA DB_QN
+ LDA f_dy
+ STA RZ_T2
+ LDA f_dhi
+ STA RZ_T3
+ LDA #0                 \ nothing put yet
  STA f_dput
  TXA
  LDX f_dfl
- JSR f_dpbegin
+ JSR f_dpbegin          \ (it has the layer's first dirty rows from bank 5,
+ STA f_dcv              \ and returns the first row it has not looked at)
+ LDA #&80               \ (the painter has this frame's writes: f_wq)
+ STA f_dpf
  LDA f_dhi              \ the layer's rows, if any
  CMP f_dy
  BCC fdw20
@@ -1984,125 +2012,147 @@ FC_PLLE = &5F : FC_PLLO = &AF
 .fdw13
  STA R_DCE
  STY R_DCO
- LDX #16                \ the batches: 16 rows, or 8 with boundaries (their
- LDA f_dfl              \ counts and colours and their x in the slots too)
- AND #PB_BON
- BEQ fdw14
- LDA #&80               \ (bit 7: the slots', bit 6: this frame's)
+ LDA f_dfl              \ the rows' records: with boundaries their counts and
+ AND #PB_BON            \ colours and their x too (bit 7: the records', bit
+ BEQ fdw14              \ 6: this frame's)
+ LDA #&80
  LDY R_NDF
  BEQ P%+4
  LDA #&C0
- LDX #8
 .fdw14
  STA f_d2c
- STX f_dN
- LDX #0                 \ (the dirty extents in the slots: the layer's)
- JSR f_dbat
+ JSR f_lbat
 .fdw20
  JSR f_disc2            \ the second disc's rows
- LDA #0                 \ then what the last batch wrote put, and its spans
- LDX f_dput             \ drawn
+ LDA #0                 \ then what its last batch wrote put
+ LDX f_dput
  JMP T_GETW
 
 .f_bbit EQUB 1, 2       \ (f_dpr's bit for each buffer)
 
-\ f_dbat: rows f_dy .. f_dhi (f_dy <= f_dhi) through the painter, f_dN at a
-\ time (X = 0: the layer's, DP_ROWS, with their dirty extents; X = &80: the
-\ second disc's, DP_DISC2, with what was written on them, and A = its
-\ colour change, &FF or 0), each batch's slots filled from R_NDISCL/R in
-\ R_NDT .. R_NDB (empty outside), with f_d2c bit 7 R_NDN and R_NDX0-3 too
-\ (R_NDN zero with bit 6 clear); with each batch bank 5 puts what the last
-\ one wrote and draws what it queued (T_GETW)
+\ f_lbat: the layer's rows f_dy .. f_dhi (f_dy <= f_dhi) through the painter
+\ (DP_ROWS), a batch at a time: each row's record in the mailbox from DB_R
+\ (gfx-rws.asm), from R_NDISCL/R in R_NDT .. R_NDB (empty outside), the
+\ span widened to whole MODE 5 pixels (L even, R odd: f_snap), with f_d2c
+\ bit 7 R_NDN and R_NDX0-3 too (R_NDN zero with bit 6 clear). A batch is
+\ the rows that fit in the records' room, up to the first row whose dirty
+\ extent the painter has not had from bank 5 (f_dcv, which each call of
+\ the painter returns: it asks bank 5 for more as its rows reach it)
 
-.f_dbat
- STX f_dmd
- STA f_dc2
-.fdb1
- LDA f_dhi              \ n = min(f_dhi - f_dy + 1, f_dN)
- SEC
- SBC f_dy               \ (f_dy <= f_dhi, so the carry is set)
- ADC #0                 \ + 1 by the carry
- CMP f_dN
- BCC fdb2
- LDA f_dN
-.fdb2
- STA f_dn
- ORA f_dmd              \ (bit 7: the written extents, not the dirty ones)
+.f_lbat
+ BIT f_d2c
+ BMI flb1
+.flp1                   \ a plain layer's batch: the spans
+ LDX #0
  LDY f_dy
- LDX f_dput
- JSR FT_GETW
- LDX #0                 \ the slots
- LDY f_dy
-.fdb3
+ STY f_d0
+.flp2
  CPY R_NDT
- BCC fdb6
+ BCC flp4
  CPY R_NDB
- BEQ fdb4
- BCS fdb6
-.fdb4
- LDA R_NDISCL,Y         \ the span widened to whole MODE 5 pixels (L even, R
- CMP #&FF               \ odd: f_snap)
- BEQ fdb6
+ BEQ flp3
+ BCS flp4
+.flp3
+ LDA R_NDISCL,Y
+ CMP #&FF
+ BEQ flp4
  AND #&FE
- STA DB_NL,X
- STA f_sl
+ STA DB_R,X
  LDA R_NDISCR,Y
  ORA #1
- STA DB_NR,X
- BIT f_d2c
- BPL fdb8
- BVC fdb7
- JMP f_snap             \ and its boundaries (f_snap, which goes on at fdb8)
-.fdb6
+ BNE flp5               \ (always)
+.flp4
  LDA #&FF               \ an empty span
- STA DB_NL,X
+ STA DB_R,X
  LDA #0
- STA DB_NR,X
- BIT f_d2c
- BPL fdb8
-.fdb7
- LDA #0                 \ no boundaries
- STA DB_NN,X
-.fdb8
- INY
+.flp5
+ STA DB_R+1,X
  INX
- CPX f_dn
- BNE fdb3
- LDY f_dy               \ the painter
- LDX f_dn
- BIT f_dmd
- BMI fdb9
+ INX
+ INY
+ CPY f_dcv
+ BCS flp6
+ CPX #DB_RL-1
+ BCS flp6
+ CPY f_dhi
+ BCC flp2
+ BEQ flp2
+.flp6
+ JSR flb9
+ BCS flp1
+ RTS
+.flb1                   \ a batch with boundaries
+ LDX #0
+ LDY f_dy
+ STY f_d0
+.flb2
+ CPY R_NDT
+ BCC flb4
+ CPY R_NDB
+ BEQ flb3
+ BCS flb4
+.flb3
+ LDA R_NDISCL,Y
+ CMP #&FF
+ BEQ flb4
+ AND #&FE
+ STA DB_R+1,X
+ STA f_sl
+ BIT f_d2c
+ BVS f_snap             \ its boundaries (f_snap, which goes on at flb5)
+ LDA #0                 \ no boundaries
+ STA DB_R,X
+ LDA R_NDISCR,Y
+ ORA #1
+ STA DB_R+2,X
+ BNE flb5               \ (always)
+.flb4
+ LDA #0                 \ an empty span
+ STA DB_R,X
+ STA DB_R+2,X
+ LDA #&FF
+ STA DB_R+1,X
+.flb5
+ INX
+ INX
+ INX
+.flb6
+ INY
+ CPY f_dcv
+ BCS flb7
+ CPX #DB_RL-6
+ BCS flb7
+ CPY f_dhi
+ BCC flb2
+ BEQ flb2
+.flb7
+ JSR flb9
+ BCS flb1
+ RTS
+.flb9                   \ the batch, rows f_d0 .. Y - 1, to the painter; C set
+ STY f_dy               \ if rows are left
+ TYA
+ SEC
+ SBC f_d0
+ TAX
+ LDY f_d0
  JSR FT_DPROWS
- JMP fdb10
-.fdb9
- LDA f_dc2
- JSR f_dpdisc2
-.fdb10
- LDA f_dy               \ the next batch
- STA DB_PY              \ (whose writes the next T_GETW puts)
- CLC
- ADC f_dn
- STA f_dy
- LDA f_dn
- STA f_dput
+ STA f_dcv
  LDA f_dhi
  CMP f_dy
- BCC fdb11
- JMP fdb1
-.fdb11
  RTS
 
-\ f_snap: row Y's boundaries (R_NDN, R_NDX0-3) into slot X, each on a MODE
-\ 5 pixel's left edge (x AND &FE), as the span is (f_dbat): one that lands
-\ on the span's left end (f_sl) is folded into the colour there (R_NDN bit
-\ 7), and two that land together go. So every edge of the layer's rows is
-\ between two MODE 5 pixels, and the painter, which writes the pixels whose
-\ colour changed, game x by game x, always writes whole MODE 5 pixels: a
-\ pixel is never half one colour. Part of f_dbat's loop (it jumps here, and
-\ this goes on at fdb8, with X and Y as they were), with each boundary's
-\ test in line (FSNAP: X counts the boundaries out, f_sbo keeps them, and
-\ its entries past the count keep earlier rows' values, as the painter
-\ reads all four).
+\ f_snap: row Y's boundaries (R_NDN, R_NDX0-3) into its record at X (whose
+\ left end is there), each on a MODE 5 pixel's left edge (x AND &FE), as
+\ the span is (f_lbat): one that lands on the span's left end (f_sl) is
+\ folded into the colour there (R_NDN bit 7), and two that land together
+\ go. So every edge of the layer's rows is between two MODE 5 pixels, and
+\ the painter, which writes the bytes whose pixels changed, never has a
+\ pixel half one colour. Part of f_lbat's loop (it jumps here, and this
+\ goes on at flb5, with X and Y for it), with each
+\ boundary's test in line (FSNAP: X counts the boundaries out, f_sbo keeps
+\ them), then the count and colour, the boundaries and the right end into
+\ the record.
 
 MACRO FSNAP i
  LDA R_NDX0 + 192 * i,Y \ boundary i, on a pixel's edge
@@ -2114,9 +2164,7 @@ MACRO FSNAP i
  STA f_sbc
  BCS n9                 \ (always: C set by the CMP)
 .n1
- CPX #0
- BEQ n3
- CMP f_sbo-1,X
+ CMP f_sbo-1,X          \ (before the first: f_sb1, which is odd)
  BNE n3
  DEX                    \ with the last: both go
  BCS n9                 \ (always: C set by the CMP)
@@ -2146,25 +2194,113 @@ ENDIF
  NEXT
  ASSERT R_NDX1 = R_NDX0 + 192 AND R_NDX2 = R_NDX1 + 192 AND R_NDX3 = R_NDX2 + 192
 .fsn9
+ STX f_so
  TXA
  ORA f_sbc
  LDX f_sbx
- STA DB_NN,X
+ STA DB_R,X
+ LDA f_so
+ BEQ fsn10
  LDA f_sbo
- STA DB_X0,X
+ STA DB_R+2,X
+ LDA f_so
+ CMP #2
+ BCC fsn10
  LDA f_sbo+1
- STA DB_X1,X
+ STA DB_R+3,X
+ LDA f_so
+ CMP #3
+ BCC fsn10
  LDA f_sbo+2
- STA DB_X2,X
+ STA DB_R+4,X
+ LDA f_so
+ CMP #4
+ BCC fsn10
  LDA f_sbo+3
- STA DB_X3,X
- JMP fdb8
+ STA DB_R+5,X
+.fsn10
+ TXA                    \ the right end after them
+ CLC
+ ADC f_so
+ TAX
+ LDA R_NDISCR,Y
+ ORA #1
+ STA DB_R+2,X
+ JMP flb5
 
-.f_sl    EQUB 0         \ f_snap's: the span's left end, the slot, the colour
-.f_sbx   EQUB 0         \ at the left end (bit 7), the boundaries in, out
-.f_sbc   EQUB 0
+.f_sl    EQUB 0         \ f_snap's: the span's left end, the record's place,
+.f_sbx   EQUB 0         \ the colour at the left end (bit 7), the boundaries
+.f_sbc   EQUB 0         \ in, out
 .f_sbn   EQUB 0
+.f_so    EQUB 0
+.f_sb1   EQUB 1
 .f_sbo   EQUB 0, 0, 0, 0
+ ASSERT f_sb1 = f_sbo - 1
+
+\ f_dbat: the second disc's rows f_dy .. f_dhi (f_dy <= f_dhi) through the
+\ painter (DP_DISC2, with A = its colour change, &FF or 0), 16 at a time,
+\ each batch's slots filled from R_NDISCL/R in R_NDT .. R_NDB (empty
+\ outside), with what was written on its rows; with each batch bank 5 puts
+\ what the last one wrote (T_GETW)
+
+.f_dbat
+ STA f_dc2
+.fdb1
+ LDA f_dhi              \ n = min(f_dhi - f_dy + 1, 16)
+ SEC
+ SBC f_dy               \ (f_dy <= f_dhi, so the carry is set)
+ ADC #0                 \ + 1 by the carry
+ CMP #16
+ BCC fdb2
+ LDA #16
+.fdb2
+ STA f_dn
+ ORA #&80               \ (the written extents)
+ LDY f_dy
+ LDX f_dput
+ JSR FT_GETW
+ LDX #0                 \ the slots
+ LDY f_dy
+.fdb3
+ CPY R_NDT
+ BCC fdb6
+ CPY R_NDB
+ BEQ fdb4
+ BCS fdb6
+.fdb4
+ LDA R_NDISCL,Y         \ the span widened to whole MODE 5 pixels (L even, R
+ CMP #&FF               \ odd)
+ BEQ fdb6
+ AND #&FE
+ STA DB_NL,X
+ LDA R_NDISCR,Y
+ ORA #1
+ BNE fdb7               \ (always)
+.fdb6
+ LDA #&FF               \ an empty span
+ STA DB_NL,X
+ LDA #0
+.fdb7
+ STA DB_NR,X
+ INY
+ INX
+ CPX f_dn
+ BNE fdb3
+ LDY f_dy               \ the painter
+ LDX f_dn
+ LDA f_dc2
+ JSR f_dpdisc2
+ LDA f_dy               \ the next batch
+ STA DB_PY              \ (whose writes the next T_GETW puts)
+ CLC
+ ADC f_dn
+ STA f_dy
+ LDA f_dn
+ STA f_dput
+ LDA f_dhi
+ CMP f_dy
+ BCS fdb1
+ RTS
 
 .f_dpbegin              \ the painter's entries, in the flight code's bank 7
  JSR farC               \ (gfx-raster_disc.asm, gfx-raster_disc2.asm)
@@ -2172,6 +2308,9 @@ ENDIF
 .f_dpdisc2
  JSR farC
  EQUW DP_DISC2
+.f_dpwq
+ JSR farC
+ EQUW DP_WQ
 
 \ f_disc2: the second disc (both the sun and the planet on screen: more
 \ often since the sun is kept near the planet, SUNSC). It is the
@@ -2239,12 +2378,7 @@ ENDIF
  LDA f_dhi
  CMP f_dy
  BCC fd28               \ none, old or new
- LDA #0                 \ one colour, 16 rows a batch, the written extents
- STA f_d2c
- LDA #16
- STA f_dN
  LDA f_dc2
- LDX #&80
  JMP f_dbat
 .fd28
  RTS
@@ -2272,14 +2406,15 @@ ENDIF
 .f_sec   EQUB 0         \ the second disc
 .f_nt    EQUB 0         \ the layer's rows this frame (none: 255, 0)
 .f_nb    EQUB 0
-.f_dy    EQUB 0         \ f_dbat: the next batch's first row, the last row,
-.f_dhi   EQUB 0         \ the rows a batch, this batch's
-.f_dN    EQUB 0
+.f_dy    EQUB 0         \ f_lbat, f_dbat: the next batch's first row, the last
+.f_dhi   EQUB 0         \ row, this batch's first row (f_lbat), its rows
+.f_d0    EQUB 0         \ (f_dbat)
 .f_dn    EQUB 0
-.f_dput  EQUB 0         \ the last batch's rows (its first: DB_PY)
-.f_dmd   EQUB 0         \ 0 the layer, &80 the second disc
+.f_dcv   EQUB 0         \ f_lbat: the first row the painter has not looked at
+.f_dput  EQUB 0         \ f_dbat: the last batch's rows (its first: DB_PY)
 .f_dc2   EQUB 0         \ the second disc's colour change (&FF)
-.f_d2c   EQUB 0         \ bit 7: boundaries in the slots; bit 6: this frame's
+.f_d2c   EQUB 0         \ bit 7: boundaries in the records; bit 6: this frame's
+.f_dpf   EQUB 0         \ bit 7: the painter drew on this frame's buffer
 .f_dfl   EQUB 0         \ DP_BEGIN's flags
 .f_dpr   EQUB 3         \ bit b: buffer b blanked since the painter last drew it
 .f_dlt   EQUB &FF, &FF  \ per buffer: the layer's rows on it (none: 255, 0)
@@ -3390,7 +3525,8 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 \ in MBOX+&30..&32 (bit r AND 7 of byte r DIV 8 for text row r), &FF in
 \ MBOX+&33 for the sights; the rows' extents come back as (WL, WR) pairs at
 \ MBOX + 2r (WR = 0: none), and bit 7 of MBOX+&34 set if anything was drawn
-\ over the sights
+\ over the sights. The disc layer's writes are not bank 5's: its painter
+\ (bank 7) adds them to the answer (DP_WQ)
 
 .f_wq
  LDA #0                 \ the rows' mask
@@ -3431,7 +3567,12 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  LDA F_SGS,X
  STA MBOX+&33
  LDA #&40
- JMP T_GETW
+ JSR T_GETW
+ BIT f_dpf              \ and the disc layer's own writes, which its painter
+ BPL fwq4               \ keeps (DP_WQ)
+ JMP f_dpwq
+.fwq4
+ RTS
 
 .f_bits EQUB 1, 2, 4, 8, 16, 32, 64, 128
 

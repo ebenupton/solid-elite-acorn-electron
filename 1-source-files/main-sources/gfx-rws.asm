@@ -32,9 +32,9 @@
 \   * the lens flare (R_FLARE) is the frame layer's, in bank 6;
 \   * there are no kept solid rows;
 \   * the Model B's own entries: R_SPANM, R_MARKBOX and R_GETW (the disc
-\     layer's batches: its queued spans drawn, its writes taken into R_WL
-\     and R_WR, the next rows' extents given; and with A = &40 the frame
-\     layer's query of this frame's written and dirty extents, r_wq).
+\     layer's: the dirty rows ahead listed, the second disc's writes
+\     taken into R_WL and R_WR and the next rows' written extents given; and with A = &40 the frame layer's query of
+\     this frame's written and dirty extents, r_wq).
 \
 \ ******************************************************************************
 
@@ -79,38 +79,48 @@ MBOX_END = MBOX + &A0
  ASSERT R_SS + 19 = MBOX_END
 
 \ The frame's disc layer (gfx-raster_disc.asm, in the flight code's bank 7,
-\ docs/renderer.md "The disc layer") is given a batch of rows at a time in
-\ the mailbox, &00 to &65 (R_SN is set for the stars after it, and R_SCOL,
-\ R_SX, R_SY and R_SS are kept): a row of the batch is a slot, 0 to DB_N - 1
-\ (16 for a disc of one colour, 8 with boundaries), each with its new span
-\ (DB_NL, DB_NR: L = 255, R = 0 for none), its dirty extent going in and
-\ what the layer wrote on it coming back (DB_WL, DB_WR: R = 0 for none; for
-\ the second disc, R_DISC2, what was written on it so far going in), and
-\ with boundaries its count and colour (DB_NN, as R_NDN) and its boundaries
-\ (DB_X0 to DB_X3). Long spans the layer leaves to bank 5's row runs are
-\ queued after them (DB_Q: row, left, right, colour byte), DB_QN bytes of
-\ them. PCB, the planet's circles' records (gfx-merid.asm), PC_N
+\ docs/renderer.md "The disc layer") is given its rows in the mailbox, &00
+\ to &64 (R_SN is set for the stars after it, and R_SCOL, R_SX, R_SY and
+\ R_SS are kept):
+\
+\   * the layer's rows, a batch at a time, as a stream of records from DB_R
+\     (at most DB_RL bytes), a row each in the order of its edges: with
+\     boundaries the count and colour (as R_NDN), the span's left end (255
+\     for none), the boundaries, the right end (0 for none); a plain layer's
+\     the two ends only;
+\
+\   * between batches, at DB_D, bank 5's answer to the painter's request
+\     for the dirty rows ahead (R_GETW with A = &20): DB_D itself the
+\     offset from DB_D of the byte after the entries, the entries from
+\     DB_D + 1 (row, left, right: at most DB_DM), and at that offset the
+\     first row the list does not cover;
+\
+\   * the second disc's rows (R_DISC2), a batch of slots, 0 to 15, each
+\     with its new span (DB_NL, DB_NR: L = 255, R = 0 for none) and what
+\     was written on the row so far going in, with the second disc's
+\     writes added coming back (DB_WL, DB_WR: R = 0 for none).
+\
+\ PCB, the planet's circles' records (gfx-merid.asm), PC_N
 \ and pc_inv take &00 to &49, and their unclamped thresholds PC_TU &52 to
 \ &5D, from PF_HOOK (in the game's iteration) to the frame's f_hrec, which
 \ keeps them, and f_bounds (PC_ROWS).
-DB_NL    = MBOX         \ (slots: 16 apart, the boundaries' between them)
-DB_NN    = MBOX + &08
+DB_R     = MBOX         \ the layer's records
+DB_RL    = &64          \ (their room)
+DB_D     = MBOX         \ the dirty rows ahead
+DB_DM    = 16           \ (at most)
+DB_NL    = MBOX         \ the second disc's slots
 DB_NR    = MBOX + &10
-DB_X0    = MBOX + &18
 DB_WL    = MBOX + &20
-DB_X1    = MBOX + &28
 DB_WR    = MBOX + &30
-DB_X2    = MBOX + &38
-DB_X3    = MBOX + &40
-DB_Q     = MBOX + &48   \ the queue (seven spans)
-DB_QE    = MBOX + &64   \ (its end)
 DB_PY    = MBOX + &64   \ R_GETW: the row of the batch whose writes it puts
-DB_QN    = MBOX + &65   \ the queue's length in bytes (4 a span)
- ASSERT DB_QN < R_SCOL
+ ASSERT DB_PY < R_SCOL AND DB_R + DB_RL <= DB_PY AND 3 * DB_DM + 2 <= DB_RL
+QSGX     = 128          \ the sights' centre, and their arms' reach from it
+QSGY     = 96           \ (r_wq, gfx-raster_dq.asm, and the painter's R_NOTE)
+QSGIN    = 20
 PCB      = MBOX         \ the planet's circles' records (3 of RSZ bytes)
 RSZ      = 24           \ a record's size (its layout: gfx-merid.asm's R_A ..)
 PC_N     = MBOX + &48   \ how many
 pc_inv   = MBOX + &49   \ the base colour
 PC_TU    = MBOX + &52   \ their thresholds T1, T2 unclamped (16-bit, 4 a record)
 PCX_END  = PC_TU + 4 * 3  \ (the frame's f_hrec keeps &00 to here)
- ASSERT PC_TU >= R_BY1 + 1 AND PCX_END <= DB_QE
+ ASSERT PC_TU >= R_BY1 + 1 AND PCX_END <= DB_PY

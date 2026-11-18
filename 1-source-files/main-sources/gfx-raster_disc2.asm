@@ -10,11 +10,12 @@
 \ frame layer does what R_DISC2 did once a frame (the rows, old and new:
 \ R_S2T, R_S2B; the colour, R_S2C, whose change it passes in A, and a
 \ buffer reset since, which DP_BEGIN's PB_RESET passes) and hands its rows to
-\ DP_DISC2 a batch at a time, as it does the layer's (DP_ROWS): each slot's
+\ DP_DISC2 a batch of slots at a time (f_dbat): each slot's
 \ new span (DB_NL, DB_NR: the second disc's, clamped to the window as for
 \ the layer, empty on the old rows outside the new) and what was written on
-\ the row so far this frame (DB_WL, DB_WR, from bank 5's R_WL, R_WR), which
-\ comes back with this disc's writes added.
+\ the row so far this frame (DB_WL, DB_WR, from bank 5's R_WL, R_WR; the
+\ layer's own writes, which the painter keeps by character row, are added
+\ here: d2ld), which comes back with this disc's writes added.
 \
 \ The disc layer (this buffer's R_DISCL/R, as DP_ROWS has just left them) is
 \ in front of it: row y of the second disc shows its span a..b less the
@@ -41,8 +42,8 @@
 \     the old span black, then the new span whole.
 \   * both spans empty or behind the layer: nothing.
 \
-\ The writes are masked to their pixels (r_sw, never queued: they may
-\ overlap) and added to the row's written extent, so the text and the
+\ The writes are masked to their pixels (r_sw: they may overlap) and added
+\ to the row's written extent, so the text and the
 \ sights see them as written, as they see the disc layer's; nothing goes
 \ into DIRTY, so the next frame on this buffer does not repair them.
 \
@@ -73,9 +74,26 @@ d_mx = RZB7 + &1E
   STX dp_n
   TYA
   TAX
-  LDY #0
-  STY r_qok               \ (its writes are never queued)
-.lp                       \ unchanged and not written over: a few compares
+  JSR dp_flush            \ (the layer's writes, which the painter keeps by
+  LDY #0                  \ character row: pw_l, pw_r)
+  BEQ l0                  \ (always)
+.lp
+  TXA
+  AND #7
+  BNE l1
+.l0
+  STY dp_s                \ a character row's first: the layer's writes on it
+  TXA
+  LSR A
+  LSR A
+  LSR A
+  TAY
+  LDA pw_r,Y
+  STA d_pwr
+  LDA pw_l,Y
+  STA d_pwl
+  LDY dp_s
+.l1                       \ unchanged and not written over: a few compares
   LDA DB_NL,Y
 .^r_p2l22 CMP R_S2L0,X
   BNE ch
@@ -84,6 +102,7 @@ d_mx = RZB7 + &1E
   BNE ch
   LDA DB_WR,Y
   ORA d_fl
+  ORA d_pwr
   BNE wo
 .nx
   INX
@@ -367,6 +386,23 @@ d_mx = RZB7 + &1E
   STA rw_l
   LDA DB_WR,Y
   STA rw_r
+  LDA d_pwr               \ with the layer's on its character row
+  BEQ d2l9
+  LDA rw_r
+  BNE d2l1
+  LDA #&FF                \ (nothing else: no left end)
+  STA rw_l
+.d2l1
+  LDA d_pwr
+  CMP rw_r
+  BCC d2l2
+  STA rw_r
+.d2l2
+  LDA d_pwl
+  CMP rw_l
+  BCS d2l9
+  STA rw_l
+.d2l9
   RTS
 
 \ lay: the layer's span on row X: d_L .. d_R (none: R = 255 too, so that a
@@ -445,9 +481,9 @@ d_mx = RZB7 + &1E
   BCC w2
   STX d_mx
 .w2
-  STX R_XR                \ (r_sw: pixels X .. Y)
+  STX cg_t                \ (r_sw: pixels X .. Y)
   TAX
-  LDY R_XR
+  LDY cg_t
   LDA d_c
   JMP r_sw
 .x9
@@ -459,3 +495,5 @@ d_mx = RZB7 + &1E
 .d_y    EQUB 0          \ the row
 .d_fl   EQUB 0          \ &FF: the colour changed (every row old black, new whole)
 .d_t    EQUB 0
+.d_pwl  EQUB 0          \ the layer's writes on the character row in hand
+.d_pwr  EQUB 0          \ (none: d_pwr = 0)

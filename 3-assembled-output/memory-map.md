@@ -37,7 +37,7 @@
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
 | bank 7 (flight) | `&8000-&9C5A` | the cold pass, `QQ18` | 7259 | 0 |
 | bank 7 (flight) | `&9C5B-&A0A4` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&A0A5-&B3FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 4180 | 775 |
+| bank 7 (flight) | `&A0A5-&B3FF` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc, their operands' patch) | 4774 | 181 |
 | bank 7 (flight) | `&B400-&BFFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
 | bank 7 (docked) | `&8000-&BFFF` | the set's face lists, the cold pass, `QQ18` | 11362 | 5022 |
 | bank 5 | `&8000-&8BFF` | the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables | 2459 | 613 |
@@ -45,15 +45,15 @@
 | bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE`, the lens flare | 5871 | 17 |
 | bank 5 | `&A800-&ADFF` | the state: the dirty and written extents, `R_POLY`'s edge tables | 1536 | 0 |
 | bank 5 | `&AE00-&B15C` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 861 | 0 |
-| bank 5 | `&B15D-&B3FF` | the room below the per-x tables: `R_DOT`, `r_wq`, `pf_tilt` | 556 | 119 |
-| bank 5 | `&B400-&BFC9` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 3018 | 0 |
-| bank 5 | `&BFCA-&BFFF` | `RJT`, the jump table | 45 | 9 |
-| bank 6 | `&8000-&A92E` | the frame layer's code (bank 6 passes) | 10543 | 0 |
-| bank 6 | `&A92F-&ADAC` | the faces' and the lighting's tables | 1150 | 0 |
-| bank 6 | `&ADAD-&B07A` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
-| bank 6 | `&B07B-&B1FF` | (free: the page-aligned state that follows is placed as high as it goes) | 0 | 389 |
+| bank 5 | `&B15D-&B3FF` | the room below the per-x tables: `R_DOT`, `r_wq`, `pf_tilt` | 617 | 58 |
+| bank 5 | `&B400-&BF5A` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2907 | 0 |
+| bank 5 | `&BF5B-&BFFF` | `RJT`, the jump table | 45 | 120 |
+| bank 6 | `&8000-&AA12` | the frame layer's code (bank 6 passes) | 10771 | 0 |
+| bank 6 | `&AA13-&AE90` | the faces' and the lighting's tables | 1150 | 0 |
+| bank 6 | `&AE91-&B15E` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
+| bank 6 | `&B15F-&B1FF` | (free: the page-aligned state that follows is placed as high as it goes) | 0 | 161 |
 | bank 6 | `&B200-&BC70` | the state, page aligned: the discs' half-widths, the text map, the discs' rows | 2649 | 24 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 3167, main RAM (flight) 24, main RAM (docked) 1076, bank 4 (flight) 521, bank 4 (docked) 2696, bank 7 (flight) 775, bank 7 (docked) 5022, bank 5 781, bank 6 429.
+Free, by place: main RAM 3167, main RAM (flight) 24, main RAM (docked) 1076, bank 4 (flight) 521, bank 4 (docked) 2696, bank 7 (flight) 181, bank 7 (docked) 5022, bank 5 831, bank 6 201.

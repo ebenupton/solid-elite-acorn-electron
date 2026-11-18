@@ -5,39 +5,40 @@
 \ the cold pass and the overlays: elite-layout-flight.asm, which places this
 \ bank 7 pass, gfx-raster_disc2.asm's and gfx-raster_dpatch.asm's there)
 \
-\ Port (Model B): the BBC Master port's R_DISCROWS (its bank 5's disc window,
-\ gfx-raster_disc.asm, in the hand-converted NMOS 6502 code of its Model B
-\ branch), the row code of the incremental disc layer: each buffer keeps the
-\ disc's span on each row (R_DISCL/R) and its boundaries, up to three (R_BDN,
-\ R_BDX0-2), and each frame writes only what changed. The frame layer (bank
-\ 6) makes the rows (f_discs: the new spans, R_NDISCL/R, and the planet's
-\ boundaries, R_NDN, R_NDX0-3, from PC_ROWS) and drives this a batch of rows
-\ at a time through the mailbox (gfx-rws.asm: DB_*), with the rows' dirty
-\ extents from bank 5 (R_GETW), as bank 5's repair leaves them to the disc
-\ layer (R_REPAIR: the rows of the band, the old disc's and the new one's):
+\ Port (Model B): the row code of the BBC Master port's incremental disc
+\ layer (its R_DISCROWS): each buffer keeps the disc's span on each row
+\ (R_DISCL/R) and its boundaries, up to three (R_BDN, R_BDX0-2), and each
+\ frame writes only what changed. The frame layer (bank 6) makes the rows
+\ (f_discs: the new spans, R_NDISCL/R, and the planet's boundaries, R_NDN,
+\ R_NDX0-3, from PC_ROWS) and hands them over a batch at a time, as a
+\ stream of records in the mailbox (gfx-rws.asm: DB_R):
 \
-\   * DP_BEGIN (A = the buffer, X = the frame's flags, PB_*): the buffer's
-\     arrays into the code's operands (as the Master port's R_SETBUF and
-\     r_dbm patch them), and what the frame changes (a blanked buffer's
-\     state forgotten, boundaries kept or not, a colour change);
+\   * DP_BEGIN (A = the buffer, X = the frame's flags, PB_*, and the
+\     layer's rows): the buffer's arrays into the code's operands (as the
+\     Master port's R_SETBUF and r_dbm patch them), what the frame changes
+\     (a blanked buffer's state forgotten, boundaries kept or not, a
+\     colour change), and the first of the layer's dirty rows from bank 5
+\     (dp_fill: the painter asks bank 5 itself, R_GETW, for the dirty rows
+\     ahead, as bank 5's repair leaves them to the disc layer, and keeps
+\     them; the frame layer's batches stop where its list does);
 \
 \   * DP_ROWS (Y = the first row, X = the rows in the batch): the layer's
-\     rows (one colour: r_dlb; with boundaries: r_dmb), with the batch's
-\     slot in Y and the row in X (the Master port's code has the row in X
-\     for both); a row that changed or is dirty has its slot's new data
-\     taken into variables (dp_ld: rn_l, rn_r, rn_n, rn_x0-3, its dirty
-\     extent rd_l, rd_r) and what it wrote put back (dp_st: rw_l, rw_r into
-\     the slot's DB_WL, DB_WR, which bank 5 then puts into R_WL, R_WR);
+\     rows (a plain layer's: r_dlb; with boundaries: r_dmb), each record's
+\     bytes read once and compared with the buffer's row as they come; a
+\     row that changed or is dirty is painted (r_ent, with its notes), and
+\     what it wrote is kept here for the rest of the frame (R_NOTE);
 \
-\   * DP_DISC2: the second disc (gfx-raster_disc2.asm).
+\   * DP_DISC2: the second disc (gfx-raster_disc2.asm), which is given the
+\     layer's writes from here;
 \
-\ The screen is main RAM, so this writes it itself: a row's address worked
-\ out (r_rowp: the Electron's MODE 5 buffer, its 32 bytes from one pointer),
-\ the pixels' byte offsets (game x DIV 8) and masks (MODE 5 pixel (x DIV
-\ 2) AND 3) from four-byte tables (r_sw). A span of 16 whole bytes or more is queued in the mailbox for bank
-\ 5's row runs (r_sq), which bank 5 draws at the next batch's R_GETW, while
-\ there is room: the layer's writes on a row never overlap, so the order is
-\ the pixels' own.
+\   * DP_WQ: the layer's writes for the frame layer's text and sights.
+\
+\ The screen is main RAM, and every access to it is slow, so the painter
+\ never reads a byte to write it (but the border's, in the first and last
+\ columns): it knows what each row holds, and writes the bytes whose pixels
+\ changed whole, from the row's new list of edges (r_ent's notes). A row's
+\ address is worked out once a character row (r_rowq: the Electron's MODE
+\ 5 buffer, its 32 bytes from one address in the stores' operands).
 \
 \ Not here: the kept solid rows (k_kill), and the repair of the dirty rows
 \ outside the band (bank 5's R_REPAIR).
@@ -64,8 +65,8 @@
 
  CPU 0                  \ NMOS 6502: no 65C02 instructions in this file
 
-.P7Z SKIP &22           \ the painter's scratch, in this bank: at RZB7 + the
-RZB7 = P7Z - &06        \ zero page address each once had (the rasteriser's
+.P7Z SKIP &14           \ the painter's scratch, in this bank: at RZB7 + the
+RZB7 = P7Z - &14        \ zero page address each once had (the rasteriser's
                         \ names), first, as the code takes it as absolute
 
 DPST% = DFSSAVE% - &C00 \ the disc state, to DFSSAVE%
@@ -103,6 +104,10 @@ R_DCE   = &0E
 R_DCO   = &0F
 DPB_E   = &20           \ DP_BEGIN's colour B pair, from the frame layer (in
 DPB_O   = &21           \ transit: its RZ_T0, RZ_T1)
+DPB_Y0  = &22           \ DP_BEGIN's rows of the layer (its RZ_T2, RZ_T3)
+DPB_Y1  = &23
+DPB_T0  = &24           \ DP_BEGIN's text rows, first and last (its RZ_T4,
+DPB_T1  = &25           \ RZ_T5)
 RZ_PP   = RZB7 + &14           \ ... and this code's scratch: the row's address
                         \ (its byte in column 0, r_rowp)
 RZ_COL  = RZB7 + &16           \ this row's colour byte
@@ -118,12 +123,6 @@ RZ_T4   = RZB7 + &24
 RZ_T5   = RZB7 + &25
 RZ_T6   = RZB7 + &26
 RZ_T7   = RZB7 + &27
-rs_t0 = RZ_T0           \ raster_strips.asm: the boundaries, old, then new
-rs_t1 = RZ_T1
-rs_t2 = RZ_T2
-rs_t3 = RZ_T3
-rs_t4 = RZ_T4
-rs_t5 = RZ_T5
 
 \ DP_BEGIN's flags (X), from the frame layer's f_discs
 
@@ -137,8 +136,12 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 \ ******************************************************************************
 \
 \ DP_BEGIN: A = the buffer, X = the flags (PB_*), DPB_E and DPB_O (zero
-\ page) the colour B pair (R_DBE, R_DBO). PB_RESET forgets the second disc's spans
-\ too (as R_RESETBUF and R_DISC2's colour 0 do in the Master port)
+\ page) the colour B pair (R_DBE, R_DBO), DPB_Y0 and DPB_Y1 the layer's rows
+\ (the band; none: Y0 > Y1), DPB_T0 and DPB_T1 the text rows, first and
+\ last, whose lines' writes are wanted (none: &FF, 0; R_NOTE). PB_RESET forgets the second disc's spans too
+\ (as R_RESETBUF and R_DISC2's colour 0 do in the Master port). Returns A =
+\ the first row of the band whose dirty extent the painter has not had
+\ from bank 5 (dp_fill), which the frame layer's batches stop at
 \
 \ ******************************************************************************
 
@@ -146,8 +149,10 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 {
   STA dp_buf
   STX dp_fl
-  LDY #&FF                \ (no character row's address in r_sw's operands)
-  STY r_pcrow
+  LDY #&FF                \ (no character row's address in the stores'
+  STY r_pcrow             \ operands; the frame's first batch to come)
+  STY r_pcrw
+  STY dp_new
   LDA DPB_E               \ (in transit, in zero page)
   STA R_DBE
   LDA DPB_O
@@ -157,6 +162,17 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   LDA dp_fl
   AND #PB_BON
   STA r_bon
+  LDA DPB_T0              \ the rows whose bytes written R_NOTE keeps: the
+  ASL A                   \ text rows' (in transit, in zero page), from the
+  ASL A                   \ first's to the row after the last's
+  ASL A
+  STA r_n0
+  LDA DPB_T1
+  ASL A
+  ASL A
+  ASL A
+  ADC #8
+  STA r_n1
   LDY #191
   BIT dp_fl               \ a blanked buffer: no spans, no boundaries (as the
   BPL b2                  \ Master port's R_RESETBUF)
@@ -175,87 +191,146 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 .b2
   BVC b5                  \ plain last time: its rows had no boundaries
   LDA #0                  \ (every row: a row with no old span has none,
-.b3                       \ which r_dpe relies on)
+.b3                       \ which r_gen relies on)
 .^r_pbn21 STA R_BDN0,Y
   DEY
   CPY #&FF
   BNE b3
 .b5
+  LDY #23                 \ nothing written this frame, no dirty rows
+  LDA #0
+.b6
+  STA pw_r,Y
+  DEY
+  BPL b6
+  STA c_np
+  STA pw_sg
+  STA dq_e
+  LDA #&FF
+  STA c_fw
+  STA r_nd
+  LDA DPB_Y1              \ the layer's rows (in transit, in zero page), if
+  STA dp_hi               \ any: the dirty ones ahead, from bank 5
+  LDY DPB_Y0
+  STY dp_cov
+  CPY dp_hi
+  BEQ b7
+  BCS b8
+.b7
+  JSR dp_fill
+.b8
+  LDA dp_cov
   RTS
 }
 
 \ ******************************************************************************
 \
-\ DP_ROWS: Y = the first row, X = the rows (1 to DB_N): the layer's batch
+\ DP_ROWS: Y = the first row, X = the rows: the layer's batch, their records
+\ in the mailbox from DB_R. Returns A as DP_BEGIN does
 \
 \ ******************************************************************************
+
+MACRO DPLOOP lp           \ r_fin's way back to the row loop
+  LDA #LO(lp)
+  STA fn_j+1
+  LDA #HI(lp)
+  STA fn_j+2
+ENDMACRO
 
 .DP_ROWS
 {
-  STX dp_n
   STY dp_y0
-  LDA #&80                \ (the layer's long spans may be queued)
-  STA r_qok
-  LDA dp_fl               \ the colour changed: nothing of the old disc is
-  AND #PB_FOLD            \ intact, so its span is folded into each row's
-  BEQ f9                  \ dirty extent (the Master port's f_discdirty)
-  TYA
-  TAX
-  LDY #0
-.f1
-.^r_psl21 LDA R_DISCL0,X
-  CMP DB_WL,Y
-  BCS f2
-  STA DB_WL,Y
-.f2
-.^r_psr21 LDA R_DISCR0,X
-  CMP DB_WR,Y
-  BCC f3
-  STA DB_WR,Y
-.f3
-  INX
-  INY
-  CPY dp_n
-  BNE f1
-  LDY dp_y0
-.f9
-  TYA
-  TAX
+  TXA
+  CLC
+  ADC dp_y0
+  STA dp_xe               \ (the row after the batch)
+  LDA dp_new              \ the frame's first batch: the colours' tables
+  BEQ f0
+  JSR dp_cols
+.f0
+  LDX dp_y0
   LDY #0
   LDA r_bon
-  BEQ r_dlb
+  BEQ f3
+  DPLOOP dmnx
+  LDA dp_fl               \ the colour changed: nothing of the old disc is
+  AND #PB_FOLD            \ intact, so the rows' old counts are unknown and
+  BEQ f2                  \ each is drawn again whole (r_rpt)
+  LDA #&40
+.f1
+.^r_pbn31 STA R_BDN0,X
+  INX
+  CPX dp_xe
+  BNE f1
+  LDX dp_y0
+.f2
   JMP r_dmb
+.f3
+  LDA dp_fl
+  AND #PB_FOLD
+  BNE f4
+  DPLOOP dlnx
+  JMP r_dlb
+.f4
+  DPLOOP dfnx
+  JMP r_dlf
 }
 
-\ dp_ld: slot Y's data into the row's variables (keeps X and Y); dp_ldp:
-\ without the boundaries; dp_st: what the row wrote into its slot, and X =
-\ the row, Y = the slot back
+\ dp_end: (the row loops) the batch done: if its next row is the first the
+\ dirty rows in hand do not cover, more from bank 5 (the batch's records
+\ are read); A = the first row not covered, for the frame layer
 
-.dp_ld
-  LDA DB_NN,Y
-  STA rn_n
-  LDA DB_X0,Y
-  STA rn_x0
-  LDA DB_X1,Y
-  STA rn_x1
-  LDA DB_X2,Y
-  STA rn_x2
-  LDA DB_X3,Y
-  STA rn_x3
-.dp_ldp
-  STY dp_s
-  STX dp_x
-  LDA DB_NL,Y
-  STA rn_l
-  LDA DB_NR,Y
-  STA rn_r
-  LDA DB_WL,Y
-  STA rd_l
-  LDA DB_WR,Y
-  STA rd_r
-  LDA #0                  \ (nothing written yet)
-  STA rw_r
+.dp_end
+{
+  LDA dp_xe
+  CMP dp_cov
+  BCC e9
+  CMP dp_hi
+  BEQ e1
+  BCS e9                  \ (the band is done)
+.e1
+  TAY
+  JSR dp_fill
+.e9
+  LDA dp_cov
   RTS
+}
+
+\ dp_fill: the dirty rows of the band from row Y on, from bank 5 (R_GETW
+\ with A = &20, which lists them in the mailbox at DB_D, emptied: the
+\ painter repairs them), into dq (row, left, right; dq_e: 3 x how many),
+\ each byte read once: dp_cov the first row the list does not cover, r_nd
+\ the next dirty row (none: &FF)
+
+.dp_fill
+{
+  LDX dp_hi
+  LDA #&20
+  JSR FT_GETW
+  LDX DB_D
+  LDA DB_D,X
+  STA dp_cov
+  LDA #0
+  STA dq_i
+  DEX
+  STX dq_e
+  BEQ l3
+.l1
+  LDA DB_D,X
+  STA dq-1,X
+  DEX
+  BNE l1
+  LDA dq
+  JMP l4
+.l3
+  LDA #&FF
+.l4
+  STA r_nd
+  RTS
+}
+
+\ dp_st: (the second disc's) what the row wrote into its slot, and X = the
+\ row, Y = the slot back
 
 .dp_st
   LDY dp_s
@@ -267,332 +342,1518 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   RTS
 
 \ ============================================================================
-\ r_dlb: one-colour rows X on, slots Y = 0 to dp_n - 1 (any dirty)
+\ The row loops: rows X on to dp_xe, their records from DB_R + Y on. Each
+\ takes a record's bytes from the mailbox once, into the row's variables,
+\ comparing them with what the buffer holds as it goes, in the order of
+\ the row's list (below): a row that is the same and not dirty (r_nd is
+\ the next dirty row) costs those compares; the first byte that differs
+\ sends the rest of the record into the variables and the row to r_ent, as
+\ a row that is the same but dirty goes (r_rowd), with the next record's
+\ place in dp_s. r_dlb: a plain layer's rows (the span only; r_dlf: after
+\ a colour change, when each row is drawn again whole); r_dmb: rows with
+\ boundaries, when this frame or this buffer's last one has them, by the
+\ row's count once that and the colour are the buffer's (dmk0 to dmk3).
 \ ============================================================================
+
 .r_dlb
-{
-.lp
-  LDA DB_WL,Y             \ (a dirty extent's left end is not 255)
-  CMP #&FF
-  BNE gd
-  LDA DB_NL,Y
-.^r_psl22 CMP R_DISCL0,X
-  BNE ch
-  LDA DB_NR,Y
-.^r_psr22 CMP R_DISCR0,X
-  BNE ch
-.nx
-  INX
+  LDA #0                  \ (no boundaries, colour A)
+  STA rn_n
+.dl1
+  LDA DB_R,Y
+  STA rn_l
+.r_psl22 CMP R_DISCL0,X
+  BNE dl2
+  LDA DB_R+1,Y
+  STA rn_r
+.r_psr22 CMP R_DISCR0,X
+  BNE dl3
   INY
-  CPY dp_n
-  BNE lp
-  RTS
-.ch
-  JSR dp_ldp
-  JSR r_dp2               \ (returns X = RZ_Y)
-  JSR dp_st
-  JMP nx                  \ (NMOS: no BRA; JMP is 3 cycles too)
-.gd
-  JSR dp_ldp
-  LDA rn_l
-.^r_psl23 AND R_DISCL0,X
-  CMP #&FF
-  BNE gg
-  JSR r_dp1               \ no disc, old or new: black the dirty extent
-  JSR dp_st
-  JMP nx
-.gg
-  TXA
-  TAY
-  JSR r_drg
-  JSR dp_st
-  JMP nx
-}
+  INY
+  CPX r_nd
+  BEQ dl4
+.dlnx
+  INX
+  CPX dp_xe
+  BNE dl1
+  JMP dp_end
+.dl2
+  LDA DB_R+1,Y
+  STA rn_r
+.dl3
+  INY
+  INY
+  JMP dmk0e
+.dl4
+  JMP r_rowd
 
-\ ============================================================================
-\ Two-colour discs.  r_dmb: rows X on, slots Y = 0 to dp_n - 1, when this
-\ frame or this buffer's last one has boundaries.  Unchanged rows cost a few
-\ compares.
-\ ============================================================================
+.r_dlf
+  LDA #0
+  STA rn_n
+.df1
+  LDA DB_R,Y
+  STA rn_l
+  LDA DB_R+1,Y
+  STA rn_r
+  INY
+  INY
+  JMP dmn1
+.dfnx
+  INX
+  CPX dp_xe
+  BNE df1
+  JMP dp_end
+
+.dm9
+  CPX r_nd                \ the same: dirty?
+  BEQ dm9d
+.dmnx
+  INX
+  CPX dp_xe
+  BEQ dm9x
 .r_dmb
-{
-.lp
-  LDA DB_NL,Y
-.^r_psl24 CMP R_DISCL0,X
-  BNE ch
-  LDA DB_NR,Y
-.^r_psr24 CMP R_DISCR0,X
-  BNE ch
-  LDA DB_NN,Y             \ the count and the colour, new and old
-.^r_pbn22 CMP R_BDN0,X
-  BNE ch
-  ASL A                   \ (A = 2 count; no boundaries, the usual case: on)
-  BNE nz
-.sm
-  LDA DB_WL,Y             \ unchanged: dirty? then repaint only the dirty part
-  CMP #&FF
-  BNE smd
-.nx
-  INX
+  LDA DB_R,Y              \ the count and the colour
+  STA rn_n
+.r_pbn22 CMP R_BDN0,X
+  BEQ P%+5
+  JMP dmn
+  AND #7
+  BNE dmk123
+.dmk0
+  LDA DB_R+1,Y
+  STA rn_l
+.r_psl60 CMP R_DISCL0,X
+  BNE dmk0c0
+  LDA DB_R+2,Y
+  STA rn_r
+.r_psr60 CMP R_DISCR0,X
+  BNE dmk0c1
   INY
-  CPY dp_n
-  BNE lp
-  RTS
-.smd
-  JSR dp_ld
-  JSR r_smx
-  JSR dp_st
-  JMP nx
-.ch
-  LDA DB_WL,Y
-  CMP #&FF
-  BNE gd                  \ dirty
-  JSR dp_ld
-  JSR r_dpe
-  JSR dp_st
-  JMP nx                  \ (NMOS: no BRA; JMP is 3 cycles too)
-.nz                       \ 1 to 3 boundaries, as stored (A = 2 count; 4
-  STA r_cn                \ are never stored: r_bstore)
-  LDA DB_X0,Y
-.^r_pb020 CMP R_BDX00,X
-  BNE chb
-  LDA r_cn
+  INY
+  INY
+  JMP dm9
+.dmk0c0
+  LDA DB_R+2,Y
+  STA rn_r
+.dmk0c1
+  TYA
+  CLC
+  ADC #3
+  TAY
+.dmk0e
+  LDA rn_l                \ (a span's left end is even, no span's 255: a
+.r_psl25 ORA R_DISCL0,X   \ span appearing or going is r_gen's)
+  LSR A
+  BCC P%+5
+  JMP dmn1
+  STY dp_s
+  LDY #0
+  JMP r_ent
+.dm9x
+  JMP dp_end
+.dm9d
+  JMP r_rowd
+.dmk123
+  CMP #2
+  BCS dmk23
+.dmk1
+  LDA DB_R+1,Y
+  STA rn_l
+.r_psl61 CMP R_DISCL0,X
+  BNE dmk1c0
+  LDA DB_R+2,Y
+  STA rn_x0
+.r_pb061 CMP R_BDX00,X
+  BNE dmk1c1
+  LDA DB_R+3,Y
+  STA rn_r
+.r_psr61 CMP R_DISCR0,X
+  BNE dmk1c2
+  INY
+  INY
+  INY
+  INY
+  JMP dm9
+.dmk1c0
+  LDA DB_R+2,Y
+  STA rn_x0
+.dmk1c1
+  LDA DB_R+3,Y
+  STA rn_r
+.dmk1c2
+  TYA
+  CLC
+  ADC #4
+  STA dp_s
+  LDY #1
+  JMP r_ent
+.dmk23
+  BNE dmk3
+.dmk2
+  LDA DB_R+1,Y
+  STA rn_l
+.r_psl62 CMP R_DISCL0,X
+  BNE dmk2c0
+  LDA DB_R+2,Y
+  STA rn_x0
+.r_pb062 CMP R_BDX00,X
+  BNE dmk2c1
+  LDA DB_R+3,Y
+  STA rn_x1
+.r_pb162 CMP R_BDX10,X
+  BNE dmk2c2
+  LDA DB_R+4,Y
+  STA rn_r
+.r_psr62 CMP R_DISCR0,X
+  BNE dmk2c3
+  TYA
+  ADC #4                  \ (C set by the CMP)
+  TAY
+  JMP dm9
+.dmk2c0
+  LDA DB_R+2,Y
+  STA rn_x0
+.dmk2c1
+  LDA DB_R+3,Y
+  STA rn_x1
+.dmk2c2
+  LDA DB_R+4,Y
+  STA rn_r
+.dmk2c3
+  TYA
+  CLC
+  ADC #5
+  STA dp_s
+  LDY #2
+  JMP r_ent
+.dmk3
+  LDA DB_R+1,Y
+  STA rn_l
+.r_psl63 CMP R_DISCL0,X
+  BNE dmk3c0
+  LDA DB_R+2,Y
+  STA rn_x0
+.r_pb063 CMP R_BDX00,X
+  BNE dmk3c1
+  LDA DB_R+3,Y
+  STA rn_x1
+.r_pb163 CMP R_BDX10,X
+  BNE dmk3c2
+  LDA DB_R+4,Y
+  STA rn_x2
+.r_pb263 CMP R_BDX20,X
+  BNE dmk3c3
+  LDA DB_R+5,Y
+  STA rn_r
+.r_psr63 CMP R_DISCR0,X
+  BNE dmk3c4
+  TYA
+  ADC #5                  \ (C set by the CMP)
+  TAY
+  JMP dm9
+.dmk3c0
+  LDA DB_R+2,Y
+  STA rn_x0
+.dmk3c1
+  LDA DB_R+3,Y
+  STA rn_x1
+.dmk3c2
+  LDA DB_R+4,Y
+  STA rn_x2
+.dmk3c3
+  LDA DB_R+5,Y
+  STA rn_r
+.dmk3c4
+  TYA
+  CLC
+  ADC #6
+  STA dp_s
+  LDY #3
+  JMP r_ent
+
+.dmn                      \ another count or colour: the whole record
+  AND #7
+  STA r_nk
+  LDA DB_R+1,Y
+  STA rn_l
+  LDA r_nk
+  BEQ dmn0
+  LDA DB_R+2,Y
+  STA rn_x0
+  LDA r_nk
+  CMP #2
+  BCC dmn3
+  LDA DB_R+3,Y
+  STA rn_x1
+  LDA r_nk
+  CMP #3
+  BCC dmn3
+  LDA DB_R+4,Y
+  STA rn_x2
+  LDA r_nk
   CMP #4
-  BCC sm
-  LDA DB_X1,Y
-.^r_pb120 CMP R_BDX10,X
-  BNE chb
-  LDA r_cn
-  CMP #6
-  BCC sm
-  LDA DB_X2,Y
-.^r_pb220 CMP R_BDX20,X
-  BEQ sm
-.chb
-  LDA DB_WL,Y
-  CMP #&FF
-  BNE gd                  \ dirty
-  JSR dp_ld
-  JSR r_dq
-  JSR dp_st
-  JMP nx
-.gd
-  JSR dp_ld
-.^r_dmgd                  \ (r_smx's way in, with the row's data loaded)
-  LDA rn_l
-.^r_psl25 AND R_DISCL0,X
-  EOR #&FF
-  BNE gg
-  STA r_dsub              \ (A = 0; r_smx's way in, r_gd1, has r_dsub = 0)
-.^r_gd1
-  JSR r_dp1               \ no disc, old or new: black the dirty extent
-  JSR dp_st
-  JMP nx
-.gg
-  TXA
+  BCC dmn3
+  LDA DB_R+5,Y
+  STA rn_x3
+.dmn3
+  TYA
+  CLC
+  ADC r_nk
   TAY
-  JSR r_drg
-  JSR dp_st
-  JMP nx                  \ (out of BRA range; JMP is 3 cycles too)
-}
-
-\ r_smx: r_dmb, an unchanged dirty row (X, its data loaded): a dirty extent
-\ clear of the span only needs blacking (r_dp1, as r_drg would); otherwise
-\ only the dirty part of the span is repainted (r_dsub)
-.r_smx
-{
-  LDA rd_l
-  CMP rn_r
-  BEQ sms
-  BCS smf                 \ dL > sR
-  LDA rd_r
-  CMP rn_l
-  BCC smf                 \ dR < sL
-.sms
-  INC r_dsub
-  PLA                     \ (into r_dmb's gd path, as its own: r_dmgd, which
-  PLA                     \ returns through dp_st)
-  JMP r_dmgd
-.smf
-  JMP r_dp1
-}
-
-\ r_dq: X = row of a two-colour disc whose span, colour and boundary count
-\ (r_cn = 2 count: one to three) are unchanged, no dirty, a boundary moved
-\ (r_dmb): each moved boundary's strip (old .. new) in the colour on the
-\ side it moved from, cut short where its neighbour's new place has passed
-\ into it (as r_dpe: the span's ends stay put).  Returns X = RZ_Y.
-.r_dq
-{
-  JSR r_rowp              \ row pointers, the segments' colours, no writes
-  LDY #&FF                \ (NMOS: in Y, as there is no INC A)
-  STY r_wmin
+.dmn0
+  LDA DB_R+2,Y
+  STA rn_r
   INY
-  STY r_wmax
-  TXA
-  AND #1
-  TAY
+  INY
+  INY
+.dmn1
+  STY dp_s
+  LDA #2
+  STA r_md
   LDA rn_n
-  BMI cb
-  LDA R_DCE,Y
-  STA r_c0
-  LDA r_dbe,Y
-  STA r_c1
-  JMP go                  \ (NMOS: no BRA)
-.cb
-  LDA r_dbe,Y
-  STA r_c0
-  LDA R_DCE,Y
-  STA r_c1
-.go
-  LDA rn_x0               \ the first: moved right, old .. new-1 in segment
-.^r_pb021 CMP R_BDX00,X   \ 0's colour; left, new .. old-1 (or up to the
-  BEQ n0                  \ second's new place) in 1's
-  BCC l0
+  AND #7
   TAY
-  DEY
-.^r_pb022 LDA R_BDX00,X
-  TAX
-  LDA r_c0
-  BCS p0                  \ (always: C set by the CMP)
-.l0
-.^r_pb023 LDA R_BDX00,X
-  LDY r_cn
-  CPY #4
-  BCC l0b
-  CMP rn_x1
-  BCC l0b
-  LDA rn_x1
-.l0b
-  CMP rn_x0
-  BEQ n0
-  TAY
-  DEY
-  LDX rn_x0
-  LDA r_c1
-.p0
-  JSR rs_put
-  LDX RZ_Y
-.n0
-  LDA r_cn
-  CMP #4
-  BCS b1
-  JMP fin
-.b1
-  LDA rn_x1               \ the second: right, from the first's new place on,
-.^r_pb121 CMP R_BDX10,X   \ in 1's; left, up to the third's, in 2's (0's)
-  BEQ n1
-  BCC l1
-  TAY
-  DEY
-.^r_pb122 LDA R_BDX10,X
-  CMP rn_x0
-  BCS P%+5
-  LDA rn_x0
-  CMP rn_x1
-  BCS n1
-  TAX
-  LDA r_c1
-  BCC p1                  \ (always)
-.l1
-.^r_pb123 LDA R_BDX10,X
-  LDY r_cn
-  CPY #6
-  BCC l1b
-  CMP rn_x2
-  BCC l1b
-  LDA rn_x2
-.l1b
-  CMP rn_x1
-  BEQ n1
-  TAY
-  DEY
-  LDX rn_x1
-  LDA r_c0
-.p1
-  JSR rs_put
-  LDX RZ_Y
-.n1
-  LDA r_cn
-  CMP #6
-  BCC fin
-  LDA rn_x2               \ the third: right, from the second's new place
-.^r_pb221 CMP R_BDX20,X   \ on, in 2's (0's); left, in 3's (1's)
-  BEQ fin
-  BCC l2
-  TAY
-  DEY
-.^r_pb222 LDA R_BDX20,X
-  CMP rn_x1
-  BCS P%+5
-  LDA rn_x1
-  CMP rn_x2
-  BCS fin
-  TAX
-  LDA r_c0
-  BCC p2                  \ (always)
-.l2
-.^r_pb223 LDY R_BDX20,X
-  DEY
-  TAX
-  LDA r_c1
-.p2
-  JSR rs_put
-  LDX RZ_Y
-.fin
-  LDA rn_x0               \ the new boundaries; what was written
-.^r_pb024 STA R_BDX00,X
-  LDA rn_x1
-.^r_pb124 STA R_BDX10,X
-  LDA rn_x2
-.^r_pb224 STA R_BDX20,X
-  LDA r_wmax
-  BEQ fx
-  STA rw_r
-  LDA r_wmin
-  STA rw_l
-.fx
-  RTS
-}
+  JMP r_ent
 
-\ rs_cols (raster_strips.asm's): X = row, A's bit 7: colour B at the left
-\ end: r_c0 and r_c1, the colours of the segment at the left end and of the
-\ next, by the row's parity (keeps X)
-.rs_cols
-{
-  ASL A                   \ (C: colour B at the left end)
+\ r_rowd: row X, the same as the buffer holds, dirty (Y = the next record)
+
+.r_rowd
+  STY dp_s
+  LDA #1
+  STA r_md
+  LDA rn_n
+  AND #7
+  TAY
+  JMP r_ent
+
+\ ============================================================================
+\ r_ent: row X (the next record in dp_s), changed or dirty or both, its new span,
+\ count, colour and boundaries in the variables; Y = its boundaries; r_md =
+\ 0: the same count and colour as the buffer's row and both spans there
+\ (r_p1), 1: the same row, dirty, 2: any other (r_gen).
+\
+\ A row is a list of edges: its span's left end, its boundaries, the end
+\ after its right end (ce: rn_l, rn_x0 .., then rn_r + 1 put after the last
+\ boundary, r_je its place; cg_n how many, none for an empty span); a pixel
+\ takes the colour after the last edge at or before it, black before the
+\ first and after the last, the colours between them colour A and colour B
+\ in turn (r_cmb: the row's parity and which is first, for the colours'
+\ tables, dp_cols). The row's bytes are never read to be written: what the
+\ painter writes is the bytes whose pixels changed, each whole, as the new
+\ list has it. On a row of the layer nothing else is the painter's to keep
+\ but the border's pixel in the first and last columns (which cg masks in):
+\ the stars are not on the buffer while the layer is drawn, the shapes
+\ drawn over it are in the dirty extents, and the text, the sights and the
+\ second disc are drawn again wherever the row's written extent, which
+\ takes the whole bytes, covers them.
+\
+\ An edge of the new list is paired with an edge of the buffer's row, and
+\ if the two are not at the same place the pixels between them have
+\ changed: pe writes their bytes. With the same count and colour the lists
+\ pair off in order (r_p1). Otherwise (r_gen) the old list is made as long
+\ as six with virtual boundaries (segments of no width): one at its left
+\ end if the colours there differ and it has fewer boundaries than the
+\ new, then as many as it lacks at the end after its right end; if the
+\ colours differ and the new list has as many or fewer, the virtual
+\ boundary at the left end is the new list's instead, so that the new left
+\ end pairs with the old one and with the old first boundary too, and as
+\ the new list is the shorter its last edge pairs with every old one left
+\ over. A new edge with two old places is painted from the one to its left
+\ and from the one to its right. A dirty extent's bytes are written from
+\ the new list first (r_dty); a span appearing or going is the bytes of
+\ the one there (r_p3); with more than three boundaries, or an old count
+\ unknown, the bytes of both spans (r_rpt).
+\
+\ Then the buffer's row is the new one (r_sta, or edge by edge in r_p1) and
+\ what was written is noted for the rest of the frame (r_fin).
+\ ============================================================================
+
+MACRO PEGO ret            \ pe's way back
+  LDA #LO(ret)
+  STA pe_x+1
+  LDA #HI(ret)
+  STA pe_x+2
+ENDMACRO
+
+MACRO PEROLE              \ A = the role of the end after the right end: after
+  LDA rn_n                \ an even number of boundaries the first colour is
+  LSR A                   \ before it
+  LDA #PR_E0
+  BCC P%+4
+  LDA #PR_E1
+ENDMACRO
+
+.r_ent
+  LDA rn_r                \ the end after the right end, after the last
+  CLC                     \ boundary, and the list's end (as the list's
+  ADC #1                  \ start, ce_s: an edge next to them is not alone
+  STA ce+1,Y              \ with the border's pixel, pe)
+  LDA #&FF
+  STA ce+2,Y
+  INY
+  STY r_je
+  INY
+  STY cg_n
+  STX RZ_Y                \ the row's address
   TXA
-  AND #1
-  TAY                     \ (Y: an odd row)
-  BCS b
-  LDA R_DCE,Y
-  STA r_c0
-  LDA r_dbe,Y
-  STA r_c1
-  RTS
-.b
-  LDA r_dbe,Y
-  STA r_c0
-  LDA R_DCE,Y
-  STA r_c1
+  AND #7
+  STA r_pline
+  TXA
+  AND #&F8
+  CMP r_pcrw
+  BEQ en1
+  JSR r_rowq              \ (another character row: once in eight rows)
+.en1
+  LDA rn_n                \ 2 x the row's parity + colour B first
+  ASL A
+  TXA
+  ROL A
+  AND #3
+  STA r_cmb
+  LDA #0                  \ (nothing written)
+  STA cg_np
+  CPX r_nd
+  BNE en2
+  JSR r_dty
+.en2
+  LDA r_md
+  BEQ r_p1
+  JMP r_gen
+
+\ ============================================================================
+\ r_p1: row X, the same count and colour as the buffer's row, both spans
+\ there: the two lists pair off edge by edge, and each edge that moved is
+\ painted (pe: the edge's place in the list in X, its role's colours, its
+\ old place in Y) and the buffer given its new place. Y counts the
+\ boundaries down between them
+\ ============================================================================
+
+.r_p1
+.r_psl50 LDA R_DISCL0,X   \ the left end
+  CMP rn_l
+  BEQ p1a
+  TAY
+  PEGO p1ar
+  LDX #0
+  TXA
+  JMP pe
+.p1ar
+  LDX RZ_Y
+  LDA rn_l
+.r_psl51 STA R_DISCL0,X
+.p1a
+  LDY r_je
+  DEY
+  BEQ p1e
+.r_pb050 LDA R_BDX00,X    \ the first boundary: colour A (the first), then B
+  CMP rn_x0
+  BEQ p1b
+  TAY
+  PEGO p1br
+  LDX #1
+  LDA #PR_A
+  JMP pe
+.p1br
+  LDX RZ_Y
+  LDA rn_x0
+.r_pb051 STA R_BDX00,X
+  LDY r_je
+  DEY
+.p1b
+  DEY
+  BEQ p1e
+.r_pb150 LDA R_BDX10,X    \ the second: B, then A
+  CMP rn_x1
+  BEQ p1c
+  TAY
+  PEGO p1cr
+  LDX #2
+  LDA #PR_B
+  JMP pe
+.p1cr
+  LDX RZ_Y
+  LDA rn_x1
+.r_pb151 STA R_BDX10,X
+  LDY r_je
+  DEY
+  DEY
+.p1c
+  DEY
+  BEQ p1e
+.r_pb250 LDA R_BDX20,X    \ the third: A, then B
+  CMP rn_x2
+  BEQ p1e
+  TAY
+  PEGO p1dr
+  LDX #3
+  LDA #PR_A
+  JMP pe
+.p1dr
+  LDX RZ_Y
+  LDA rn_x2
+.r_pb251 STA R_BDX20,X
+.p1e
+.r_psr50 LDA R_DISCR0,X   \ the end after the right end
+  CMP rn_r
+  BEQ p1x
+  TAY
+  INY
+  PEGO p1er
+  PEROLE
+  LDX r_je
+  JMP pe
+.p1er
+  LDX RZ_Y
+  LDA rn_r
+.r_psr51 STA R_DISCR0,X
+.p1x
+  JMP r_fin
+
+\ R_NOTE: A = cg_np, not zero: the row's bytes written (from cg_fw's to the
+\ one before cg_np's) noted for the rest of the frame, as r_nf has it for
+\ the row's character row (r_rowq): bit 7 (a text row's, or any with a
+\ second disc: DP_BEGIN), into the bytes written on the character row (c_fw,
+\ c_np: dp_flush); bit 6 (the sights' rows are among its rows, and nothing
+\ has met them yet), whether they met the sights, which are on row QSGY
+\ from QSGX - QSGIN to QSGX + QSGIN + 1 and at QSGX and QSGX + 1 on the
+\ rows that far above and below (gfx-rws.asm). Clobbers A, X
+
+MACRO R_NOTE
+  LDX r_nf
+  BEQ n9
+  BPL n2
+  CMP c_np
+  BCC n1
+  STA c_np
+.n1
+  LDA cg_fw
+  AND #&F8
+  CMP c_fw
+  BCS n2
+  STA c_fw
+.n2
+  BIT r_nf
+  BVC n9
+  LDX RZ_Y
+  CPX #QSGY-QSGIN
+  BCC n9
+  CPX #QSGY+QSGIN+1
+  BCS n9
+  LDA cg_fw
+  AND #&F8
+  CMP #QSGX+2
+  BCS n3
+  LDX cg_np
+  CPX #QSGX+1
+  BCS n5
+.n3
+  LDX RZ_Y
+  CPX #QSGY
+  BNE n9
+  CMP #QSGX+QSGIN+2
+  BCS n9
+  LDX cg_np
+  CPX #QSGX-QSGIN+1
+  BCC n9
+.n5
+  LDA #&80
+  STA pw_sg
+  LDA r_nf
+  AND #&BF
+  STA r_nf
+.n9
+ENDMACRO
+
+\ r_dty: (r_ent) row RZ_Y, the next dirty row: its dirty extent's bytes as
+\ the new list has them (a byte of them that a change then writes is
+\ written twice), noted, and r_nd the dirty row after. Returns X = the row
+
+.r_dty
+{
+  LDY dq_i
+  LDX dq+1,Y
+  LDA dq+2,Y
+  STA rd_r
+  INY
+  INY
+  INY
+  STY dq_i
+  LDA #&FF
+  CPY dq_e
+  BCS d1
+  LDA dq,Y
+.d1
+  STA r_nd
+  LDA rn_l
+  CMP #&FF
+  BNE d2
+  LDA #0                  \ (no span: no edges)
+  STA cg_n
+.d2
+  LDY rd_r
+  JSR cg
+  LDA cg_np
+  R_NOTE
+  LDA #0
+  STA cg_np
+  LDX RZ_Y
   RTS
 }
 
-\ rs_put (raster_strips.asm's, and r_dq's): r_sw, noting the strip in r_wmin ..
-\ r_wmax (strips come left to right: the first sets r_wmin, the last r_wmax)
-.rs_put
-  CPX r_wmin
-  BCS P%+5
-  STX r_wmin
-  STY r_wmax
-  JMP r_sw
+\ r_rpt: row RZ_Y, both spans there: the bytes of both
+
+.r_rpt
+  LDX RZ_Y
+.r_psr31 LDY R_DISCR0,X
+  CPY rn_r
+  BCS rp1
+  LDY rn_r
+.rp1
+.r_psl31 LDA R_DISCL0,X
+  CMP rn_l
+  BCC rp2
+  LDA rn_l
+.rp2
+  TAX
+  JSR cg
+  JMP r_sta
+
+\ r_gen: row X, not r_p1's: dirty only (r_md = 1), or another count or
+\ colour, or a span appearing or going
+
+.r_gen
+  LSR A                   \ (r_md: 1 or 2)
+  LDA #0
+  STA r_md
+  BCC ge1
+  JMP r_fin               \ (dirty only)
+.ge1
+  LDA rn_l                \ (a span's left end is even, no span's 255)
+.r_psl26 ORA R_DISCL0,X
+  LSR A
+  BCC ge2
+  JMP r_p3
+.ge2
+  LDA r_bon               \ (a plain layer's row is here only after a colour
+  BEQ r_rpt               \ change: drawn again whole)
+.r_pbn24 LDA R_BDN0,X
+  CMP #&40
+  BEQ r_rpt               \ (the old count unknown)
+  AND #3
+  STA r_ok
+  LDA rn_n
+  AND #7
+  CMP #4
+  BCS r_rpt               \ (more than three new)
+  STA r_nk
+  LDA #0
+  STA r_s
+  LDY #1                  \ the old list, as long as six: its left end ...
+.r_psl27 LDA R_DISCL0,X
+  STA ao
+  LDA rn_n                \ ... the colours at the left ends differ: the
+.r_pbn26 EOR R_BDN0,X     \ virtual boundary there, the old list's with
+  BPL ge4                 \ fewer boundaries, else the new one's ...
+  LDA r_ok
+  CMP r_nk
+  BCS ge3
+  LDA ao
+  STA ao+1
+  INY
+  BNE ge4                 \ (always)
+.ge3
+  INC r_s
+.ge4
+  LDA r_ok                \ ... its boundaries ...
+  BEQ ge5
+.r_pb025 LDA R_BDX00,X
+  STA ao,Y
+  INY
+  LDA r_ok
+  CMP #2
+  BCC ge5
+.r_pb125 LDA R_BDX10,X
+  STA ao,Y
+  INY
+  LDA r_ok
+  CMP #3
+  BCC ge5
+.r_pb225 LDA R_BDX20,X
+  STA ao,Y
+  INY
+.ge5
+.r_psr27 LDA R_DISCR0,X   \ ... and the end after its right end to the end
+  CLC
+  ADC #1
+.ge6
+  STA ao,Y
+  INY
+  CPY #6
+  BCC ge6
+  LDY ao                  \ the new left end: from the old one to its left
+  CPY rn_l                \ ...
+  BCS ge7
+  PEGO ge7
+  LDX #0
+  TXA
+  JMP pe
+.ge7
+  LDX r_s                 \ ... and from the old one, or with a virtual
+  LDY ao,X                \ boundary the old first boundary, to its right
+  CPY rn_l
+  BEQ ge8
+  BCC ge8
+  PEGO ge8
+  LDX #0
+  TXA
+  JMP pe
+.ge8
+  LDA #1                  \ the new boundaries
+  STA r_pj
+.ge9
+  LDX r_pj
+  CPX r_je
+  BCS ge11
+  TXA
+  CLC
+  ADC r_s
+  TAY
+  LDA ao,Y
+  CMP ce,X
+  BEQ ge10
+  TAY
+  PEGO ge10
+  TXA                     \ (the first, third: colour A before, B after)
+  LSR A
+  LDA #PR_B
+  BCC P%+4
+  LDA #PR_A
+  JMP pe
+.ge10
+  INC r_pj
+  BNE ge9                 \ (always)
+.ge11
+  TXA                     \ the new end after the right end (X = r_je):
+  CLC                     \ from the old edge it pairs with first, to its
+  ADC r_s                 \ left ...
+  TAY
+  LDA ao,Y
+  CMP ce,X
+  BCS ge12
+  TAY
+  PEGO ge12
+  PEROLE
+  LDX r_je
+  JMP pe
+.ge12
+  LDX r_je                \ ... and from the old end, to its right
+  LDA ao+5
+  CMP ce,X
+  BEQ ge13
+  BCC ge13
+  TAY
+  PEGO ge13
+  PEROLE
+  LDX r_je
+  JMP pe
+.ge13
+  JMP r_sta
+
+\ r_p3: row X, a span appearing or going (or neither there)
+
+.r_p3
+  LDA rn_l
+  CMP #&FF
+  BNE p3a
+  LDA #0                  \ no new span: the old one's bytes black (no
+  STA cg_n                \ edges)
+.r_psr32 LDY R_DISCR0,X
+.r_psl32 LDA R_DISCL0,X
+  CMP #&FF
+  BEQ r_sta               \ (nor an old one)
+  BNE p3b                 \ (always)
+.p3a
+  LDY rn_r
+.p3b
+  TAX
+  JSR cg
+                          \ (into r_sta)
+
+\ r_sta: the buffer's row is the new one: its span, and with boundaries its
+\ count, colour and boundaries (more than three: unknown, &40)
+
+.r_sta
+  LDY RZ_Y
+  LDA rn_l
+.r_psl28 STA R_DISCL0,Y
+  LDA rn_r
+.r_psr28 STA R_DISCR0,Y
+  LDA r_bon
+  BEQ r_fin
+  LDA rn_n
+  AND #7
+  CMP #4
+  BCS st4
+  LDA rn_n
+.r_pbn29 STA R_BDN0,Y
+  LDA rn_x0
+.r_pb027 STA R_BDX00,Y
+  LDA rn_x1
+.r_pb127 STA R_BDX10,Y
+  LDA rn_x2
+.r_pb227 STA R_BDX20,Y
+  BCC r_fin               \ (always: C clear from the CMP)
+.st4
+  LDA #&40
+.r_pbn30 STA R_BDN0,Y
+                          \ (into r_fin)
+
+\ r_fin: what the row wrote (the bytes from cg_fw's to the one before
+\ cg_np's, none: cg_np = 0) noted, and back to the row loop
+
+.r_fin
+{
+  LDA cg_np
+  BEQ f9
+  R_NOTE
+.f9
+  LDX RZ_Y
+  LDY dp_s
+.^fn_j
+  JMP &FFFF               \ (patched: DP_ROWS)
+}
+
+\ dp_flush: the bytes written on the character row in hand (r_pcrw) into
+\ the frame's (pw_l, pw_r by character row; none: pw_r = 0), as the rows
+\ move on to another and before the frame's other users of them (DP_DISC2,
+\ DP_WQ). Keeps X
+
+.dp_flush
+{
+  LDA c_np
+  BEQ f9
+  LDA r_pcrw
+  LSR A
+  LSR A
+  LSR A
+  TAY
+  LDA c_fw
+  STA pw_l,Y
+  LDA c_np
+  SEC
+  SBC #1
+  ORA #7
+  STA pw_r,Y
+  LDA #0
+  STA c_np
+  LDA #&FF
+  STA c_fw
+.f9
+  RTS
+}
+
+\ ******************************************************************************
+\
+\ DP_WQ: (the frame layer's f_wq, after bank 5's answer to its query, r_wq:
+\ gfx-raster_dq.asm) the layer's writes added to the answer in the mailbox:
+\ each text row's extent, at MBOX + 2r and + 2r + 1 (the row's lines are a
+\ character row's: pw_l, pw_r), and bit 7 of MBOX+&34 if they met the
+\ sights and MBOX+&33 asks
+\
+\ ******************************************************************************
+
+.DP_WQ
+{
+  JSR dp_flush
+  LDX #23
+  LDY #46
+.w1
+  LDA pw_r,X
+  BEQ w3
+  CMP MBOX+1,Y
+  BCC w2
+  STA MBOX+1,Y
+.w2
+  LDA pw_l,X
+  CMP MBOX,Y
+  BCS w3
+  STA MBOX,Y
+.w3
+  DEY
+  DEY
+  DEX
+  BPL w1
+  LDA MBOX+&33
+  BEQ w9
+  LDA pw_sg
+  BPL w9
+  STA MBOX+&34
+.w9
+  RTS
+}
+
+\ ============================================================================
+\ pe: edge X of the row's list has moved from Y to ce,X; A = its role (PR_*:
+\ which colours are before and after it, in the colours' tables). The
+\ pixels between the two places take the colour on the side it moved from;
+\ their bytes are written whole, with the edge's own byte mixed from the
+\ two colours:
+\
+\   * moved right: the bytes from the old place's to the new place's, the
+\     colour before the edge;
+\   * moved left: the bytes from the new place's to the last changed
+\     pixel's (the one before the old place, or before the edge after's new
+\     place if that has passed it), the colour after it.
+\
+\ The bytes at or before the last one written on the row (cg_np) are left
+\ out: they are as the new list has them. That is all of the rest only if
+\ no other edge of the new list lies in them: the edge before at or before
+\ the first byte's start, the edge after beyond the last byte's end, or in
+\ the last byte with the one after it beyond, when that byte is mixed for
+\ it too (pe_dm, pe_m2). The list's ends, ce_s and the &FF after the last
+\ edge, keep the first and last columns, with the border's pixels, out of
+\ it. Otherwise (pe_s) the strip itself, cut short where the edge before's
+\ new place (moving right) or the edge after's (moving left) has passed
+\ into it, goes through cg. Returns through pe_x (PEGO), X and Y anything.
+\ ============================================================================
+
+PR_L  = 0                 \ the roles (4 x the table's row): the left end,
+PR_A  = 4                 \ a boundary from the first colour to the second,
+PR_B  = 8                 \ from the second to the first, the end after
+PR_E0 = 12                \ the right end after the first colour, after the
+PR_E1 = 16                \ second
+
+.pe
+  STY pe_o
+  STX pe_j
+  ORA r_cmb
+  STA pe_ci
+  TYA
+  CMP ce,X
+  BCC P%+5
+  JMP pe_l
+  AND #&F8                \ moved right: the first byte, or the first not
+  CMP cg_np               \ yet written
+  BCS pr0
+  LDA cg_np
+.pr0
+  CMP ce-1,X
+  BCC pe_s
+  ORA r_pline
+  TAY
+  LDA ce,X
+  ORA #7
+  CMP ce+1,X
+  BCC pr0a
+  CMP ce+2,X              \ (the edge after is in the new place's byte)
+  BCS pe_s
+  DEC pe_dm
+.pr0a
+  AND #&F8                \ the new place's byte
+  ORA r_pline
+  STA pe_ym
+  LDA cg_np
+  BNE P%+5
+  STY cg_fw               \ (the row's first write)
+  CPY pe_ym
+  BEQ pr2
+  BCS pr4                 \ (all written already)
+  LDX pe_ci
+.pr1
+  LDA t_cb,X              \ whole bytes of the colour before
+.r_fa STA &FFFF,Y
+  TYA
+  ADC #8                  \ (C clear: Y < pe_ym)
+  TAY
+  CPY pe_ym
+  BNE pr1
+.pr2
+  LDX pe_j                \ the edge's byte, if the edge is inside it
+  LDA ce,X
+  AND #7
+  BEQ pr3
+  LSR A
+  TAX
+  LDA r_lm4,X
+  LDX pe_ci
+  AND t_d,X
+  EOR t_cb,X
+  BIT pe_dm
+  BPL pr2a
+  JSR pe_m2               \ (and the edge after)
+  CLC
+.pr2a
+.r_fb STA &FFFF,Y
+  TYA                     \ the next byte's pixels (C clear from the LSR)
+  ORA #7
+  ADC #1
+  STA cg_np
+  JMP pe_x
+.pr3
+  TYA                     \ (the last byte written is the one before)
+  AND #&F8
+  STA cg_np
+.pr4
+  LDA #0
+  STA pe_dm
+  JMP pe_x
+
+.pe_s                     \ not alone in its bytes: the strip through cg,
+  LDA #0                  \ from the edge before in the list
+  STA pe_dm
+  LDX pe_j
+  LDA pe_o
+  CMP ce,X
+  BCS ps2
+  CMP ce-1,X              \ moved right: from the old place, or the edge
+  BCS ps1                 \ before's new one, to the new place - 1
+  LDA ce-1,X
+.ps1
+  LDY ce,X
+  DEY
+  JMP ps4
+.ps2
+  CMP ce+1,X              \ moved left: from the new place to the old one,
+  BCC ps3                 \ or the edge after's new one, - 1
+  LDA ce+1,X
+.ps3
+  TAY
+  DEY
+  LDA ce,X
+.ps4
+  DEX
+  BPL P%+4
+  LDX #0
+  STX cg_sj
+  TAX
+  JSR cgs
+.pe_x
+  JMP &FFFF               \ (patched: PEGO)
+
+.pe_l                     \ moved left (A = the old place)
+  CMP ce+1,X
+  BCC pl0
+  LDA ce+1,X              \ (the edge after's new place has passed it)
+.pl0
+  SEC
+  SBC #1                  \ the last changed pixel's byte
+  ORA #7
+  CMP ce+1,X
+  BCC pl0a
+  CMP ce+2,X              \ (the edge after is in it)
+  BCS pl7
+  DEC pe_dm
+.pl0a
+  AND #&F8
+  ORA r_pline
+  STA pe_ym
+  LDA ce,X                \ the new place's byte, the first
+  AND #&F8
+  CMP cg_np
+  BCC pl5                 \ (written already)
+  CMP ce-1,X
+  BCC pl7
+  ORA r_pline
+  TAY
+  LDA cg_np
+  BNE P%+5
+  STY cg_fw               \ (the row's first write)
+  LDA ce,X
+  AND #7
+  BEQ pl1
+  LSR A                   \ the edge inside its byte
+  TAX
+  LDA r_lm4,X
+  LDX pe_ci
+  AND t_d,X
+  EOR t_cb,X
+  CPY pe_ym
+  BNE pl0c
+  BIT pe_dm
+  BPL pl0c
+  JSR pe_m2               \ (the one byte: and the edge after)
+  SEC
+.pl0c
+.r_fc STA &FFFF,Y
+  CPY pe_ym
+  BEQ pl9
+  TYA
+  ADC #8                  \ (C clear: Y < pe_ym)
+  TAY
+  BNE pl2                 \ (always)
+.pl7
+  JMP pe_s
+.pl8
+  JMP pr4
+.pl5
+  LDA cg_np               \ from the first byte not yet written, if any
+  CMP #&FF
+  BEQ pl8
+  ORA r_pline
+  TAY
+  CPY pe_ym
+  BEQ pl1
+  BCS pl8
+.pl1
+  LDX pe_ci
+.pl2
+  CPY pe_ym
+  BEQ pl3
+  LDA t_ca,X              \ whole bytes of the colour after
+.r_fd STA &FFFF,Y
+  TYA
+  ADC #8                  \ (C clear: Y < pe_ym)
+  TAY
+  BNE pl2                 \ (always)
+.pl3
+  LDA t_ca,X              \ the last
+  BIT pe_dm
+  BPL pl4
+  JSR pe_m2               \ (with the edge after in it)
+  SEC
+.pl4
+.r_fe STA &FFFF,Y
+.pl9
+  TYA                     \ the next byte's pixels (C set)
+  ORA #7
+  ADC #0
+  STA cg_np
+  JMP pe_x
+
+\ pe_m2: A = a byte as the list has it up to the edge after pe's (pe_dm:
+\ that edge is in it, and no other after): the byte with that edge's
+\ colour from it on. Keeps Y
+
+.pe_m2
+{
+  STA cg_t
+  LDA #0
+  STA pe_dm
+  LDX pe_j
+  INX
+  CPX r_je
+  BNE m1
+  PEROLE                  \ (the end after the right end)
+  BNE m3                  \ (always)
+.m1
+  LDA pe_ci               \ a boundary: after the left end the first, else
+  CMP #PR_A               \ the other of the two
+  BCS m2
+  ORA #PR_A
+  BCC m4                  \ (always)
+.m2
+  EOR #PR_A EOR PR_B
+  BCS m4                  \ (always)
+.m3
+  ORA r_cmb
+.m4
+  STA cg_mk
+  LDA ce,X
+  AND #7
+  LSR A
+  TAX
+  LDA r_lm4,X
+  LDX cg_mk
+  AND t_d,X
+  EOR cg_t
+  RTS
+}
+
+\ ============================================================================
+\ cg: the bytes of pixels X .. Y (X <= Y) of the row written whole, as the
+\ row's new list has them. A row's calls come left to right: the bytes
+\ before cg_np's (the one after the last written) are left out. X is the
+\ place in the list (the next edge), cg_cur the colour before it: from the
+\ list's start, or (cgs) from edge cg_sj if the edge before that is before
+\ the first byte. A byte with no edge in it is cg_cur, a run of them up to
+\ the next edge's byte or the end (four bytes a pass while there are
+\ four); a byte with edges is mixed
+\ from the colours either side of each (cg_byte). The first and last
+\ columns hold the border's pixels, which are kept (cg_bw: the only bytes
+\ the painter reads). Clobbers A, X, Y.
+\ ============================================================================
+
+MACRO CGADV               \ the place in the list on past edge X: A = cg_cur =
+  TXA                     \ the colour after it (the first edge: the first
+  BEQ l                   \ colour; the last: black; a boundary: the other
+  INX                     \ colour)
+  CPX cg_n
+  BEQ e
+  LDA cg_cur
+  EOR cg_k
+  BCC s                   \ (always: C clear from the CPX)
+.l
+  LDA cg_c0
+  INX
+  BNE s                   \ (always: X is 1)
+.e
+  LDA #0
+.s
+  STA cg_cur
+ENDMACRO
+
+.cg
+  LDA #0
+  STA cg_sj
+.cgs
+  TYA
+  AND #&F8
+  ORA r_pline
+  STA cg_ye               \ the last byte
+  TXA
+  AND #&F8
+  CMP cg_np
+  BCS cg0
+  LDA cg_np               \ from the byte after the last one written
+  CMP #&FF
+  BEQ cg9                 \ (the last column is written: nothing more)
+.cg0
+  STA cg_lo
+  ORA r_pline
+  TAY                     \ the first
+  LDA cg_np
+  BNE cg1
+  STY cg_fw               \ (the row's first write)
+.cg1
+  CPY cg_ye
+  BEQ cg1a
+  BCS cg9                 \ nothing left
+.cg1a
+  LDX r_cmb               \ the first colour, and the two's difference
+  LDA t_ca,X
+  STA cg_c0
+  LDA t_d+PR_A,X
+  STA cg_k
+  LDX cg_sj               \ the place in the list
+  BEQ cg1c
+  LDA ce-1,X
+  CMP cg_lo
+  BCS cg1b                \ (the edge before is not before the first byte)
+  TXA                     \ the colour before the edge: the first for the
+  LSR A                   \ first boundary, the third ...
+  LDA cg_c0
+  BCS cg1d
+  EOR cg_k
+  BCC cg1d                \ (always)
+.cg1b
+  LDX #0
+.cg1c
+  LDA #0
+.cg1d
+  STA cg_cur
+  CPY #8
+  BCS cg2
+  LDA #&77                \ the first column: the border's pixel is its
+  JSR cg_bw               \ first
+  CPY cg_ye
+  BEQ cg9
+  TYA
+  ADC #8                  \ (C clear: Y < cg_ye)
+  TAY
+.cg2
+  CPY #&F8
+  BCS cg7                 \ (the last column alone)
+  LDA cg_ye
+  CMP #&F8
+  BCC cg3                 \ (cg3 returns for cg)
+  SBC #8                  \ the last column after the rest (C set)
+  STA cg_ye
+  JSR cg3
+  LDA r_pline
+  ORA #&F8
+  TAY
+.cg7
+  LDA #&EE                \ the last column: the border's pixel is its last
+  JMP cg_bw
+.cg9
+  RTS
+
+.cg3                      \ the bytes Y .. cg_ye, of columns 1 to 30
+  CPX cg_n
+  BCS cg3a                \ (no more edges: to the end)
+  LDA ce,X
+  AND #&F8
+  ORA r_pline
+  STA cg_eb
+  CPY cg_eb
+  BCC cg4                 \ whole bytes up to the next edge's
+  JSR cg_byte             \ a byte with an edge
+.r_gd STA &FFFF,Y
+  JMP cg6
+.cg3a
+  LDA cg_ye
+  BCS cg4a                \ (always)
+.cg4
+  LDA cg_eb               \ the run's last byte: the one before the edge's,
+  SBC #7                  \ or the end (C clear: - 8)
+  CMP cg_ye
+  BCC cg4a
+  LDA cg_ye
+.cg4a
+  STA cg_st
+  STY cg_t
+  SEC
+  SBC cg_t
+  CMP #24                 \ four bytes or more: four a pass
+  BCC cg5
+  STX cg_j
+  LDA cg_st               \ (the last place a pass can start; C set)
+  SBC #24
+  STA cg_t
+  LDA cg_cur
+.cg4b
+.r_ge STA &FFFF,Y
+.r_gf STA &FFFF,Y
+.r_gg STA &FFFF,Y
+.r_gh STA &FFFF,Y
+  TAX
+  TYA
+  CLC
+  ADC #32
+  TAY
+  TXA
+  CPY cg_t
+  BCC cg4b
+  BEQ cg4b
+  LDX cg_j
+  CPY cg_st
+  BEQ cg5
+  BCS cg5a                \ (none left)
+.cg5
+  LDA cg_cur
+.r_gi STA &FFFF,Y
+  CPY cg_st
+  BEQ cg6
+  TYA
+  ADC #8                  \ (C clear: Y < cg_st)
+  TAY
+  BNE cg5                 \ (always)
+.cg5a
+  LDY cg_st
+.cg6
+  CPY cg_ye
+  BEQ cg6a
+  TYA
+  ADC #8                  \ (C clear: Y < cg_ye)
+  TAY
+  JMP cg3
+.cg6a
+  TYA                     \ the next byte's pixels (C set by the CPY)
+  ORA #7
+  ADC #0
+  STA cg_np
+  RTS
+
+\ cg_bw: byte Y, in the first or the last column, written but for the
+\ border's pixel (A = the mask of the others); X = the place in the list,
+\ passed on
+
+.cg_bw
+  STA cg_bm
+  JSR cg_byte
+.r_ga EOR &FFFF,Y
+  AND cg_bm
+.r_gb EOR &FFFF,Y
+.r_gc STA &FFFF,Y
+  LDA #8                  \ the next byte's pixels: the second column's, or
+  CPY #8                  \ none after the last column
+  BCC P%+4
+  LDA #&FF
+  STA cg_np
+  RTS
+
+\ cg_byte: A = byte Y of the row as the list has it, X = the place in the
+\ list (the next edge), passed on over the edges before the byte and in it
+
+{
+.b8
+  LDA cg_cur
+  RTS
+.^cg_byte
+.b0
+  CPX cg_n
+  BCS b8
+  LDA ce,X
+  AND #&F8
+  ORA r_pline
+  STA cg_eb
+  CPY cg_eb
+  BEQ b1
+  BCC b8
+  {
+  CGADV                   \ (an edge before the byte)
+  }
+  JMP b0
+.b1
+  STY cg_t
+  LDA cg_cur              \ the colour at the byte's start, then each edge's
+  STA cg_acc              \ colour over the pixels from the edge on
+.b2
+  LDA ce,X
+  AND #7
+  LSR A
+  TAY
+  LDA r_lm4,Y
+  STA cg_mk
+  {
+  CGADV
+  }
+  EOR cg_acc
+  AND cg_mk
+  EOR cg_acc
+  STA cg_acc
+  CPX cg_n
+  BCS b7
+  LDA ce,X                \ (another in the byte?)
+  EOR ce-1,X
+  AND #&F8
+  BEQ b2
+.b7
+  LDY cg_t
+  LDA cg_acc
+  RTS
+}
+
+\ dp_cols: (the frame's first batch) the colours' tables, if the colours
+\ are not the last frame's: for each parity of the row and either colour
+\ first (X = 2 x parity + colour B first), each role's colour before the
+\ edge (t_cb), after it (t_ca) and the two's difference (t_d). The left
+\ end's colour before and the right end's after are black, as assembled
+
+.dp_cols
+{
+  LDA R_DCE
+  CMP t_ca
+  BNE c1
+  LDA R_DBE
+  CMP t_ca+1
+  BNE c1
+  LDA R_DCO
+  CMP t_ca+2
+  BNE c1
+  LDA R_DBO
+  CMP t_ca+3
+  BEQ c9
+.c1
+  LDX #3
+.c2
+  TXA
+  LSR A
+  TAY
+  LDA R_DCE,Y
+  BCC c3
+  LDA R_DBE,Y
+.c3
+  STA t_ca+PR_L,X         \ the first colour
+  STA t_d+PR_L,X
+  STA t_cb+PR_A,X
+  STA t_ca+PR_B,X
+  STA t_cb+PR_E0,X
+  STA t_d+PR_E0,X
+  STA cg_t
+  TXA
+  LSR A
+  LDA R_DBE,Y
+  BCC c4
+  LDA R_DCE,Y
+.c4
+  STA t_ca+PR_A,X         \ the second
+  STA t_cb+PR_B,X
+  STA t_cb+PR_E1,X
+  STA t_d+PR_E1,X
+  EOR cg_t
+  STA t_d+PR_A,X
+  STA t_d+PR_B,X
+  DEX
+  BPL c2
+.c9
+  LDA #0
+  STA dp_new
+  RTS
+}
+
+\ r_rowq: (r_ent, another character row) X = the row, A = row AND &F8: the
+\ writes on the last one noted (dp_flush), and the
+\ character row's address in the buffer, its byte in column 0, line 0, in
+\ the layer's stores' operands (as r_rowp's, for r_sw)
+
+.r_rowq
+  STA cg_t
+  JSR dp_flush            \ (the last character row's writes)
+  LDA #0                  \ what R_NOTE keeps of this one's
+  LDY cg_t
+  CPY r_n0
+  BCC rq0
+  CPY r_n1
+  BCS rq0
+  LDA #&80
+.rq0
+  CPY #(QSGY-QSGIN) AND &F8
+  BCC rq1
+  CPY #((QSGY+QSGIN) AND &F8)+8
+  BCS rq1
+  BIT pw_sg
+  BMI rq1
+  ORA #&40
+.rq1
+  STA r_nf
+  TYA
+  STA r_pcrw
+  AND #&18
+  ASL A
+  ASL A
+  ASL A
+  ORA #32
+  STA r_fa+1
+  STA r_fb+1
+  STA r_fc+1
+  STA r_fd+1
+  STA r_fe+1
+  STA r_ga+1
+  STA r_gb+1
+  STA r_gc+1
+  STA r_gd+1
+  STA r_ge+1
+  STA r_gi+1
+  ORA #8                  \ (the passes of four: the next three bytes)
+  STA r_gf+1
+  EOR #24
+  STA r_gg+1
+  ORA #8
+  STA r_gh+1
+  TXA
+  LSR A
+  LSR A
+  LSR A
+  STA RZ_PP+1
+  LSR A
+  LSR A
+  CLC
+  ADC RZ_PP+1
+.dp_scr2
+  ADC #HI(SCREEN%)        \ (patched: the buffer's screen)
+  STA r_fa+2
+  STA r_fb+2
+  STA r_fc+2
+  STA r_fd+2
+  STA r_fe+2
+  STA r_ga+2
+  STA r_gb+2
+  STA r_gc+2
+  STA r_gd+2
+  STA r_ge+2
+  STA r_gf+2
+  STA r_gg+2
+  STA r_gh+2
+  STA r_gi+2
+  RTS
+
 
 \ ******************************************************************************
 \
 \ r_sw: pixels X .. Y (X <= Y, game x) of the row (r_rowp: RZ_Y, RZ_PP set)
 \ in colour A, each end's byte masked.  Clobbers A, X, Y, RZ_COL, RZ_SA,
-\ RZ_SA+1, RZ_T7.  With r_qok bit 7 set, a span of 16 whole bytes or more is
-\ queued for bank 5's row runs while the queue has room (r_sq).
+\ RZ_SA+1, RZ_T7.  The second disc's writes (gfx-raster_disc2.asm), which
+\ keep the pixels round them.
 \
 \ Port: the Master port's, with the byte offsets worked out (8 x (x DIV 8)
 \ from the row's address) and the masks from four-byte tables (r_lm4, r_rm4,
@@ -607,11 +1868,6 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   EOR RZ_SA
   CMP #8                  \ C clear: one byte, whose mask is both ends'
   BCC one
-  BIT r_qok               \ long and queued?
-  BPL m1
-  JSR r_sql
-  BCC c9
-.m1
   LDA RZ_SA               \ the last byte's offset (+ the line)
   AND #&F8
   ORA r_pline
@@ -686,56 +1942,6 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   RTS
 }
 
-\ r_sql: pixels X .. RZ_SA of the row, in RZ_COL: queued (C
-\ clear) if 16 whole bytes or more lie between the ends and the queue has
-\ room, else C set (X kept). r_sq: queued if there is room (C clear), else C
-\ set (X kept)
-.r_sql
-{
-  LDA RZ_SA
-  SEC
-  STX RZ_T7
-  SBC RZ_T7               \ Y - X >= 129 pixels: perhaps; the exact test below
-  CMP #129
-  BCC no
-  LDA RZ_SA               \ (whole bytes: Y DIV 8 - X DIV 8 - 1 >= 16)
-  LSR A
-  LSR A
-  LSR A
-  STA RZ_T7
-  TXA
-  LSR A
-  LSR A
-  LSR A
-  EOR #&FF
-  SEC
-  ADC RZ_T7
-  CMP #17
-  BCS r_sq
-.no
-  SEC
-  RTS
-}
-.r_sq
-{
-  LDY DB_QN
-  CPY #DB_QE - DB_Q
-  BCS no
-  LDA RZ_Y
-  STA DB_Q,Y
-  TXA
-  STA DB_Q+1,Y
-  LDA RZ_SA
-  STA DB_Q+2,Y
-  LDA RZ_COL
-  STA DB_Q+3,Y
-  TYA
-  ADC #4                  \ (C = 0 from the CPY)
-  STA DB_QN
-.no
-  RTS
-}
-
 .r_lm4  EQUB &FF, &77, &33, &11   \ MODE 5 pixels p .. 3 of a byte
 .r_rm4  EQUB &88, &CC, &EE, &FF   \ pixels 0 .. p
 
@@ -789,834 +1995,78 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   RTS
 .r_pline EQUB 0           \ (r_rowp's: the row's line, its character row)
 .r_pcrow EQUB &FF
-
-\ ============================================================================
-\ r_dpe: X = row of a two-colour disc, no dirty, its span, count or colour
-\ changed (r_dmb).  A row is a list of edges: its span's left end, its
-\ boundaries, the end after its right end; a pixel takes the colour after
-\ the last edge at or before it (black after the last).  The old list and
-\ the new are made alike, three boundaries each and the same colour at the
-\ left end, with virtual boundaries (segments of no width): one at the left
-\ end of the list with fewer if the colours there differ, then at the end
-\ after the right end of each list as many as it lacks.  Then each edge's
-\ strip, old .. new, is written in the colour on the side it moved from,
-\ cut short where the edge before's new place (moving right) or the edge
-\ after's (moving left) has passed into it: exactly the pixels whose
-\ colour changed (each such pixel lies in one strip, as the edges are in
-\ order, old and new).  More than three boundaries after that, or an
-\ unknown old count: r_drg, a repaint.  No old span: the new one segment by
-\ segment (r_segw); a row with no old span has a count of none (DP_BEGIN,
-\ the switch from plain rows and every write of an empty span keep it so),
-\ so the same count means both spans there.  No new span: r_dp2 blacks the
-\ old.  No boundaries, old or new, and the same colour: r_dp2's one-colour
-\ row.
-\ ============================================================================
-\ r_dpb: r_dp2 for a one-colour row in colour B (X = row): R_DCE / R_DCO and
-\ R_DBE / R_DBO swapped round it.  Returns X = RZ_Y.
-.r_dpb
-  JSR r_dsw
-  JSR r_dp2
-.r_dsw                    \ swap the colour pairs (X kept)
-  LDA R_DCE
-  LDY R_DBE
-  STA R_DBE
-  STY R_DCE
-  LDA R_DCO
-  LDY R_DBO
-  STA R_DBO
-  STY R_DCO
-  RTS
-.r_dpe
-{
-  STX RZ_Y
-  LDA rn_n                \ the count and the colour (bit 7), new and old
-.^r_pbn23 CMP R_BDN0,X
-  BEQ sm
-  JMP df
-.sm
-  ASL A                   \ the same (A = 2 count, C = the colour): no
-  BNE sc                  \ boundaries: a one-colour row, which r_dp2 does
-  BCS r_dpb               \ in less time, in colour A (R_DCE / R_DCO) or,
-  JMP r_dp2               \ with the pairs swapped round it, B
-.sc
-  LSR A                   \ (both spans there: a count of one to three)
-  STA r_ok
-  STA r_nk
-  JSR ld
-  LDA rn_n
-  JMP rs_cs
-.df                       \ another count or colour
-.^r_pbn24 LDA R_BDN0,X
-  CMP #&40
-  BEQ rp                  \ (the old count unknown)
-  LDA rn_l
-  CMP #&FF
-  BEQ ne
-  LDA rn_n                \ the counts (the new at most three)
-  AND #7
-  CMP #4
-  BCS rp
-  STA r_nk
-.^r_pbn25 LDA R_BDN0,X
-  AND #3
-  STA r_ok
-.^r_psl26 LDA R_DISCL0,X
-  CMP #&FF
-  BEQ oe
-  JSR ld
-  LDA rn_n                \ (C: the colours at the left end differ)
-.^r_pbn26 EOR R_BDN0,X
-  ASL A
-  LDA rn_n
-  JMP rs_df
-.rp
-  TXA                     \ a repaint
-  TAY
-  JMP r_drg
-.ne
-  JSR r_dp2               \ no new span: the old one black, then the row's
-  LDY RZ_Y                \ count and colour
-  JMP r_bstore
-.oe
-  JSR r_rowp              \ no old span: the new one segment by segment
-  TXA                     \ (r_segw)
-  TAY
-  JSR r_bcols
-  LDA rn_l
-  STA r_nL
-  LDA rn_r
-  STA r_nR
-  LDX #&FF                \ (NMOS: X, for a 0)
-  STX r_wmin
-  INX
-  STX r_wmax
-  JSR r_segw
-  JMP r_dpst
-\ ld: row X's edges as raster_strips.asm wants them, the row pointers and
-\ nothing written yet (r_wmin, r_wmax); keeps X (NMOS: clobbers Y)
-.ld
-.^r_psl27 LDA R_DISCL0,X
-  STA r_ol
-.^r_pb025 LDA R_BDX00,X
-  STA rs_t0
-.^r_pb125 LDA R_BDX10,X
-  STA rs_t1
-.^r_pb225 LDA R_BDX20,X
-  STA rs_t2
-.^r_psr27 LDY R_DISCR0,X  \ (NMOS: in Y, as there is no INC A)
-  INY
-  STY r_oe
-  LDA rn_l
-  STA r_nl
-  LDA rn_x0
-  STA rs_t3
-  LDA rn_x1
-  STA rs_t4
-  LDA rn_x2
-  STA rs_t5
-  LDY rn_r
-  INY
-  STY r_ne
-  JSR r_rowp
-  LDY #&FF
-  STY r_wmin
-  INY
-  STY r_wmax
-  RTS
-}
-.rs_ov                    \ (raster_strips.asm: more than three boundaries,
-  LDY RZ_Y                \ nothing written: a repaint)
-  JMP r_drg
- INCLUDE "1-source-files/main-sources/gfx-raster_strips.asm"
-\ r_dpst: (falling from raster_strips.asm's strips, or from r_dpe) the row's
-\ new span, count, colour and boundaries; what was written
-.r_dpst
-{
-  LDY RZ_Y                \ the row's new span, count, colour and boundaries;
-  LDA rn_l                \ what was written
-.^r_psl28 STA R_DISCL0,Y
-  LDA rn_r
-.^r_psr28 STA R_DISCR0,Y
-  LDA rn_n
-.^r_pbn27 CMP R_BDN0,Y
-  BNE e5
-  LDA rn_x0               \ (the same count and colour)
-.^r_pb026 STA R_BDX00,Y
-  LDA rn_x1
-.^r_pb126 STA R_BDX10,Y
-  LDA rn_x2
-.^r_pb226 STA R_BDX20,Y
-  BCS e6                  \ (always: C set by the CMP)
-.e5
-  JSR r_bstore
-.e6
-  LDA r_wmax
-  BEQ e7
-  STA rw_r
-  LDA r_wmin
-  STA rw_l
-.e7
-  LDX RZ_Y
-  RTS
-}
-
-\ r_segw: r_drg with boundaries: the whole new span r_nL..r_nR, segment by
-\ segment in colours A / B (row RZ_Y, r_cA/r_cB set; the boundaries r_bv:
-\ the row's, rn_x0 .. rn_x3)
-.r_segw
-{
-  LDA r_nR
-  CMP r_nL
-  BCS go
-  RTS
-.go
-  LDA rn_n                \ the count (at most 4) and the colour (bit 7)
-  AND #&7F
-  STA r_cn
-  LDA rn_n
-  ROL A
-  ROL A
-  AND #1
-  STA r_np                \ colour now
-  LDA r_nL
-  STA r_ba                \ segment start
-  LDX #0
-.lp
-  CPX r_cn
-  BCS last
-  LDA r_bv,X
-  CMP r_nL
-  BEQ flip
-  BCC flip
-  CMP r_nR
-  BEQ s2
-  BCS last
-.s2
-  CMP r_ba
-  BEQ flip                \ empty segment
-  STX r_nn
-  TAX
-  DEX
-  JSR seg
-  LDX r_nn
-  LDA r_bv,X
-  STA r_ba
-.flip
-  LDA r_np
-  EOR #1
-  STA r_np
-  INX
-  BNE lp                  \ (always: X <= 4)
-.last
-  LDX r_nR
-.seg                      \ r_ba .. X in colour r_np
-  LDA r_np
-  LSR A
-  LDA r_cA
-  BCC c1
-  LDA r_cB
-.c1
-  STA RZ_COL
-  LDA r_ba
-  JMP r_dw
-}
-
-\ r_dlx: (r_dp2 and r_drg's) the row's new span empty: its boundaries none
-\ too, as a row with no old span must have (r_dpe), when the layer keeps
-\ boundaries (r_bon)
-
-\ r_dp2: X = row, dirty empty, disc changed (one colour, R_DCE / R_DCO by
-\ row parity).  The old span is intact, so only the difference between it
-\ and the new one is written: pixels in the new span but not the old take
-\ the disc colour, pixels in the old but not the new go black, each piece by
-\ r_sw (masked at its end bytes, so the pieces can share bytes, and the
-\ window's border columns keep their pixels).  At most two pieces: the two
-\ ends' strips when the spans overlap, else the old span and the new one.
-\ rw_l/rw_r = the bytes written (none: left as they are).  Returns X = RZ_Y.
-.r_dp2
-{
-  JSR r_rowp              \ row pointers (RZ_Y = X)
-.^r_psl29 LDA R_DISCL0,X
-  STA RZ_T0               \ oL
-.^r_psr29 LDY R_DISCR0,X  \ (Y = oR kept until the TYA below; emp leaves Y alone)
-  STY RZ_T1               \ oR
-  LDA rn_l                \ nL, nR: clamped to the window (empty: 255, 0)
-  CMP R_CL
-  BCS c0
-  LDA R_CL
-.c0
-  STA RZ_T2
-.^r_psl30 STA R_DISCL0,X  \ (before r_sr: nothing reads either in between)
-  LDA rn_r
-  CMP R_CR
-  BCC c1
-  LDA R_CR
-.c1
-  CMP RZ_T2
-  BCC emp                 \ nR < nL: empty (out of line)
-.c1b
-  STA RZ_T3
-.^r_psr30 STA R_DISCR0,X
-  TYA                     \ old empty: the new span (A = oR)
-  BCC empd                \ (C clear: from emp, the new span empty)
-  CMP RZ_T0
-  BCC jonew
-  CMP RZ_T2               \ (nR >= nL here: the new span is not empty)
-  BCC jboth               \ apart (oR < nL or nR < oL): both
-.ovl
-  LDA RZ_T2               \ overlapping: the left end (rw_l/rw_r noted here,
-  CMP RZ_T0               \ the left end's strip before the right end's)
-  BEQ requal              \ (nL >= oL: nR >= nL >= oL, so not apart)
-  BCS lshr
-  LDY RZ_T0               \ nL < oL: apart if nR < oL, i.e. oL-1 >= nR
-  DEY
-  CPY RZ_T3
-  BCS jboth
-  AND #&F8                \ grown: nL .. oL-1 in the disc colour
-  STA r_wmin
-  TYA
-  ORA #7
-  STA rw_r                \ rw_r: the left end's bytes (the right end's strip, if
-  TXA                     \ any, overwrites it) (X = RZ_Y; the row's disc colour:
-                          \ R_DCE / R_DCO by parity)
-  AND #1
-  TAX
-  LDA R_DCE,X
-  LDX RZ_T2
-  JSR r_sw
-  JMP right               \ (NMOS: no BRA)
-.jboth
-  JMP both
-.jonew
-  JMP onew0
-.empd                     \ new empty (A = oR): old empty too: onew0, else
-  CMP RZ_T0               \ the old span black
-  BCC jonew
-  LDA RZ_T0               \ (as oblk: X = oL, r_wmin = oL AND &F8, then
-  BCS rqs1                \ .rshr2: Y = oR, rw_r = oR OR 7, black; always)
-.emp
-  LDA #&FF                \ empty new span: (255, 0)
-  STA RZ_T2
-.^r_psl31 STA R_DISCL0,X
-  LDA #0                  \ (A = 0, C clear: BCC emp)
-  BEQ c1b
-.requal                   \ left ends equal: r_wmin from the right end's strip
-  LDA RZ_T3
-  CMP RZ_T1
-  BEQ none                \ same span: nothing written (X = RZ_Y)
-  BCC rqs
-  LDA RZ_T1               \ grown: r_wmin = (oR + 1) AND &F8
-  ADC #0                  \ (C set: + 1)
-  AND #&F8
-  STA r_wmin
-  LDA RZ_T3
-  BNE rgr                 \ (always: nR > oR)
-.rqs                      \ shrunk: r_wmin = (nR + 1) AND &F8, X = nR + 1
-  ADC #1                  \ (C clear)
-.rqs1                     \ (entered here from .empd with A = oL)
-  TAX
-  AND #&F8
-  STA r_wmin
-  JMP rshr2               \ (NMOS: no BRA)
-.lshr
-  SBC #1                  \ shrunk: oL .. nL-1 black (C set)
-  TAY
-  ORA #7
-  STA rw_r
-  LDA RZ_T0
-  TAX
-  AND #&F8
-  STA r_wmin
-  LDA #0                  \ (black: NMOS has no STZ, so through r_sw's
-  JSR r_sw                \ STA RZ_COL)
-.right                    \ (r_wmin and rw_r already set by the left end's strip)
-  LDA RZ_T3
-  CMP RZ_T1
-  BEQ fin
-  BCS rgr
-.rshr
-  ADC #1                  \ shrunk: nR+1 .. oR black (C clear)
-  TAX
-.rshr2                    \ (entered here from .rqs1 with X = nR+1 or oL)
-  LDY RZ_T1
-  LDA #0                  \ (black, through r_sw's STA RZ_COL)
-  JSR r_sw
-  LDX RZ_Y
-  LDA RZ_T1               \ rw_r: the bytes written
-  ORA #7
-.wr
-  STA rw_r
-  BNE fin2                \ (always: A >= 3)
-.rgr
-  TAY                     \ (Y = nR for r_sw)
-  ORA #7                  \ grown: oR+1 .. nR in the disc colour
-  STA rw_r                \ rw_r: the bytes written (the right end's strip is the max)
-  LDA RZ_Y                \ the row's disc colour
-  AND #1
-  TAX
-  LDA R_DCE,X
-  LDX RZ_T1
-  INX
-  JSR r_sw
-.fin                      \ (rw_r set and a strip written on every path here)
-  LDX RZ_Y                \ (X = RZ_Y on return)
-.fin2
-  LDA r_wmin              \ rw_l: the bytes written
-  STA rw_l
-.none
-  RTS
-.onew0                    \ old span empty: nothing noted yet
-  LDY #&FF                \ (NMOS: Y, for a 0)
-  STY r_wmin
-  INY
-  STY r_wmax
-  BEQ onew                \ (always)
-.both
-  JSR oblk
-.onew
-  LDA RZ_T3
-  CMP RZ_T2
-  BCC none                \ both spans empty (only from onew0, X = RZ_Y still)
-  TAY
-  LDA RZ_Y                \ the row's disc colour
-  AND #1
-  TAX
-  LDA R_DCE,X
-  STA RZ_COL
-  LDX RZ_T2
-  JSR put
-  LDX RZ_Y
-  LDA r_wmax              \ rw_r: the bytes written (r_wmax >= 3: a strip was written)
-  BNE wr                  \ (always)
-.oblk                     \ the old span black (always the first strip)
-  LDX #&FF                \ (NMOS: X, for a 0)
-  STX r_wmin
-  INX
-  STX r_wmax
-  STX RZ_COL
-  LDX RZ_T0
-  LDY RZ_T1
-.put                      \ pixels X .. Y in colour RZ_COL (X <= Y), noted
-  TXA
-  AND #&F8
-  CMP r_wmin
-  BCS p1
-  STA r_wmin
-.p1
-  TYA
-  ORA #7
-  CMP r_wmax
-  BCC p2
-  STA r_wmax
-.p2
-  LDA RZ_COL
-  JMP r_sw
-}
-
-\ r_drg: general disc row, Y = row (its data loaded)
-.r_drg
-{
-  TYA
-  TAX
-  JSR r_rowp
-  LDX #&FF                \ (NMOS: X, for a 0, kept 0 to .idone or .iempty:
-  STX r_wmin              \ X = 0 below)
-  INX
-  STX r_wmax
-  TYA
-  LSR A
-  LDA R_DCE
-  BCC e
-  LDA R_DCO
-.e
-  STA r_dcol
-  STX r_segs
-  LDA r_bon
-  BEQ dn
-  JSR r_bcols             \ boundaries: plain only if none, old and new,
-  LDA rn_n                \ and the same colour
-.^r_pbn28 CMP R_BDN0,Y
-  BNE sg
-  ASL A                   \ (A = 2 count, C = the colour)
-  BNE sg
-  LDA r_cA
-  BCC sg1
-  LDA r_cB
-.sg1
-  STA r_dcol
-  JMP dn                  \ (NMOS: no BRA)
-.sg
-  INC r_segs
-.dn
-.^r_psl32 LDA R_DISCL0,Y
-  STA r_oL
-.^r_psr32 LDA R_DISCR0,Y
-  STA r_oR
-  LDA rd_l
-  STA r_dL
-  LDA rd_r
-  STA r_dR
-  LDA rn_l
-  CMP R_CL
-  BCS n1
-  LDA R_CL
-.n1
-  STA r_nL
-  LDA rn_r
-  CMP R_CR
-  BCC n2
-  LDA R_CR
-.n2
-  STA r_nR
-  CMP r_nL
-  BCS n3
-  LDA #&FF
-  STA r_nL
-  STX r_nR                \ (X = 0)
-.n3
-  \ intact = old - dirty (the larger piece)
-  LDA r_oR
-  CMP r_oL
-  BCC iempty
-  LDA r_dR
-  CMP r_dL
-  BCC iwhole
-                          \ (A = r_dR still)
-  CMP r_oL
-  BCC iwhole
-  LDA r_oR
-  CMP r_dL
-  BCC iwhole
-  LDA r_dL
-  SEC
-  SBC r_oL
-  BCS i1
-  TXA                     \ (X = 0)
-.i1
-  STA r_tl
-  LDA r_oR
-  SEC
-  SBC r_dR
-  BCS i2
-  TXA
-.i2
-  CMP r_tl
-  BEQ usel
-  BCC usel
-  LDX r_dR
-  INX
-  STX r_iL
-  LDA r_oR
-  STA r_iR
-  BCS idone               \ (always: C set by the CMP)
-.usel
-  LDA r_tl
-  BEQ iempty
-  LDA r_oL
-  STA r_iL
-  LDX r_dL
-  DEX
-  STX r_iR
-  JMP idone               \ (NMOS: no BRA)
-.iwhole
-  LDA r_oL
-  STA r_iL
-  LDA r_oR
-  STA r_iR
-  BCC idone               \ (always: from BCC iwhole)
-.iempty
-  LDA #&FF
-  STA r_iL
-  STX r_iR                \ (X = 0)
-.idone
-  LSR r_dsub              \ (0 or 1: cleared, C = the old value)
-  LDA r_segs
-  BEQ dc0
-  BCC whole               \ span and boundaries unchanged (r_dmb): only the
-                          \ dirty part of the span
-  LDA r_nL
-  PHA
-  LDA r_nR
-  PHA
-  LDA r_dL
-  CMP r_nL
-  BCC sb1
-  STA r_nL
-.sb1
-  LDA r_dR
-  CMP r_nR
-  BCS sb2
-  STA r_nR
-.sb2
-  JSR r_segw
-  PLA
-  STA r_nR
-  PLA
-  STA r_nL
-  JMP nodisc
-.whole
-  JSR r_segw              \ boundaries: repaint the whole new span
-  JMP nodisc
-.dc0
-  \ disc colour on new - intact
-  LDA r_nR
-  CMP r_nL
-  BCC nodisc
-  LDA r_dcol
-  STA RZ_COL
-  LDA r_iR
-  CMP r_iL
-  BCC full
-                          \ (A = r_iR still)
-  CMP r_nL
-  BCC full
-  LDA r_nR
-  CMP r_iL
-  BCC full
-  LDA r_nL
-  CMP r_iL
-  BCS d2
-  LDX r_iL
-  DEX
-  JSR r_dw
-.d2
-  LDA r_iR
-  CMP r_nR
-  BCS nodisc
-  ADC #1                  \ (C clear)
-  LDX r_nR
-  BCC dw                  \ (always: r_dw, as .full)
-.full
-  LDA r_nL
-  LDX r_nR
-.dw
-  JSR r_dw
-.nodisc
-  \ black on (old + dirty) - new
-  LDA #0                  \ (NMOS: no STZ)
-  STA RZ_COL
-  LDA r_oR
-  CMP r_oL
-  BCC oe
-  LDA r_dR
-  CMP r_dL
-  BCC de
-  LDX r_oR
-  INX
-  CPX r_dL
-  BCC sep
-  LDX r_dR
-  INX
-  CPX r_oL
-  BCC sep
-  LDA r_oL
-  CMP r_dL
-  BCC h1
-  LDA r_dL
-.h1
-  STA r_ba
-  LDA r_oR
-  CMP r_dR
-  BCS h2
-  LDA r_dR
-.h2
-  STA r_bb
-  JMP bm                  \ (NMOS: no BRA, so to .oe's r_bmn)
-.sep
-  LDA r_dL
-  STA r_ba
-  LDA r_dR
-  STA r_bb
-  JSR r_bmn
-.de
-  LDA r_oL
-  STA r_ba
-  LDA r_oR
-  STA r_bb
-  JMP bm
-.oe
-  LDA r_dR
-  CMP r_dL
-  BCC fin
-  STA r_bb                \ (A still r_dR)
-  LDA r_dL
-  STA r_ba
-.bm
-  JSR r_bmn
-.fin
-  LDY RZ_Y
-  LDA r_nL
-.^r_psl33 STA R_DISCL0,Y
-  LDA r_nR
-.^r_psr33 STA R_DISCR0,Y
-  LDA r_bon
-  BEQ nb1
-  JSR r_bstore            \ remember this row's boundaries
-.nb1
-  LDA r_wmax
-  STA rw_r
-  BEQ nw
-  LDA r_wmin
-  STA rw_l
-.nw
-  LDX RZ_Y
-  RTS
-}
-
-\ r_bcols: Y = row: r_cA, r_cB = colour A, B bytes of the row (keeps X, Y; r_drg,
-\ r_dpe)
-.r_bcols
-  TYA
-  LSR A                   \ (C: an odd row)
-  LDA R_DCE
-  BCC P%+4
-  LDA R_DCO
-  STA r_cA
-  LDA R_DBE
-  BCC P%+5
-  LDA R_DBO
-  STA r_cB
-  RTS
-
-\ r_bstore: Y = row: remember the row's new boundaries (raw) and colour in
-\ this buffer; a row with more than three is stored as unknown (count &40)
-.r_bstore
-  LDA rn_n
-  ASL A                   \ (2 count)
-  CMP #8
-  BCS bsu
-  LDA rn_n
-.^r_pbn29 STA R_BDN0,Y
-  LDA rn_x0
-.^r_pb027 STA R_BDX00,Y
-  LDA rn_x1
-.^r_pb127 STA R_BDX10,Y
-  LDA rn_x2
-.^r_pb227 STA R_BDX20,Y
-  RTS
-.bsu
-  LDA #&40
-.^r_pbn30 STA R_BDN0,Y
-  RTS
-
-\ r_dp1: X = row with a dirty extent and no disc (old or new): the extent
-\ black, and what was written
-.r_dp1
-  JSR r_rowp
-  LDA rd_l
-  STA rw_l
-  TAX
-  LDA rd_r
-  STA rw_r
-  TAY
-  LDA #0
-  JSR r_sw
-  LDX RZ_Y
-  RTS
-
-\ r_dw: span A..X (A <= X) in RZ_COL on the row set up; tracks wmin/wmax
-.r_dw
-{
-  CMP r_wmin
-  BCS w1
-  STA r_wmin
-.w1
-  CPX r_wmax
-  BCC w2
-  STX r_wmax
-.w2
-  STX r_dwx
-  TAX
-  LDY r_dwx
-  LDA RZ_COL
-  JMP r_sw
-}
-
-\ r_bmn: black on [r_ba, r_bb] minus [r_nL, r_nR]
-.r_bmn
-{
-  LDA r_nR
-  CMP r_nL
-  BCC whole
-  CMP r_ba                \ (A still r_nR)
-  BCC whole
-  LDA r_bb
-  CMP r_nL
-  BCC whole
-  LDA r_ba
-  CMP r_nL
-  BCS b2
-  LDX r_nL
-  DEX
-  JSR r_dw
-.b2
-  LDA r_nR
-  CMP r_bb
-  BCS done
-  ADC #1                  \ (C clear)
-  LDX r_bb
-  JMP r_dw
-.whole
-  LDA r_ba
-  LDX r_bb
-  JMP r_dw
-.done
-  RTS
-}
+.r_pcrw  EQUB &FF         \ (r_ent's: the character row in the layer's stores)
 
 \ The painter's variables
 
 .dp_buf  EQUB 0         \ the buffer (DP_BEGIN)
 .dp_fl   EQUB 0         \ its flags (PB_*)
-.dp_n    EQUB 0         \ the batch: its rows, its first row
-.dp_y0   EQUB 0
-.dp_s    EQUB 0         \ the slot and row in hand (dp_ld, dp_st)
-.dp_x    EQUB 0
-.r_qok   EQUB 0         \ bit 7: long spans may be queued (r_sw)
-.r_sws   EQUB 0         \ (r_sw's)
-.r_dwx   EQUB 0         \ (r_dw's)
+.dp_new  EQUB 0         \ non-zero until the frame's first batch (dp_cols)
+.dp_n    EQUB 0         \ (the second disc's) the batch's rows
+.dp_y0   EQUB 0         \ the batch's first row, and the row after it
+.dp_xe   EQUB 0
+.dp_hi   EQUB 0         \ the layer's last row (DP_BEGIN)
+.dp_cov  EQUB 0         \ the first row whose dirty extent is not in hand
+.dp_s    EQUB 0         \ the next record's place; (the second disc's) the
+.dp_x    EQUB 0         \ slot and the row
+.r_nd    EQUB 0         \ the next dirty row (none: &FF), its place in dq, dq's
+.dq_i    EQUB 0         \ end, and the dirty rows in hand: row, left, right
+.dq_e    EQUB 0         \ (dp_fill)
+.dq      SKIP 3 * DB_DM
+.c_np    EQUB 0         \ the bytes written on the character row in hand: as
+.c_fw    EQUB &FF       \ cg_np (none: 0) and the first's pixel (R_NOTE)
+.pw_l    SKIP 24        \ the frame's writes by character row (dp_flush;
+.pw_r    SKIP 24        \ none: pw_r = 0) and bit 7 if any met the sights
+.pw_sg   EQUB 0
+.r_n0    EQUB 0         \ R_NOTE: the rows whose bytes written are kept (from
+.r_n1    EQUB 0         \ r_n0 to r_n1 - 1), and for the character row in hand
+.r_nf    EQUB 0         \ bit 7: they are, bit 6: the sights are looked for
 .R_DBE   EQUB 0         \ colour B, even and odd rows (DP_BEGIN)
 .R_DBO   EQUB 0
-r_dbe = R_DBE
 .r_bon   EQUB 0         \ this frame's rows use boundaries
-.r_dsub  EQUB 0         \ r_dmb -> r_drg: repaint only the dirty part
-.rn_l    EQUB 0         \ the row's new span, count and colour (R_NDN's form)
-.rn_r    EQUB 0         \ and boundaries (dp_ld)
-.rn_n    EQUB 0
-.rn_x0   EQUB 0
-.rn_x1   EQUB 0
+.ce_s    EQUB 1         \ the row's list of edges: its start (pe), the span's
+.rn_l    EQUB 0         \ left end (none: 255) and the boundaries, as the record
+.rn_x0   EQUB 0         \ has them, then (r_ent) the end after the right end
+.rn_x1   EQUB 0         \ and &FF
 .rn_x2   EQUB 0
 .rn_x3   EQUB 0
-.rd_l    EQUB 0         \ its dirty extent (none: 255, 0)
-.rd_r    EQUB 0
-.rw_l    EQUB 0         \ what it wrote (rw_r = 0: nothing)
+         EQUB 0, 0
+ce = rn_l
+.rn_r    EQUB 0         \ the row's right end (none: 0), count and colour
+.rn_n    EQUB 0         \ (R_NDN's form)
+.rd_r    EQUB 0         \ (r_dty) the dirty extent's right end
+.rw_l    EQUB 0         \ (the second disc's) what it wrote (rw_r = 0: nothing)
 .rw_r    EQUB 0
-r_bv = rn_x0            \ r_segw: the new boundaries (4)
-.r_oL    EQUB 0         \ R_DISCROWS' row variables (the Master port's r_ov)
-.r_oR    EQUB 0
-.r_dL    EQUB 0
-.r_dR    EQUB 0
-.r_nL    EQUB 0
-.r_nR    EQUB 0
-.r_iL    EQUB 0
-.r_iR    EQUB 0
-.r_wmin  EQUB 0
-.r_wmax  EQUB 0
-.r_dcol  EQUB 0
-.r_ba    EQUB 0
-.r_bb    EQUB 0
-.r_tl    EQUB 0
-.r_nn    EQUB 0         \ r_segw: the boundary count; the colour now
-.r_np    EQUB 0
-.r_cA    EQUB 0         \ this row's colour A, B bytes (r_bcols)
-.r_cB    EQUB 0
-r_c0 = r_cA             \ rs_cols: the colour at the left end, the other
-r_c1 = r_cB
-.r_segs  EQUB 0         \ r_drg: repaint the new span segment by segment
-.r_cn    EQUB 0         \ r_dq: 2 count
-.r_oe    EQUB 0         \ raster_strips.asm: the ends after the right ends, old, new
-.r_ne    EQUB 0
-.r_ok    EQUB 0         \ raster_strips.asm: the boundary counts, old, new
-.r_nk    EQUB 0
-.r_ol    EQUB 0         \ raster_strips.asm: the left ends, old, new
-.r_nl    EQUB 0
+.r_md    EQUB 0         \ r_ent: 0, or 1: dirty only, 2: r_gen's
+.r_cmb   EQUB 0         \ 2 x the row's parity + colour B first (dp_cols)
+.r_je    EQUB 0         \ the place in the list of the end after the right end
+.pe_o    EQUB 0         \ pe: the edge's old place, its place in the list, its
+.pe_j    EQUB 0         \ role and the row's colours (the tables' index), the
+.pe_ci   EQUB 0         \ index of the edge's byte (moved left: the last byte)
+.pe_ym   EQUB 0
+.pe_dm   EQUB 0         \ pe: bit 7: the edge after is in the last byte too
+.cg_n    EQUB 0         \ cg: the list's edges (none: 0), the next edge and the
+.cg_sj   EQUB 0         \ cgs: the edge to start at
+.cg_j    EQUB 0         \ (scratch) and the colour before it, the first pixel
+.cg_cur  EQUB 0         \ of the byte after the last written on the row (0:
+.cg_np   EQUB 0         \ none; &FF: the last column was) and of the first
+.cg_lo   EQUB 0         \ wanted, the index of the first byte written, of the last
+.cg_fw   EQUB 0         \ byte wanted, of the next edge's byte, of a run's last
+.cg_ye   EQUB 0         \ byte; scratch; the first colour and its difference
+                        \ from the second
+.cg_eb   EQUB 0
+.cg_st   EQUB 0
+.cg_t    EQUB 0
+.cg_bm   EQUB 0
+.cg_mk   EQUB 0
+.cg_acc  EQUB 0
+.cg_c0   EQUB 0
+.cg_k    EQUB 0
+.r_ok    EQUB 0         \ r_gen: the boundary counts, old and new (dmn's too), 1 with the
+.r_nk    EQUB 0         \ new list's virtual boundary, the new edge in hand,
+.r_s     EQUB 0         \ the old list
+.r_pj    EQUB 0
+.ao      EQUB 0, 0, 0, 0, 0, 0
+.t_cb    EQUB 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0   \ the colours' tables (dp_cols): by
+.t_ca    EQUB 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0   \ role (PR_*) + r_cmb
+.t_d     EQUB 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0

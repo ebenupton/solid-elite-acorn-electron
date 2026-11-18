@@ -3,32 +3,32 @@
 \ gfx-raster_dq.asm - bank 5's side of the disc layer (Model B)
 \
 \ The disc layer's row code (gfx-raster_disc.asm, the painter, in the flight
-\ code's bank 7) cannot see bank 5, so the frame layer (bank 6), which hands
-\ it its rows a batch at a time in the mailbox (gfx-rws.asm: DB_*), passes
-\ what it needs of bank 5 with each batch in one call, R_GETW (T_GETW):
-\ the long spans the painter queued for the row runs drawn, what it wrote
-\ on the last batch's rows put into this frame's written extents (R_WL,
-\ R_WR), and the next batch's dirty extents (which are emptied: the painter
-\ repairs them) or written extents (for the second disc, R_DISC2) taken. The
-\ frame layer also asks R_GETW, with A = &40, for what its text and sights
-\ need of this frame's written and dirty extents (r_wq).
+\ code's bank 7) cannot see bank 5: what it needs of it goes through the
+\ mailbox (gfx-rws.asm: DB_*) in calls of R_GETW (T_GETW, FT_GETW): the
+\ painter's own, for the dirty rows ahead of the layer's rows (which are
+\ emptied: the painter repairs them), and the frame layer's (bank 6) with
+\ each batch of the second disc's rows, R_DISC2: what was written on the
+\ last batch's rows put into this frame's written extents (R_WL, R_WR), and
+\ the next batch's written extents taken. The frame layer also asks R_GETW,
+\ with A = &40, for what its text and sights need of this frame's written
+\ and dirty extents (r_wq).
 \
 \       Area: bank 5
 \
 \ ******************************************************************************
 
-\ R_GETW: A = &40: the frame layer's query (r_wq). Otherwise, in this order:
+\ R_GETW: A = &40: the frame layer's query (r_wq). Otherwise:
 \
-\   * the DB_QN bytes of spans queued at DB_Q (four each: row, left pixel,
-\     right pixel, colour byte) drawn through the row runs (R_DRAINQ), not
-\     marked dirty, and DB_QN emptied;
+\   * A = &20: the dirty rows of rows Y .. X (Y <= X), in order, listed at
+\     DB_D + 1 on (row, left, right: the extent widened to whole MODE 5
+\     pixels, L even, R odd, as the painter writes its rows), and emptied,
+\     DB_DM at most; then the first row not looked at (X + 1 if the list
+\     holds them all), and in DB_D that byte's offset from DB_D;
 \
-\   * X rows (0 to 16) from row DB_PY: DB_WL, DB_WR into R_WL, R_WR, and
-\     into the rows of R_WL/R_WR that may be non-empty (R_PRWT .. R_PRWB);
-\
-\   * A AND &1F rows (0 to 16) from row Y: their dirty extents (widened to
-\     whole MODE 5 pixels) into DB_WL, DB_WR, and emptied (A bit 7 clear: the disc layer's rows), or (A bit 7
-\     set: the second disc's) their written extents.
+\   * else X rows (0 to 16) from row DB_PY: DB_WL, DB_WR into R_WL, R_WR,
+\     and into the rows of R_WL/R_WR that may be non-empty (R_PRWT ..
+\     R_PRWB); then A AND &1F rows (0 to 16) from row Y: their written
+\     extents into DB_WL, DB_WR.
 
 r_gm = RZB + &24              \ (bank 5's zero page, the rasteriser's scratch)
 r_gy = RZB + &25
@@ -42,14 +42,9 @@ r_gx = RZB + &26
   STA r_gm
   STY r_gy
   STX r_gx
-  LDA DB_QN               \ the queue
-  BEQ q0
-  LSR A
-  LSR A
-  JSR R_DRAINQ
-  LDA #0
-  STA DB_QN
-.q0
+  CMP #&20
+  BNE P%+5
+  JMP r_gl                \ (the layer's dirty rows)
   LDX r_gx                \ the last batch's writes
   BEQ g0
   LDY DB_PY
@@ -72,36 +67,12 @@ r_gx = RZB + &26
   BCC g0
   STY R_PRWB
 .g0
-  LDA r_gm                \ the next batch's extents
+  LDA r_gm                \ the next batch's written extents
   AND #&1F
   BEQ g9
   STA r_gx
   LDY r_gy
   LDX #0
-  BIT r_gm
-  BMI gw
-.gd
-.^r_pt601 LDA r_dl,Y              \ (patched: this buffer's) widened to whole
-  CMP #&FF                \ MODE 5 pixels (L even, R odd), as the painter
-  BEQ gd1                 \ writes its rows (none: 255, 0)
-  AND #&FE
-.gd1
-  STA DB_WL,X
-  LDA #&FF
-.^r_pt602 STA r_dl,Y
-.^r_pt603 LDA r_dr,Y
-  BEQ gd2
-  ORA #1
-.gd2
-  STA DB_WR,X
-  LDA #0
-.^r_pt604 STA r_dr,Y
-  INY
-  INX
-  CPX r_gx
-  BNE gd
-.g9
-  RTS
 .gw
   LDA R_WL,Y
   STA DB_WL,X
@@ -111,45 +82,56 @@ r_gx = RZB + &26
   INX
   CPX r_gx
   BNE gw
-  RTS
-}
-
-\ R_DRAINQ: A spans (A >= 1) at DB_Q, four bytes each: row, left pixel, right
-\ pixel (left <= right), colour byte; drawn, not marked
-
-.R_DRAINQ
-{
-  ASL A
-  ASL A
-  STA RZ_T0
-  LDA #0
-  STA RZ_T1
-.lp
-  LDX RZ_T1
-  LDA DB_Q+1,X
-  STA r_xl
-  LDA DB_Q+2,X
-  STA r_xr
-  LDA DB_Q+3,X
-  STA RZ_COL
-  LDY DB_Q,X
-  JSR r_rowset
-  LDX r_xl
-  JSR r_spc
-  LDA RZ_T1
-  CLC
-  ADC #4
-  STA RZ_T1
-  CMP RZ_T0
-  BCC lp
+.g9
   RTS
 }
 
 \ ============================================================================
-\ r_wq, R_GETW's query for the frame layer, in the room below the per-x tables
+\ r_gl, R_GETW's list of dirty rows for the painter, and r_wq, its query for
+\ the frame layer, in the room below the per-x tables
 \
 \       Area: bank 5 gap
 \ ============================================================================
+
+\ r_gl (R_GETW with A = &20): the dirty rows of rows r_gy .. r_gx listed at
+\ DB_D for the painter, and emptied
+
+.r_gl
+{
+  LDY r_gy
+  LDX #1
+.gl1
+.^r_pt603 LDA r_dr,Y      \ (patched: this buffer's; none: 0)
+  BNE gl3
+.gl2
+  CPY r_gx
+  INY
+  BCC gl1
+.gl4
+  TYA                     \ the first row not looked at
+  STA DB_D,X
+  STX DB_D
+  RTS
+.gl3
+  ORA #1
+  STA DB_D+2,X
+  TYA
+  STA DB_D,X
+.^r_pt601 LDA r_dl,Y
+  AND #&FE
+  STA DB_D+1,X
+  LDA #&FF
+.^r_pt602 STA r_dl,Y
+  LDA #0
+.^r_pt604 STA r_dr,Y
+  INX
+  INX
+  INX
+  CPX #3 * DB_DM + 1
+  BCC gl2
+  INY
+  BCS gl4                 \ (always)
+}
 
 \ r_wq (R_GETW with A = &40): for the frame layer's text and sights, what was
 \ written on this buffer this frame (R_WL..R_WR: the repair's writes) and
@@ -160,11 +142,7 @@ r_gx = RZB + &26
 \ rightmost pixel of the union of both extents over its lines 8r..8r+7 (the
 \ rightmost 0: none); MBOX+&34 bit 7 set if the sights are covered: on row 96,
 \ an extent meeting x = 108..149, or on rows 76..116 one meeting x = 128..129
-\ (the arms' MODE 5 pixels)
-
-QSGX = 128
-QSGY = 96
-QSGIN = 20
+\ (the arms' MODE 5 pixels: QSGX, QSGY and QSGIN, gfx-rws.asm)
 
 .r_wq
 {

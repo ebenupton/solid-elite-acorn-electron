@@ -64,8 +64,8 @@ with open(OUT + "resident.asm", "w") as f:
 
 def labels(path):
     """the labels a copy defines, with those of the files it INCLUDEs from
-    1-source-files/main-sources (the cold bank's renderer window: the bank 7
-    passes, and gfx-raster_strips.asm, which gfx-raster_disc.asm INCLUDEs)"""
+    1-source-files/main-sources (none now: the cold bank's renderer window is
+    its bank 7 passes)"""
     try:
         t = open(path, encoding="latin-1").read()
     except FileNotFoundError:          # (before streams.py's place: run again after it)
