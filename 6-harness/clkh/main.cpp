@@ -23,11 +23,16 @@
 //   regs                 print CPU registers and the field count
 //   rowreg old|new       start-of-row register: CLK's original (all bits) or the
 //                        hardware's bits 14..6 (default new)
+//   serve CMD REP        the harness's mode (serve.hpp): commands from the FIFO CMD,
+//                        answers on the FIFO REP
+// Options: --shiftbreak N: SHIFT+BREAK after N cycles (the disc's !Boot run);
+//                        0: no autoboot even for a disc the analyser would boot
 
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <csignal>
 #include <condition_variable>
 #include <cstdint>
 #include <cstdio>
@@ -143,10 +148,10 @@ void dump(Elk &m, const std::string &prefix) {
 
 void regs(Elk &m) {
 	using R = CPU::MOS6502::Register;
-	std::printf("PC=%04x A=%02x X=%02x Y=%02x S=%02x P=%02x fields=%d rom=%d\n",
+	std::printf("PC=%04x A=%02x X=%02x Y=%02x S=%02x P=%02x fields=%d rom=%d cycles=%llu\n",
 		m.m6502_.value_of(R::ProgramCounter), m.m6502_.value_of(R::A), m.m6502_.value_of(R::X),
 		m.m6502_.value_of(R::Y), m.m6502_.value_of(R::StackPointer), m.m6502_.value_of(R::Flags),
-		m.video_.fields_completed, m.active_rom_);
+		m.video_.fields_completed, m.active_rom_, (unsigned long long)m.total_cycles);
 }
 
 void hexdump(const uint8_t *base, unsigned addr, unsigned len) {
@@ -159,9 +164,13 @@ void hexdump(const uint8_t *base, unsigned addr, unsigned len) {
 
 }
 
+#include "serve.hpp"
+
 int main(int argc, char **argv) {
+	std::signal(SIGPIPE, SIG_IGN);
 	std::vector<std::string> args(argv + 1, argv + argc);
 	std::string media, hostdisc_path;
+	long shiftbreak = -1;
 	static HostDisc hostdisc;
 	size_t i = 0;
 	while(i < args.size() && args[i].rfind("--", 0) == 0) {
@@ -169,6 +178,7 @@ int main(int argc, char **argv) {
 		else if(args[i] == "--oldrow") { Electron::VideoOutput::row_register_14_6 = false; i++; }
 		else if(args[i] == "--media") { media = args[i + 1]; i += 2; }
 		else if(args[i] == "--hostdisc") { hostdisc_path = args[i + 1]; i += 2; }
+		else if(args[i] == "--shiftbreak") { shiftbreak = std::atol(args[i + 1].c_str()); i += 2; }
 		else { std::fprintf(stderr, "clkh: unknown option %s\n", args[i].c_str()); return 1; }
 	}
 
@@ -214,6 +224,9 @@ int main(int argc, char **argv) {
 		Elk *mp = m.get();
 		m->os_trap = [mp](uint16_t pc, uint8_t a, uint8_t x, uint8_t y) { return hostdisc.trap(mp->ram_, pc, a, x, y); };
 	}
+	// (--shiftbreak N: SHIFT+BREAK after N cycles, the disc's !Boot run, for
+	// any disc; 0: none, even for a disc the analyser would autoboot)
+	if(shiftbreak >= 0) m->shift_restart_counter_ = int(shiftbreak);
 	auto cap = std::make_unique<Electron::VideoOutput::Capture>();
 	auto done = std::make_unique<Electron::VideoOutput::Capture>();
 	m->video_.capture = cap.get();
@@ -547,6 +560,11 @@ int main(int argc, char **argv) {
 			}
 		}
 		else if(cmd == "dump") { dump(*m, args[++i]); }
+		else if(cmd == "serve") {	// serve CMDFIFO REPFIFO: the harness's mode (serve.hpp)
+			serve::Server sv(*m);
+			const std::string c = args[++i], r = args[++i];
+			return sv.main_loop(c, r);
+		}
 		else if(cmd == "regs") { regs(*m); }
 		else if(cmd == "paged") {	// print and reset the &8000-&BFFF access counts (lines < N, >= N)
 			std::printf("paged early %ld late %ld\n", m->paged_accesses_early, m->paged_accesses_late);
