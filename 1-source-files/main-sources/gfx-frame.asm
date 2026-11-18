@@ -1998,7 +1998,7 @@ FC_PLLE = &5F : FC_PLLO = &AF
  ORA f_dmd              \ (bit 7: the written extents, not the dirty ones)
  LDY f_dy
  LDX f_dput
- JSR T_GETW
+ JSR FT_GETW
  LDX #0                 \ the slots
  LDY f_dy
 .fdb3
@@ -2041,7 +2041,7 @@ FC_PLLE = &5F : FC_PLLO = &AF
  LDX f_dn
  BIT f_dmd
  BMI fdb9
- JSR f_dprows
+ JSR FT_DPROWS
  JMP fdb10
 .fdb9
  LDA f_dc2
@@ -2131,9 +2131,6 @@ NEXT
 .f_dpbegin              \ the painter's entries, in the flight code's bank 7
  JSR farC               \ (gfx-raster_disc.asm, gfx-raster_disc2.asm)
  EQUW DP_BEGIN
-.f_dprows
- JSR farC
- EQUW DP_ROWS
 .f_dpdisc2
  JSR farC
  EQUW DP_DISC2
@@ -2601,7 +2598,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  JSR f_winding
  BCC fsh_next
 .fsh_draw
- JSR T_POLY
+ JSR FT_POLY
 .fsh_next
  LDA fz_n               \ next face list entry: n + 1 bytes on
  SEC
@@ -2699,7 +2696,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  STA R_Y1
  LDA R_PYH+1
  STA R_Y1+1
- JSR T_LINE
+ JSR FT_LINE
 .fit8
  LDY fz_q               \ next item: 4 + n bytes on
 .^fit_q3
@@ -2807,7 +2804,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  JSR f_itemv
  LDA #3
  STA R_PN
- JSR T_POLY
+ JSR FT_POLY
 .ffi8
  LDA fz_q               \ next fin: 7 bytes on
  CLC

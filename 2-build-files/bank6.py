@@ -31,7 +31,10 @@ VARS = ['INWK', 'XX2', 'XX3', 'XX4', 'XX16', 'XX0', 'XX19', 'XX20', 'INF', 'XSAV
         'FRIN', 'K%', 'LASX', 'LASY', 'XC', 'YC', 'VIEW', 'QQ12']
 # what only the flight code's frame reaches: the disc layer's painter in its
 # bank 7 (gfx-raster_disc.asm), and the game's variables it reads
-FLIGHT = ['MCNT', 'P', 'R', 'S', 'T', 'K2', 'DP_BEGIN', 'DP_ROWS', 'DP_DISC2']
+FLIGHT = ['MCNT', 'P', 'R', 'S', 'T', 'K2', 'DP_BEGIN', 'DP_ROWS', 'DP_DISC2', 'FT_DPROWS']
+# the fast trampolines at the start of each program's main RAM part
+# (gfx-glue.asm), at the same addresses in both
+FAST = ['FT_GETW', 'FT_POLY', 'FT_LINE']
 # and its constants
 CONSTS = ['NOST', 'NOSH', 'NI%', 'SST', 'PLT', 'X', 'Y']
 
@@ -47,6 +50,10 @@ for v in VARS:
     a = flight[v]
     assert docked.get(v) == a, '%s is at &%04X in the flight program, %r in the docked' % (v, a, docked.get(v))
     assert a < 0x1000 or 0x7F00 <= a < 0x8000, '%s (&%04X) is not in main RAM below the screen buffers' % (v, a)
+    L.append('%-8s = &%04X' % (v, a))
+for v in FAST:
+    a = flight[v]
+    assert docked.get(v) == a, '%s is at &%04X in the flight program, %r in the docked' % (v, a, docked.get(v))
     L.append('%-8s = &%04X' % (v, a))
 for c in FLIGHT:   # (the flight code's only: the disc layer's painter, in its
     a = flight[c]  # cold bank, and the variables)

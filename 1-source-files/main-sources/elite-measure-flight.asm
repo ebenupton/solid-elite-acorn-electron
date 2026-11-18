@@ -28,6 +28,10 @@ ENDIF
 
  ORG PROGM%
 
+ FTDP = TRUE              \ The fast trampolines (gfx-glue.asm), first: the same
+ INCLUDE "3-assembled-output/gfx-glue-mainpart.asm"   \ in both programs, the
+                        \ painter's only in the flight code
+
  INCLUDE "3-assembled-output/elite-flight-low.asm"
 
 .LOW_END%

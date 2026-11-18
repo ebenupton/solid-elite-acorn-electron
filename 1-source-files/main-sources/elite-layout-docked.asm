@@ -49,6 +49,9 @@
 
  ORG PROGM%
 
+ FTDP = FALSE             \ The fast trampolines (gfx-glue.asm), first: the same
+ INCLUDE "3-assembled-output/gfx-glue-mainpart.asm"   \ in both programs
+
  INCLUDE "3-assembled-output/elite-docked-low.asm"
 
 .LOW_END%

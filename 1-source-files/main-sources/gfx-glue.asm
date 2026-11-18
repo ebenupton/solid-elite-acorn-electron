@@ -117,3 +117,50 @@ ENDMACRO
  RTS
 
 .GLUE_END
+
+\ ******************************************************************************
+\
+\ The fast trampolines, at the start of each program's main RAM part (PROGM%,
+\ before its low pass: elite-layout-flight.asm, elite-layout-docked.asm), at
+\ the same addresses in both programs, which bank6.py checks: the frame
+\ layer's hottest calls into bank 5 (FT_GETW, FT_POLY, FT_LINE: as T_GETW,
+\ T_POLY and T_LINE above) and, in the flight code only (FTDP, after the
+\ others), into the disc layer's painter in its bank 7 (FT_DPROWS: as the
+\ far call to DP_ROWS). Each pages its bank in and calls its routine, then
+\ pages the caller's bank back (from &F4: any bank may call them), as the
+\ trampolines above do, with A, X and Y passed in and A passed back, but
+\ with the routine's address in its own code, in about half the
+\ instructions. Not re-entrant: interrupt handlers must not call them.
+\
+\       Area: main part
+\
+\ ******************************************************************************
+
+ INCLUDE "3-assembled-output/bank5-entry.asm"   \ (RJT: bank 5's jump table)
+
+MACRO FTRAMP bank, target
+ STA ftA                \ keep A while the bank is paged
+ LDA &F4                \ keep the caller's bank on the stack, and page the
+ PHA                    \ routine's bank in (&F4 first, as elite-far.asm)
+ LDA bank
+ STA &F4
+ STA ROMSEL
+ LDA ftA                \ the routine, with A, X and Y as they were
+ JSR target
+ STA ftA                \ page the caller's bank back in, keeping A
+ PLA
+ STA &F4
+ STA ROMSEL
+ LDA ftA
+ RTS
+ENDMACRO
+
+.FT_GETW  FTRAMP BANK5, RJT + 3 * 12    \ (RJT's order, gfx-bank5.asm)
+.FT_POLY  FTRAMP BANK5, RJT + 3 * 7
+.FT_LINE  FTRAMP BANK5, RJT + 3 * 8
+
+.ftA    EQUB 0          \ A across the paging
+
+IF FTDP
+.FT_DPROWS FTRAMP BANK7, DP_ROWS        \ (the flight code's bank 7)
+ENDIF

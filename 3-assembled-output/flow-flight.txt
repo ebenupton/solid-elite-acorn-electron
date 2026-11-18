@@ -85,13 +85,13 @@ hot &8000-&A86D: 86 units, 9816 bytes, 534 free
   &A427   103 MVS4
   &A48E    53 MVT6
   &A4C3   405 MV40..SCAN
-hotm &1942-&1DDF: 6 units, 908 bytes, 274 free
-  &1942    26 UNIV
-  &195C   146 BLINE
-  &19EE   187 DOCKIT
-  &1AA9   255 STARS2..QSMUL
-  &1BA8   128 BUMP2..REDU2
-  &1C28   166 NWSHP
+hotm &19C7-&1DDF: 6 units, 908 bytes, 141 free
+  &19C7    26 UNIV
+  &19E1   146 BLINE
+  &1A73   187 DOCKIT
+  &1B2E   255 STARS2..QSMUL
+  &1C2D   128 BUMP2..REDU2
+  &1CAD   166 NWSHP
 hotx &1DE0-&1E3F: 0 units, 0 bytes, 96 free
 hotl &2C50-&2FFF: 2 units, 899 bytes, 45 free
   &2C50   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
