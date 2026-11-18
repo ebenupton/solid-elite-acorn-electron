@@ -4317,6 +4317,91 @@ ENDIF
 \
 \ ******************************************************************************
 
+
+                        \ Port: the Electron's MODE 5 screen (ELECTRON-REPORT.md):
+                        \ a character row is SCRROW (320) bytes, with the 32
+                        \ cells of the 128-pixel view from byte SCRX, so a
+                        \ character block's address is not a page and an
+                        \ offset, as the original's is: SCRA works it out,
+                        \ and ROWUP and ROWDN move it up or down a row
+
+.SCRA
+
+                        \ Port: set SC(1 0) to the address of the character
+                        \ block in buffer 1 for pixel row A and MODE 5 pixel X
+                        \ (0 to 127), and Y to A AND 7, the pixel row within it
+                        \ (X is kept; the C flag is left clear):
+                        \
+                        \   SCREEN% + 320 * (A >> 3) + SCRX + 8 * (X >> 2)
+
+ TAY                    \ Keep the pixel row in Y
+
+ LSR A                  \ Set SC = r = A >> 3, the character row
+ LSR A
+ LSR A
+ STA SC
+
+ LSR A                  \ 320 * r = 256 * (r + (r >> 2)) + 64 * (r AND 3), so
+ LSR A                  \ set SC+1 to the high byte, SCREEN%'s page plus
+ CLC                    \ r + (r >> 2) (SCREEN%'s low byte is 0)
+ ADC SC
+ ADC #HI(SCREEN%)
+ STA SC+1
+
+ LDA SC                 \ Set A = 64 * (r AND 3), rotating bits 0 and 1 into
+ AND #3                 \ bits 6 and 7 (which leaves the C flag clear)
+ LSR A
+ ROR A
+ ROR A
+
+ ADC #SCRX              \ Add the view's offset in the row
+ STA SC
+
+ TXA                    \ Add 8 * (X >> 2), the character block in the row
+ AND #%11111100         \ (X < 128, so this is less than 256 and the ASL
+ ASL A                  \ clears the C flag)
+ ADC SC
+ STA SC
+ BCC P%+5
+ INC SC+1
+ CLC
+
+ TYA                    \ Set Y = the pixel row within the block
+ AND #7
+ TAY
+
+ RTS
+
+.ROWUP
+
+                        \ Port: move SC(1 0) up a character row (320 bytes), and
+                        \ return with the C flag clear
+
+ LDA SC
+ SEC
+ SBC #LO(SCRROW)
+ STA SC
+ LDA SC+1
+ SBC #HI(SCRROW)
+ STA SC+1
+ CLC
+ RTS
+
+.ROWDN
+
+                        \ Port: move SC(1 0) down a character row (320 bytes),
+                        \ which leaves the C flag clear
+
+ LDA SC
+ CLC
+ ADC #LO(SCRROW)
+ STA SC
+ LDA SC+1
+ ADC #HI(SCRROW)
+ STA SC+1
+ RTS
+
+
 .LL30
 
  SKIP 0                 \ LL30 is a synonym for LOIN
@@ -4331,6 +4416,9 @@ ENDIF
 
  STY YSAV               \ Store Y into YSAV, so we can preserve it across the
                         \ call to this subroutine
+
+ LSR X1                 \ Port: halve the x-coordinates, from the original's
+ LSR X2                 \ 256 pixels to the MODE 5 view's 128
 
  LDA #128               \ Set S = 128, which is the starting point for the
  STA S                  \ slope error (representing half a pixel)
@@ -4428,44 +4516,8 @@ ENDIF
 
 .LI3
 
-                        \ By this point we know the line is horizontal-ish and
-                        \ X1 < X2, so we're going from left to right as we go
-                        \ from X1 to X2
-
- LDA Y1                 \ Set A to the y-coordinate in Y1
-
- LSR A                  \ Set A = 2 * (y div 8), the character row's number
- LSR A                  \ times two (Port: the four-colour screen's character
- AND #%11111110         \ rows take 512 bytes, two pages, each)
-                        \ So A now contains the number of the character row
-                        \ that will contain the start of the line
-
- ORA #HI(SCREEN%)       \ As A < 64, this effectively adds the screen's page to
-                        \ A, which gives us the screen address of the character
-                        \ row (Port: SCREEN%, elite-map.asm, at &4000, rather
-                        \ than the original's &6000)
-
- STA SCH                \ Store the page number of the character row in SCH, so
-                        \ the high byte of SC is set correctly for drawing the
-                        \ start of our line
-
- LDA Y1                 \ Set Y = Y1 mod 8, which is the pixel row within the
- AND #7                 \ character block at which we want to draw the start of
- TAY                    \ our line (as each character block has 8 rows)
-
- TXA                    \ Set A = 2 * bits 2-7 of X1, the offset of X1's
- AND #%11111100         \ character block in the row (Port: each character
- ASL A                  \ block is four pixels and eight bytes), with the C
-                        \ flag set if it is in the row's second page
-
- STA SC                 \ Store this value in SC, so SC(1 0) now contains the
-                        \ screen address of the far left end (x-coordinate = 0)
-                        \ of the horizontal pixel row that we want to draw the
-                        \ start of our line on (Port: or of its second half,
-                        \ x-coordinate 128, if the line starts there)
-
- BCC P%+4               \ Port: if X1 is in the right half of the screen, move
- INC SCH                \ SC(1 0) to the row's second page
+ LDA Y1                 \ Port: set SC(1 0) to the character block for (X1, Y1)
+ JSR SCRA               \ and Y to the pixel row within it (SCRA)
 
  TXA                    \ Set X = X1 mod 4, which is the horizontal pixel number
  AND #3                 \ within the character block where the line starts (as
@@ -4625,8 +4677,7 @@ ENDIF
  BPL LIC2               \ If Y is positive we are still within the same
                         \ character block, so skip to LIC2
 
- DEC SCH                \ Otherwise we need to move up into the character block
- DEC SCH                \ (Port: two pages up, on the four-colour screen)
+ JSR ROWUP              \ Port: move up a character row (ROWUP)
  LDY #7                 \ above, so decrement the high byte of the screen
                         \ address and set the pixel line to the last line in
                         \ that character block
@@ -4721,8 +4772,7 @@ ENDIF
  CPY #8                 \ If Y < 8 we are still within the same character block,
  BNE LIC3               \ so skip to LIC3
 
- INC SCH                \ Otherwise we need to move down into the character
- INC SCH                \ (Port: two pages down, on the four-colour screen)
+ JSR ROWDN              \ Port: move down a character row (ROWDN)
  LDY #0                 \ block below, so increment the high byte of the screen
                         \ address and set the pixel line to the first line in
                         \ that character block
@@ -4789,38 +4839,8 @@ ENDIF
 
 .LI15
 
-                        \ By this point we know the line is vertical-ish and
-                        \ Y1 >= Y2, so we're going from top to bottom as we go
-                        \ from Y1 to Y2
-
- LSR A                  \ Set A = 2 * (y div 8), the character row's number
- LSR A                  \ times two (Port: the four-colour screen's character
- AND #%11111110         \ rows take 512 bytes, two pages, each)
-                        \ So A now contains the number of the character row
-                        \ that will contain the (X1, Y1) pixel
-
- ORA #HI(SCREEN%)       \ As A < 64, this effectively adds the screen's page to
-                        \ A, which gives us the screen address of the character
-                        \ row (Port: SCREEN%, elite-map.asm, at &4000, rather
-                        \ than the original's &6000)
-
- STA SCH                \ Store the page number of the character row in SCH, so
-                        \ the high byte of SC is set correctly for drawing the
-                        \ start of our line
-
- TXA                    \ Set A = 2 * bits 2-7 of X1, the offset of X1's
- AND #%11111100         \ character block in the row (Port: each character
- ASL A                  \ block is four pixels and eight bytes), with the C
-                        \ flag set if it is in the row's second page
-
- STA SC                 \ Store this value in SC, so SC(1 0) now contains the
-                        \ screen address of the far left end (x-coordinate = 0)
-                        \ of the horizontal pixel row that we want to draw the
-                        \ start of our line on (Port: or of its second half,
-                        \ x-coordinate 128, if the line starts there)
-
- BCC P%+4               \ Port: if X1 is in the right half of the screen, move
- INC SCH                \ SC(1 0) to the row's second page
+ JSR SCRA               \ Port: set SC(1 0) to the character block for (X1, A)
+                        \ and Y to the pixel row within it (SCRA)
 
  TXA                    \ Set X = X1 mod 4, which is the horizontal pixel number
  AND #3                 \ within the character block where the line starts (as
@@ -4944,8 +4964,7 @@ ENDIF
  BPL LI16               \ If Y is positive we are still within the same
                         \ character block, so skip to LI16
 
- DEC SCH                \ Otherwise we need to move up into the character block
- DEC SCH                \ (Port: two pages up, on the four-colour screen)
+ JSR ROWUP              \ Port: move up a character row (ROWUP)
  LDY #7                 \ above, so decrement the high byte of the screen
                         \ address and set the pixel line to the last line in
                         \ that character block
@@ -5041,8 +5060,7 @@ ENDIF
  BPL LI19               \ If Y is positive we are still within the same
                         \ character block, so skip to LI19
 
- DEC SCH                \ Otherwise we need to move up into the character block
- DEC SCH                \ (Port: two pages up, on the four-colour screen)
+ JSR ROWUP              \ Port: move up a character row (ROWUP)
  LDY #7                 \ above, so decrement the high byte of the screen
                         \ address and set the pixel line to the last line in
                         \ that character block
@@ -5292,6 +5310,9 @@ ENDIF
  STY YSAV               \ Store Y into YSAV, so we can preserve it across the
                         \ call to this subroutine
 
+ LSR X1                 \ Port: halve the x-coordinates, from the original's
+ LSR X2                 \ 256 pixels to the MODE 5 view's 128
+
  LDX X1                 \ Set X = X1
 
  CPX X2                 \ If X1 = X2 then the start and end points are the same,
@@ -5317,29 +5338,23 @@ ENDIF
                         \ and the line moves into the row's second page when
                         \ it crosses x = 128
 
- LDA Y1                 \ Set SCH = SCREEN% / 256 + 2 * (Y1 div 8), the page of
- LSR A                  \ the character row that contains the line
- LSR A
- AND #%11111110
- ORA #HI(SCREEN%)
- STA SCH
-
- LDA Y1                 \ Set A = Y1 mod 8, which is the pixel row within the
- AND #7                 \ character block at which we want to draw our line
-
- STA SC                 \ Store this value in SC, so SC(1 0) now contains the
-                        \ screen address of the far left end (x-coordinate = 0)
-                        \ of the horizontal pixel row that we want to draw our
-                        \ horizontal line on
+ STX T                  \ Port: set SC(1 0) to the address of pixel row Y1 in
+ LDX #0                 \ the view's first character block (SCRA, with the
+ LDA Y1                 \ pixel row added), keeping X1 in X
+ JSR SCRA
+ TYA
+ ADC SC
+ STA SC
+ BCC P%+4
+ INC SCH
+ LDX T
 
  TXA                    \ Set T = bits 2-7 of X1, which will contain the
  AND #%11111100         \ character number of the start of the line * 4
  STA T
 
  ASL A                  \ Set Y = 2 * bits 2-7 of X1, the offset of X1's
- TAY                    \ character block in its page, moving SC(1 0) to the
- BCC P%+4               \ row's second page if X1 >= 128
- INC SCH
+ TAY                    \ character block in the row (less than 256)
 
 .HL1
 
@@ -5770,26 +5785,16 @@ ENDIF
 
  TAY                    \ Copy A into Y, for use later
 
- LSR A                  \ Set SCH = SCREEN% / 256 + 2 * (A >> 3) (Port: the
- LSR A                  \ four-colour screen's character rows take two pages)
- AND #%11111110
- ORA #HI(SCREEN%)
- STA SCH
+ TXA                    \ Port: halve the x-coordinate, from the original's
+ LSR A                  \ 256 pixels to the MODE 5 view's 128
+ TAX
 
- TXA                    \ Set SC = (X >> 2) * 8 (Port: four pixels a character
- AND #%11111100         \ block), moving to the row's second page if X >= 128
- ASL A
- STA SC
- BCC P%+4
- INC SCH
+ TYA                    \ Set SC(1 0) to the character block for (X, A) and Y
+ JSR SCRA               \ to the pixel row within it (SCRA)
 
- TYA                    \ Set Y = Y mod 8, which is the pixel row within the
- AND #7                 \ character block at which we want to draw our pixel
- TAY                    \ (as each character block has 8 rows)
-
- TXA                    \ Set X = X mod 8, the original's pixel number in its
- AND #7                 \ character block (Port: TWOS and TWOS2 are indexed by
- TAX                    \ it, for the four-colour screen's four-pixel blocks)
+ TXA                    \ Set X = X mod 4, the pixel within the block
+ AND #3
+ TAX
 
  LDA ZZ                 \ If distance in ZZ >= 144, then this point is a very
  CMP #144               \ long way away, so jump to PX3 to fetch a one-pixel
@@ -36437,10 +36442,11 @@ LIGHT_SUN = TRUE
  INX                    \ Increment X to point to the next page, i.e. the next
                         \ character row
 
- CPX #HI(SCREEN%)+&30   \ Loop back to BOL1 until we have cleared the last
+ CPX #HI(SCREEN%+24*SCRROW)  \ Loop back to BOL1 until we have cleared the last
  BNE BOL1               \ page of the space view part of the screen (the top
                         \ part; Port: on the four-colour screen, its 48 pages
-                        \ from SCREEN%, &4000 to &6FFF)
+                        \ from SCREEN%, the space view's 24 rows, &5800 to
+                        \ &75FF: the dashboard stays)
 
 .BOL2
 
@@ -36507,11 +36513,15 @@ LIGHT_SUN = TRUE
                         \ that's (0, 0) to (255, 0), along the very top of the
                         \ screen
 
- LDA #2                 \ Set X1 = X2 = 2
+ LDA #1                 \ Port: set X1 = X2 = 1, for a line at x = 0 and then
+                        \ x = 255 (each a MODE 5 pixel, 0 and 127: the
+                        \ original's second lines, at 1 and 254, would be the
+                        \ same pixels, which LOIN's EOR would take away again)
  STA X1
  STA X2
 
- JSR BOS2               \ Call BOS2 below, which will call BOS1 twice, and then
+ JSR BOS1               \ Port: call BOS1 below and then fall through into it,
+                        \ which draws the lines at x = 0 and x = 255
                         \ fall through into BOS2 again, so we effectively do
                         \ BOS1 four times, decrementing X1 and X2 each time
                         \ before calling LOIN, so this whole loop-within-a-loop
@@ -36526,12 +36536,6 @@ LIGHT_SUN = TRUE
                         \ left edge of the upper part of the screen, and a
                         \ two-pixel wide vertical border along the right edge
 
-.BOS2
-
- JSR BOS1               \ Call BOS1 below and then fall through into it, which
-                        \ ends up running BOS1 twice. This is all part of the
-                        \ loop-the-loop border-drawing mind-bender explained
-                        \ above
 
 .BOS1
 
@@ -36631,29 +36635,27 @@ LIGHT_SUN = TRUE
  ORA GFORCE
  BEQ cly2
 
-                        \ Port: on the four-colour screen, text rows 21 and 22
-                        \ are two pages each, from SCREEN% + 512 * 21, so this
-                        \ clears columns 1 to 30 of each: bytes 16 to 255 of
-                        \ the first page and 0 to 239 of the second
-
- LDX #HI(SCREEN%) + 42  \ Set X to the first page of text row 21
+ LDX #2                     \ Port: clear text rows 21 to 22 of buffer 1, byte
+                        \ columns 1 to 30 of each (the border's columns stay):
+ LDA #LO(SCREEN% + 21 * SCRROW + SCRX + 7)   \ SC(1 0) = row 21's byte 7, from
+ STA SC                 \ which LYN clears 240 bytes, the rows SCRROW apart
+ LDA #HI(SCREEN% + 21 * SCRROW + SCRX + 7)
+ STA SC+1
 
 .cly1
 
- STX SC+1               \ Clear bytes 16 to 255 of page X (LYN clears SC + 1
- LDA #&0F               \ to SC + 240)
- STA SC
  LDA #0
  JSR LYN
 
- LDA #&FF               \ Clear bytes 0 to 239 of page X + 1
+ LDA SC                 \ Move SC(1 0) on to the next row
+ CLC
+ ADC #LO(SCRROW)
  STA SC
- LDA #0
- JSR LYN
+ LDA SC+1
+ ADC #HI(SCRROW)
+ STA SC+1
 
- INX                    \ Move on to the next text row's first page, and loop
- INX                    \ back until we have cleared rows 21 and 22
- CPX #HI(SCREEN%) + 46
+ DEX                    \ Loop back for the next row
  BNE cly1
 
 .cly2

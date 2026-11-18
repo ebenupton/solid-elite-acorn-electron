@@ -28,14 +28,14 @@
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 4 (docked) | `&8000-&AE0F` | `S%` and the hot pass | 8719 | 3073 |
+| bank 4 (docked) | `&8000-&AE0F` | `S%` and the hot pass | 8748 | 3044 |
 | bank 4 (docked) | `&AE10-&B2FF` | the main RAM part's image | 1264 | 0 |
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 7 (flight) | `&8000-&9F06` | the cold pass, `QQ18` | 7943 | 0 |
-| bank 7 (flight) | `&9F07-&A350` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&A351-&B2FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 3910 | 105 |
+| bank 7 (flight) | `&8000-&9F21` | the cold pass, `QQ18` | 7970 | 0 |
+| bank 7 (flight) | `&9F22-&A36B` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
+| bank 7 (flight) | `&A36C-&B2FF` | the renderer's window (bank 7 passes: the disc layer's painter with its strips, the second disc, their operands' patch) | 3910 | 78 |
 | bank 7 (flight) | `&B300-&BEFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
 | bank 7 | `&BF00-&BFFF` | DFS's workspace page between disc commands (`DFSSAVE%`) | 256 | 0 |
 | bank 7 (docked) | `&8000-&BEFF` | the set's face lists, the cold pass, `QQ18` | 11397 | 4731 |
@@ -55,4 +55,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 46 | 18 |
 
-Free, by place: main RAM 4229, main RAM (flight) 47, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3233, bank 7 (flight) 105, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.
+Free, by place: main RAM 4229, main RAM (flight) 47, main RAM (docked) 1248, bank 4 (flight) 40, bank 4 (docked) 3204, bank 7 (flight) 78, bank 7 0, bank 7 (docked) 4731, bank 5 1217, bank 6 207.
