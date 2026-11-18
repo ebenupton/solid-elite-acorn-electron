@@ -48,7 +48,7 @@
                         \ label XX21 (Port: it is staged in main RAM and copied
                         \ there)
 
- SHIP_MISSILE = &7F00   \ The address of the missile ship blueprint
+ SHIP_MISSILE = MISSILE%  \ (Port: elite-map.asm) The address of the missile ship blueprint
 
  ORG CODE%              \ Set the assembly address to CODE%
 

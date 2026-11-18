@@ -33,12 +33,13 @@
 \ ******************************************************************************
 
  INCLUDE "1-source-files/main-sources/elite-build-options.asm"
+ INCLUDE "1-source-files/main-sources/elite-map.asm"    \ Port: the memory map
 
  _IB_DISC               = (_VARIANT = 1)
  _STH_DISC              = (_VARIANT = 2)
  _SRAM_DISC             = (_VARIANT = 3)
 
- GUARD &6000            \ Guard against assembling over screen memory
+ GUARD MISSILE% + &A0    \ Port: guard the missile's room (elite-map.asm)
 
 \ ******************************************************************************
 \
@@ -46,7 +47,8 @@
 \
 \ ******************************************************************************
 
- CODE% = &7F00          \ The address where the code will be run
+ CODE% = MISSILE%       \ The address where the code will be run (Port: the
+                        \ missile's place in main RAM, elite-map.asm)
 
  LOAD% = &244B          \ The address where the code will be loaded
 
@@ -337,41 +339,7 @@ ELIF _SRAM_DISC
 
 ENDIF
 
-                        \ Port: without its edges the blueprint ends here, so
- ASSERT P% <= &7FA0     \ the room up to VEC, at &7FFE as in the original, is
- SKIP &7FFE - P%        \ main RAM's workspace: the shared variables, the
-                        \ palette and the circle engine's (elite-map.asm)
-
-\ ******************************************************************************
-\
-\       Name: VEC
-\       Type: Variable
-\   Category: Drawing the screen
-\    Summary: The original value of the IRQ1 vector
-\
-\ ******************************************************************************
-
-.VEC
-
-IF _STH_DISC OR _IB_DISC
-
- EQUW &0004             \ VEC = &7FFE
-                        \
-                        \ This gets set to the value of the original IRQ1 vector
-                        \ by the loading process
-                        \
-                        \ This default value is random workspace noise left over
-                        \ from the BBC Micro assembly process; it gets
-                        \ overwritten
-
-ELIF _SRAM_DISC
-
- SKIP 2                 \ VEC = &7FFE
-                        \
-                        \ This gets set to the value of the original IRQ1 vector
-                        \ by the loading process
-
-ENDIF
+                        \ Port: without its edges the blueprint ends here
 
 \ ******************************************************************************
 \

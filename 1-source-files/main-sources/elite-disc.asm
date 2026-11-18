@@ -49,9 +49,9 @@
  \ the ship blueprint files (which PCLI loads into the flight code's home
  \ bank)
 
- PUTFILE "3-assembled-output/ELITE4.bin", "ELITE4", &FF1900, &FF197B
+ PUTFILE "3-assembled-output/ELITE4.bin", "ELITE4", &FF1900, &FF1900
 
- PUTFILE "1-source-files/images/P.DIALS.bin", "P.DIALS", PANEL%, PANEL%
+ PUTFILE "1-source-files/images/P.DIALS.bin", "P.DIALS", STAGE%, STAGE%
 
  \ Port: the flight code's overlays next, near the catalogue on track 0,
  \ which CATD reads before each load: ovload loads them in flight, at any

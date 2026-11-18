@@ -44,54 +44,54 @@ hot &8000-&A86D: 45 units, 10350 bytes, 0 free
   &A666   103 MVS4
   &A6CD    53 MVT6
   &A702   364 MV40..SCAN
-hotm &79B2-&7DFF: 35 units, 1102 bytes, 0 free
-  &79B2    13 INBAY
-  &79BF     9 LTLI
-  &79C8    20 DOENTRY..DEATH2
-  &79DC    41 SUNSC
-  &7A05    26 UNIV
-  &7A1F    10 CTWOS
-  &7A29    15 HLOIN2
-  &7A38    14 MAS2
-  &7A46    38 MAS3
-  &7A6C    59 VCSU1..TAS1
-  &7AA7    24 TAS6
-  &7ABF    76 MLS2..MLS1
-  &7B0B    77 MUT1..MULT1
-  &7B58    43 DV42..DVID4
-  &7B83    23 cntr
-  &7B9A    16 SHD..DENGY
-  &7BAA    18 SPS3
-  &7BBC    19 GINF
-  &7BCF    12 SUNE
-  &7BDB    45 PLS22..CIRCLE
-  &7C08    13 FAROF..FAROF2
-  &7C15    14 DPLT
-  &7C23    76 SPS1..TAS2
-  &7C6F    51 DKS1..DKS2
-  &7CA2    23 DKS3
-  &7CB9    73 SHPPT
-  &7D02    60 LL5
-  &7D3E    32 LL38
-  &7D5E    28 MFRAME
-  &7D7A    11 LL9F
-  &7D85    14 H_PTCLS
-  &7D93    14 H_PTCLSE
-  &7DA1    17 H_DOT
-  &7DB2    11 LL42F
-  &7DBD    67 H_LL42..H_EE31
-hotx &7E00-&7E5F: 14 units, 49 bytes, 47 free
-  &7E00     3 DEEOR
-  &7E03     5 MU6
-  &7E08     1 MUT2
-  &7E09    10 MULT12
-  &7E13     1 PLS1
-  &7E14     1 PLS2
-  &7E15     7 MAS4
-  &7E1C     4 SHCOL
-  &7E20     6 RECM
-  &7E26     1 LL9 (Part 9 of 12), drawing
-  &7E27     6 LL9 (Part 10 of 12)
-  &7E2D     1 LL9 (Part 11 of 12)
-  &7E2E     2 LL9 (Part 12 of 12)
-  &7E30     1 LL9 (Part 12 of 12), drawing
+hotm &1942-&1D8F: 35 units, 1102 bytes, 0 free
+  &1942    13 INBAY
+  &194F     9 LTLI
+  &1958    20 DOENTRY..DEATH2
+  &196C    41 SUNSC
+  &1995    26 UNIV
+  &19AF    10 CTWOS
+  &19B9    15 HLOIN2
+  &19C8    14 MAS2
+  &19D6    38 MAS3
+  &19FC    59 VCSU1..TAS1
+  &1A37    24 TAS6
+  &1A4F    76 MLS2..MLS1
+  &1A9B    77 MUT1..MULT1
+  &1AE8    43 DV42..DVID4
+  &1B13    23 cntr
+  &1B2A    16 SHD..DENGY
+  &1B3A    18 SPS3
+  &1B4C    19 GINF
+  &1B5F    12 SUNE
+  &1B6B    45 PLS22..CIRCLE
+  &1B98    13 FAROF..FAROF2
+  &1BA5    14 DPLT
+  &1BB3    76 SPS1..TAS2
+  &1BFF    51 DKS1..DKS2
+  &1C32    23 DKS3
+  &1C49    73 SHPPT
+  &1C92    60 LL5
+  &1CCE    32 LL38
+  &1CEE    28 MFRAME
+  &1D0A    11 LL9F
+  &1D15    14 H_PTCLS
+  &1D23    14 H_PTCLSE
+  &1D31    17 H_DOT
+  &1D42    11 LL42F
+  &1D4D    67 H_LL42..H_EE31
+hotx &1D90-&1DEF: 14 units, 49 bytes, 47 free
+  &1D90     3 DEEOR
+  &1D93     5 MU6
+  &1D98     1 MUT2
+  &1D99    10 MULT12
+  &1DA3     1 PLS1
+  &1DA4     1 PLS2
+  &1DA5     7 MAS4
+  &1DAC     4 SHCOL
+  &1DB0     6 RECM
+  &1DB6     1 LL9 (Part 9 of 12), drawing
+  &1DB7     6 LL9 (Part 10 of 12)
+  &1DBD     1 LL9 (Part 11 of 12)
+  &1DBE     2 LL9 (Part 12 of 12)
+  &1DC0     1 LL9 (Part 12 of 12), drawing

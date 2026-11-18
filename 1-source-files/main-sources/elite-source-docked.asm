@@ -172,7 +172,7 @@
                         \ addresses the layout files INCLUDE
                         \ (3-assembled-output/resident.asm)
 
- SHIP_MISSILE = &7F00   \ The address of the missile ship blueprint, as set in
+ SHIP_MISSILE = MISSILE%  \ (Port: elite-map.asm) The address of the missile ship blueprint, as set in
                         \ elite-loader3.asm
 
  VIA = &FE00            \ Memory-mapped space for accessing internal hardware,

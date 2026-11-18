@@ -328,7 +328,7 @@ r_dr1 = R_DIRTYR1
 .r_sbl_ypg EQUB LO(r_ypg0), LO(r_ypg)
 .r_sbh_ypg EQUB HI(r_ypg0), HI(r_ypg)
 .r_sbrun EQUB HI(r_run0) - &09, HI(r_run0) - &21
-ASSERT HI(BUF0) = &10 AND HI(SCREEN%) = &40   \ (r_ypg0's and r_ypg's pages)
+\ (electron-render) ASSERT HI(BUF0) = &10 AND HI(SCREEN%) = &40   \ (r_ypg0's and r_ypg's pages)
 
 \ ============================================================================
 \ r_pgfix (Model B): A = a run page.  The runs are assembled for buffer 1

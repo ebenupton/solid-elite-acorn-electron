@@ -73,19 +73,18 @@ row("main RAM", 0x0900, 0x0D00, "`K%` and the line heaps (the loader's `LOAD` at
 row("main RAM", 0x0D7A, 0x0D9E, "`CATD`")
 row("main RAM", 0x0E00, 0x0FD3, "`WP`")
 row("main RAM (flight)", FL["SUNPK"], FL["SUNPF"] + 1, "the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load)")
-row("main RAM", C["BUF0"], C["SCREEN_P"], "buffer 0 (DFS's page `&1000` between disc commands kept in bank 7; `STAGE%` from `&1600` during a load)")
-row("main RAM", C["SCREEN_P"], C["PANEL_P"], "buffer 1, the screen")
-row("main RAM", C["PANEL_P"], C["PANEL_P"] + C["PANELROWS"] * 0x100, "the dashboard (`P.DIALS`)")
-row("main RAM", C["RUPT_P"], progm, "the rupture (`elite-rupture.asm`, copied there by the loader): the clock switches, the frames' registers, the flip, the display off during disc commands; its variables after its code", LD["RUPT_END"] - C["RUPT_P"])
 for prog, sy in (("flight", FL), ("docked", DK)):
-    row("main RAM (%s)" % prog, progm, progm_end, "the main RAM part: the low pass, then `hotm` and `hotx` (main RAM\'s code is one run, from the rupture\'s)", sy["PROGM_USED%"] - progm)
+    row("main RAM (%s)" % prog, progm, progm_end, "the main RAM part: the low pass, then `hotm` and `hotx`", sy["PROGM_USED%"] - progm)
 row("main RAM", C["MBOX"], C["MBOX_END"], "the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`)")
-row("main RAM", 0x7F00, C["GVARS"], "the missile's blueprint (where the original has it)")
+row("main RAM", C["MISSILE_P"], C["GVARS"], "the missile's blueprint")
 row("main RAM", C["GVARS"], C["RESH_P"], "`GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's)", C["PF_CLS"] + 1 - C["GVARS"])
-row("main RAM", C["RESH_P"], C["PFVH_P"], "the high resident block: the palette", LD["RESH_END"] - C["RESH_P"])
+row("main RAM", C["RESH_P"], C["PFVH_P"], "the interrupt's variables", 0)
 pfvh_used = FL.get("PFVH_END%", C["PFVH_P"]) - C["PFVH_P"]
-row("main RAM", C["PFVH_P"], 0x7FFE, "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
-row("main RAM", 0x7FFE, 0x8000, "`VEC`")
+row("main RAM", C["PFVH_P"], C["VEC"], "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
+row("main RAM", C["VEC"], C["VEC"] + 2, "`VEC`")
+row("main RAM", C["STAGE_P"], C["BUF0"], "the staging area (`STAGE%`, on over buffer 0 for a program's images)", 0)
+row("main RAM", C["BUF0"], C["SCREEN_P"], "buffer 0: a MODE 5 screen, the space view and the dashboard")
+row("main RAM", C["SCREEN_P"], 0x8000, "buffer 1, the direct-mode screen: the same")
 
 qsl, bp, bp_end = C["QSL"], C["BPSLOT_P"], C["BPSLOT_END_P"]
 circ = FL["CIRC_START%"]

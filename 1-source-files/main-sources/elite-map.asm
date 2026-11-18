@@ -38,24 +38,22 @@
                         \ code at a death, as the original's did (the docked
                         \ code's layout checks it is there)
 
- PROGM% = &7970         \ Each program's main RAM part (its low pass, then the
- PROGM_END% = &7E60     \ hot pass's main RAM containers), after the rupture's
-                        \ code, in the room that the original's mode 5
-                        \ dashboard leaves: main RAM's code, one run from the
-                        \ rupture's (RUPT%) to the workspace (MBOX). The
-                        \ program's layout copies it into its bank 4 image at
-                        \ PROGI% (S%+14 gives it, as staged), and PCLI copies
-                        \ it here when it loads the program
+ PROGM% = &1900         \ Each program's main RAM part (its low pass, then the
+ PROGM_END% = &1DF0     \ hot pass's main RAM containers), at the start of the
+                        \ main RAM that DFS leaves (PAGE is &1900), below the
+                        \ mailbox. The program's layout copies it into its bank
+                        \ 4 image at PROGI% (S%+14 gives it, as staged), and
+                        \ PCLI copies it here when it loads the program
 
  PROGIS% = PROGM_END% - PROGM%   \ The size of the main RAM part's image in
                         \ bank 4 (PROGI%)
 
- PROGH% = &7E00         \ Where the main RAM part's first hot container (hotm,
-                        \ after the low pass) ends: the second (hotx) follows
-                        \ hotm's units, to PROGM_END% (as one container, the
-                        \ flow, streams.py, would interleave hotx's units with
-                        \ hotm's in the source's order, moving hotm's across
-                        \ page boundaries, and their branches' cycles)
+ PROGH% = PROGM_END% - &60   \ Where the main RAM part's first hot container
+                        \ (hotm, after the low pass) ends: the second (hotx)
+                        \ follows hotm's units, to PROGM_END% (as one container,
+                        \ the flow, streams.py, would interleave hotx's units
+                        \ with hotm's in the source's order, moving hotm's
+                        \ across page boundaries, and their branches' cycles)
 
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
  C6SZ = 582             \ (BANK6), before the frame layer, and its room (the
@@ -80,9 +78,11 @@
  FC_NORMTAB = NORMTAB
 
 
- STAGE% = &1600         \ Where files are loaded before they are copied into
-                        \ their bank (main RAM &1600 to &55FF, over the top of
-                        \ the screens, which the game clears after each load)
+ STAGE% = &2000         \ Where files are loaded before they are copied into
+                        \ their bank (main RAM &2000 to &57FF, over buffer 0
+                        \ for a program's images, which F_DIRECT has taken off
+                        \ the screen, with buffer 1 on show; the overlays and
+                        \ blueprint files, loaded in flight, end below &3000)
 
  QSL = BPSLOT% + &900   \ The quarter squares, QS(n) = INT(n * n / 4) for n = 0
  QSH = QSL + &200       \ to 511: their low bytes at QSL and high bytes at QSH,
@@ -100,87 +100,44 @@
                         \ file into the bank no further
  ASSERT QSL = SETF% AND QSH + &200 = &C000
 
- SCREEN% = &4000        \ The screen: 256 x 192 pixels in four colours (MODE 1's
-                        \ format, 64-byte rows, at the 6845's 2 MHz clock)
- PANEL% = &7000         \ The dashboard: the original's, 128 x 56 pixels in
-                        \ four colours (mode 5's format, 32-byte rows, at the
-                        \ 1 MHz clock), seven rows of 256 bytes, P.DIALS
-                        \ (docs/video-timing.md)
+ ROMSEL = &FE05         \ The Electron's ROM select register (the ULA's
+                        \ interrupt clear and paging register: bits 0-3 page
+                        \ a ROM, bits 4-6 clear interrupts, so a bank number,
+                        \ 12 to 15 or 0 to 7, clears none), where the Model B
+                        \ has &FE30; &F4 keeps a copy, as on the Model B
 
- RUPT% = &7700          \ The rupture's code (elite-rupture.asm), after the
- RUPTPG = 3             \ dashboard: RUPTPG pages, which the loader copies
+ SCREEN% = &5800        \ Buffer 1, the direct-mode screen: a whole MODE 5
+                        \ screen (160 x 256 pixels in four colours, 320 bytes
+                        \ a character row, 10K), the space view in character
+                        \ rows 0 to 23 and the dashboard in rows 24 to 30, each
+                        \ 128 pixels wide in the row's middle 32 cells, from
+                        \ byte 32 of the row (ELECTRON-REPORT.md, "Display")
 
- CRTC = &FE00           \ The 6845's address and data registers
+ BUF0 = &3000           \ Buffer 0, the filled renderer's other screen, the
+                        \ same, at SCREEN% - BUFD
 
- ULAA = &D8             \ The video ULA's control register for the screen (MODE
- ULAB = &C4             \ 1: 2 MHz clock, four colours) and the dashboard (mode
-                        \ 5: 1 MHz clock, four colours)
+ BUFD = &2800           \ The distance between the two buffers (whole pages)
+ ASSERT BUF0 + BUFD = SCREEN% AND SCREEN% + BUFD = &8000
+
+ SCRROW = 320           \ The bytes in a character row
+ SCRX = 32              \ Where the 128 pixels start in a pixel row (the
+                        \ border's four cells)
+
+ PANEL% = SCREEN% + 24 * SCRROW + SCRX   \ The dashboard's first byte in buffer
+                        \ 1 (character row 24, cell 4): the original's, 128 x
+                        \ 56 pixels in four colours (mode 5's format), seven
+                        \ rows of 32 cells, SCRROW apart, drawn into both
+                        \ buffers (PANEL% - BUFD in buffer 0)
 
  ESCPA = &0386          \ ESCP, the escape pod flag, in both programs (their
                         \ layouts check it), for the dashboard's palette
 
- RTRIM1 = 0             \ The switches' trims, in 2 MHz cycles (half
- RTRIM2 = 0             \ microseconds), added to the cycle of S1's (RTRIM1) and
-                        \ S2's (RTRIM2) write to the ULA's control register: 0
-                        \ in jsbeeb; on a real Model B, the values that the
-                        \ timing check gives (docs/video-timing.md, "On a real
-                        \ Model B")
+ ULAPAL0 = &97          \ The palette registers &FE08 and &FE09 for black,
+ ULAPAL1 = &D3          \ cyan, magenta and yellow (logical colours 0 to 3)
 
-                        \ The switches' targets: S1 (line 191 of the next field)
-                        \ and S2 (line 311) as cycles from the loader's
-                        \ calibration probe (the first time, read on time,
-                        \ at which the vertical sync's flag is set: rcal), less
-                        \ the fixed time of rwait and the writes before the
-                        \ switch, each split into whole microseconds (RD1, RD2,
-                        \ modulo 256 in timer 2) and a half (RH1, RH2: the odd
-                        \ cycle, an instruction of 3 cycles in place of 2
-                        \ before the write); with no trim they land both
-                        \ writes on cycle 75 in jsbeeb when the CPU's 1 MHz bus
-                        \ and the 6845's 1 MHz clock are in one phase, and on
-                        \ cycle 76 in the other, the two cycles of each
-                        \ switch's window (docs/video-timing.md)
- RS1 = 2 * (14800 - 2 * 64) - 7 + RTRIM1
- RS2 = 2 * (2512 - 2 * 64) - 7 + RTRIM2
- RD1 = RS1 DIV 2
- RH1 = RS1 AND 1
- RD2 = RS2 DIV 2
- RH2 = RS2 AND 1
-
- RWMAX = 80             \ The longest wait (microseconds) that rwait takes as
-                        \ on time; more means the interrupt came late
-
- RBW1 = 1               \ The rupture's waits (rdelay, microseconds) while the
- RBW2 = 36              \ disc is in use (RUPT, rpt1d and rpt4d): from S1's
- RBW3 = 60              \ line to the write that turns the display off, just
-                        \ after line 191's display has ended (RBW1), then to
-                        \ frame B's start (RBW2); from S2's line, with the
-                        \ display turned back on in the vertical blank, to
-                        \ frame A's start (RBW3)
-
- RCW = 122              \ The calibration's probes: how far ahead of a probe
-                        \ (microseconds in timer 2) its wait loop stops, so
-                        \ that rwait's wait to the probe is on time (rcal)
-
- MACRO RTRIMI h         \ A switch's odd half microsecond, before the write to
-  IF h                  \ the ULA's control register: 3 cycles or 2
-   BIT &70
-  ELSE
-   NOP
-  ENDIF
- ENDMACRO
-
- MACRO RWAITX c         \ Exactly c cycles (c >= 2)
-  IF c AND 1
-   BIT &70
-   FOR I%, 1, (c - 3) DIV 2
-    NOP
-   NEXT
-  ELSE
-   FOR I%, 1, c DIV 2
-    NOP
-   NEXT
-  ENDIF
- ENDMACRO
+ SSA0 = HI(BUF0) DIV 2  \ The screen start address register &FE03 for each
+ SSA1 = HI(SCREEN%) DIV 2   \ buffer (&FE02 is 0: both start on a 512-byte
+                        \ boundary)
 
  OVSTASH = &BF00 - &C00 \ Where the flight code's overlay loader keeps WP and
                         \ the filing system's zero page during a load (ovload,
@@ -197,30 +154,23 @@
 
  PANELROWS = 7          \ The dashboard's character rows
 
- RLINEUS = 64           \ The screen's line, in microseconds
- RPA = 192 * RLINEUS - 2  \ Timer 1's periods for the rupture (RUPT): point 2
- RPB = 120 * RLINEUS - 2  \ (a line before S2 on line 311) to point 1 (a line
-                        \ before S1 on line 191), and point 1 to point 2 (the
-                        \ latch counts N + 2 microseconds)
+ MBOX = &1E00           \ The rasteriser's mailbox (&1E00-&1E9F, after the main
+                        \ RAM part): its callers' inputs (gfx-rws.asm). Main
+                        \ RAM's workspace is one run from here: the mailbox,
+                        \ the missile's blueprint, the shared variables
+                        \ (GVARS), the interrupt's variables (RESH%) and the
+                        \ circle engine's variables (PFVH%), to VEC
+ ASSERT MBOX >= PROGM_END%
 
- BUF0 = &1000           \ The filled renderer's second screen buffer, buffer 0
-                        \ (&1000-&3FFF; buffer 1 is SCREEN%), which the
-                        \ rasteriser (bank 5, gfx-rws.asm) draws into; it
-                        \ covers DFS's
-                        \ static workspace at &1000-&10FF, which PCLI keeps in
-                        \ DFSSAVE% between disc commands
+ MISSILE% = MBOX + &A0  \ The missile's blueprint (&1EA0-&1F3F), where both
+                        \ blueprint tables point (the original's &7F00 is
+                        \ buffer 1's)
 
- MBOX = &7E60           \ The rasteriser's mailbox (&7E60-&7EFF, from the main
-                        \ RAM part's end to the missile's blueprint): its
-                        \ callers' inputs (gfx-rws.asm). Main RAM's workspace
-                        \ is one run from here to VEC, around the missile's
-                        \ blueprint, which stays where the original has it:
-                        \ the mailbox, then after the blueprint the shared
-                        \ variables (GVARS), the palette (RESH%) and the
-                        \ circle engine's variables (PFVH%)
- ASSERT MBOX = PROGM_END% AND MBOX + &A0 = &7F00
+ VEC = &1FFE            \ The MOS's IRQ1V handler, kept by the loader (the
+                        \ original's VEC, at &7FFE)
 
- GVARS = &7FA0          \ The filled renderer's shared variables (&7FA0-&7FAF,
+
+ GVARS = &1F40          \ The filled renderer's shared variables (&1F40-&1F4F,
                         \ after the missile's blueprint, which ends there
                         \ without its edges), which the game's hooks, the
                         \ vertical sync interrupt and the frame layer (bank
@@ -247,12 +197,9 @@
  GTYPE = GVARS + 12     \ faces and its type (TYPE, or 32 for the dodecahedron
                         \ station: a type 2 with 24 vertices); GVARS + 9 and
                         \ + 11 are free
- GHOLD = GVARS + 8      \ Non-zero: the rupture keeps the 6845's display off
-                        \ after a disc command (RUPT, rpt4d): F_DIRECT sets it,
-                        \ as a program load does (PCLI), and every TTX66 clears
-                        \ it once the screen is clear, so the new program's
-                        \ screen is shown, not the bytes its load staged
-                        \ through buffer 1 (STAGE%)
+ GHOLD = GVARS + 8      \ Non-zero from a program's load (F_DIRECT) until its
+                        \ first screen clear (TTX66): nothing reads it on the
+                        \ Electron, whose loads stage below buffer 1
  GSTASH = GVARS + 13    \ Bit 7 set: a disc command has used buffer 0 (PCLI):
                         \ the next frame starts it afresh (f_b0new)
  GA = GVARS + 14        \ GCALL's A across the paging (gfx-glue.asm)
@@ -308,13 +255,9 @@
                         \ which hold nothing between two calls of R_POLY, and
                         \ nothing draws during a disc command
 
- RESH% = GVARS + 16     \ The high resident block (&7FB0-&7FBF, after the
-                        \ renderer's shared variables): the screen's palette,
-                        \ which the loader's LOAD routine copies there
-                        \ (elite-resident-high.asm)
-
- PALCMYK = RESH%        \ The screen's palette (16 bytes), which the vertical
-                        \ sync's interrupt writes
+ RESH% = GVARS + 16     \ The interrupt's variables (16 bytes, after the
+                        \ renderer's shared variables: the flip's state and the
+                        \ MOS's handler, elite-resident.asm's IRQG)
 
  GLUE% = &0724          \ The glue the game calls the frame layer through, and
                         \ the trampolines into bank 5 (gfx-glue.asm): at a

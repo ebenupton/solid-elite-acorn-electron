@@ -111,19 +111,16 @@ order("main RAM", [
     ("the circle engine's table (main)", LD["pcb_o"], LD["pcb_o"] + 5),
     ("SNE, ACT", 0x07C0, 0x0800),
     ("CATD", LD["CATD"], 0x0D9E),
-    ("buffer 0", C["BUF0"], C["SCREEN_P"]),
-    ("buffer 1", C["SCREEN_P"], C["PANEL_P"]),
-    ("the dashboard", C["PANEL_P"], C["PANEL_P"] + C["PANELROWS"] * 0x100),
-    ("the rupture", C["RUPT_P"], LD["RUPT_END"]),
     ("the main RAM part", progm, progm_end),
     ("the mailbox", C["MBOX"], C["MBOX_END"]),
-    ("the missile's blueprint", 0x7F00, C["GVARS"]),
+    ("the missile's blueprint", C["MISSILE_P"], C["GVARS"]),
     ("the shared variables", C["GVARS"], C["RESH_P"]),
-    ("the high resident block", C["RESH_P"], LD["RESH_END"]),
+    ("the interrupt's variables", C["RESH_P"], C["PFVH_P"]),
     ("the circle engine's variables (main high)", C["PFVH_P"], FL.get("PFVH_END%", C["PFVH_P"])),
-    ("VEC", 0x7FFE, 0x8000)])
-if LD["RUPT_END"] > progm:
-    errors.append("main RAM: the rupture (to &%04X) runs into the main RAM part (&%04X)" % (LD["RUPT_END"] - 1, progm))
+    ("VEC", C["VEC"], C["VEC"] + 2),
+    ("the staging area", C["STAGE_P"], C["BUF0"]),
+    ("buffer 0", C["BUF0"], C["SCREEN_P"]),
+    ("buffer 1", C["SCREEN_P"], 0x8000)])
 nlab += inside(LD, OUT + "gfx-glue-main.asm", C["GLUE_P"], 0x07C0, "the glue")
 nlab += inside(LD, OUT + "gfx-merid-main.asm", LD["GLUE_END"], 0x07C0, "the glue's room")
 for prog, sy in (("flight", FL), ("docked", DK)):

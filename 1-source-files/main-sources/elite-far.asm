@@ -101,7 +101,7 @@
  BNE fpc
  LDA fB
  STA &F4
- STA VIA+&30
+ STA ROMSEL
  LDA fA
  LDX fX
  PLP
@@ -113,7 +113,7 @@
  STA fB
  PLA                    \ the caller's bank
  STA &F4
- STA VIA+&30
+ STA ROMSEL
  LDA fB
  PHA
  LDA fA
@@ -154,7 +154,7 @@
  BNE fpj
  LDA fB
  STA &F4
- STA VIA+&30
+ STA ROMSEL
  LDA fA
  LDX fX
  PLP

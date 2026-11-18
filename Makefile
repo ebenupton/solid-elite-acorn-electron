@@ -136,8 +136,8 @@ all:
 	$(PYTHON) 2-build-files/elite-checksum.py
 	$(PYTHON) 2-build-files/mapcheck.py
 	$(PYTHON) 2-build-files/bmap.py
-	$(BEEBASM) -i 1-source-files/main-sources/elite-disc.asm -do 5-compiled-game-discs/elite-modelb.ssd -boot ELITE4 -title "E L I T E"
-	cp 5-compiled-game-discs/elite-modelb.ssd solid-elite-bbc-micro.ssd
+	$(BEEBASM) -i 1-source-files/main-sources/elite-disc.asm -do 5-compiled-game-discs/elite-electron.ssd -boot ELITE4 -title "E L I T E"
+	cp 5-compiled-game-discs/elite-electron.ssd solid-elite-acorn-electron.ssd
 ifneq ($(verify), no)
 	@$(PYTHON) 2-build-files/crc32.py 4-reference-binaries/$(folder) 3-assembled-output || true
 endif
@@ -149,4 +149,4 @@ verify:
 .PHONY:b2
 b2:
 	curl -G "http://localhost:48075/reset/b2"
-	curl -H "Content-Type:application/binary" --upload-file "5-compiled-game-discs/elite-modelb.ssd" "http://localhost:48075/run/b2?name=elite-modelb.ssd"
+	curl -H "Content-Type:application/binary" --upload-file "5-compiled-game-discs/elite-electron.ssd" "http://localhost:48075/run/b2?name=elite-electron.ssd"

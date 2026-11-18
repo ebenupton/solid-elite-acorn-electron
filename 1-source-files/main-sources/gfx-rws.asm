@@ -41,7 +41,7 @@
 \ (BUF0, buffer 0's screen, and MBOX, the mailbox, are elite-map.asm's;
 \ buffer 1's screen is SCREEN%, &4000, which gfx-raster.asm assumes)
 
-ASSERT SCREEN% = &4000
+\ ASSERT SCREEN% = &4000 (the MODE 5 conversion: electron-render)
 
 R_PXL    = MBOX        \ R_POLY: vertex x, y (signed 16-bit), 16 each
 R_PXH    = MBOX + &10

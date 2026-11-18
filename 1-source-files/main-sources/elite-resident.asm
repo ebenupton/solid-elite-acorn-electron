@@ -188,6 +188,16 @@
  LDY #&80
  JSR bcopy
 
+ LDX #0                 \ Port: the home image staged over buffer 0's
+                        \ dashboard, so copy buffer 1's over it, its seven rows
+.pcp1                   \ of 256 bytes, SCRROW apart
+FOR I%, 0, PANELROWS - 1
+ LDA PANEL% + I% * SCRROW,X
+ STA PANEL% - BUFD + I% * SCRROW,X
+NEXT
+ INX
+ BNE pcp1
+
  LDA pcbuf              \ If this is "L.", return to the caller (in the bank
  CMP #'R'               \ that was paged, which now holds the new program)
  BNE prest
@@ -195,7 +205,7 @@
  JSR dfsout             \ Otherwise keep DFS's workspace and run the program at
  LDA BANK4              \ S% in its home bank
  STA &F4
- STA VIA+&30
+ STA ROMSEL
  JMP HOME%
 
 .prest
@@ -204,7 +214,7 @@
 
  LDA pbank              \ Page the caller's bank back in and return
  STA &F4
- STA VIA+&30
+ STA ROMSEL
  RTS
 
 \ ******************************************************************************
@@ -234,7 +244,7 @@
  STY bc1+2
 
  STA &F4                \ Page the bank in
- STA VIA+&30
+ STA ROMSEL
 
  LDY #0
 
@@ -260,81 +270,22 @@
 \       Name: dfsin
 \       Type: Subroutine
 \   Category: Loader
-\    Summary: Put DFS's workspace back before a disc command, and keep it
-\             after one (dfsout)
+\    Summary: Before and after a disc command (dfsout): nothing to do
 \
 \ ------------------------------------------------------------------------------
 \
-\ Port: the renderer's second screen buffer (BUF0, &1000-&3FFF) covers
-\ DFS's static workspace at &1000-&10FF, so PCLI keeps that page in the last
-\ page of the cold bank (DFSSAVE%) between disc commands: dfsin copies it
-\ back before each command, and dfsout copies it out after (the command
-\ may have loaded new images into the banks: dfsout then rewrites the copy
-\ in the new cold image's last page, which no image reaches). Until the
-\ first dfsout (dfsok = 0), DFS's workspace has not been taken, and dfsin
-\ leaves it. Both leave the caller's bank paged in.
+\ Port: on the Model B, buffer 0 covered DFS's workspace page, which these
+\ kept in the cold bank between disc commands. On the Electron the screens
+\ start at &3000, above DFS's workspace (&0E00-&18FF), so there is nothing
+\ to keep; the calls stay, as the places that make disc commands are marked
+\ by them.
 \
 \ ******************************************************************************
 
 .dfsin
-
- JSR rdin               \ Stop the rupture's clock switches while the disc is in
-                        \ use (DFS's NMIs could fall inside one: rdin)
-
- LDA dfsok              \ If DFS's workspace has not been kept yet, leave it
- BEQ dfs3
-
- LDX #HI(DFSSAVE%)      \ Copy DFSSAVE% to &1000
- LDY #&10
- BNE dfs1               \ (this BNE is effectively a JMP)
-
 .dfsout
 
- JSR rdout              \ Start the rupture's clock switches again (rdout)
-
- LDA #&FF               \ Note that DFS's workspace is kept
- STA dfsok
-
- LDX #&10               \ Copy &1000 to DFSSAVE%
- LDY #HI(DFSSAVE%)
-
-.dfs1
-
- STX dfsa+2             \ Set the source page (X) in the LDA and the
- STY dfsb+2             \ destination page (Y) in the STA below
-
- LDA &F4                \ Page the cold bank in, keeping the paged bank on the
- PHA                    \ stack
- LDA BANK7
- STA &F4
- STA VIA+&30
-
- LDY #0
-
-.dfs2
-
-.dfsa
-
- LDA &FF00,Y            \ (the pages are set above)
-
-.dfsb
-
- STA &FF00,Y
-
- INY
- BNE dfs2
-
- PLA                    \ Page the bank back in
- STA &F4
- STA VIA+&30
-
-.dfs3
-
  RTS
-
-.dfsok
-
- EQUB 0                 \ Non-zero once DFS's workspace has been kept
 
 \ ******************************************************************************
 \
@@ -390,7 +341,7 @@
 
  LDA BANK4              \ Page the program's home bank in
  STA &F4
- STA VIA+&30
+ STA ROMSEL
 
  TSX                    \ Fetch the character from the stack
  LDA &102,X
@@ -399,7 +350,7 @@
 
  PLA                    \ Page the caller's ROM back in
  STA &F4
- STA VIA+&30
+ STA ROMSEL
 
  PLA                    \ Restore the character into A and return
  RTS
@@ -422,12 +373,12 @@
 
 .BRKR
 
- JSR rdout              \ Start the rupture's clock switches again, in case a
+ \ (Port: the Model B restarted its rupture here, in case a
                         \ disc command ended here with an error
 
  LDA BANK4              \ Page the program's home bank in
  STA &F4
- STA VIA+&30
+ STA ROMSEL
 
  JMP HOME%+11           \ Go on to the program's handler
 
@@ -675,11 +626,6 @@ ENDIF
 
 .BRBR1
 
-                        \ The following loop prints out the null-terminated
-                        \ message pointed to by (&FD &FE), which is the MOS
-                        \ error message pointer - so this prints the error
-                        \ message on the next line
-
  LDY #0                 \ Set Y = 0 to act as a character counter
 
  LDA #13                \ Set A = 13 so the first character printed is a
@@ -688,14 +634,12 @@ ENDIF
 .BRBRLOOP
 
  JSR OSWRCH             \ Print the character in A (which contains a carriage
-                        \ return on the first loop iteration), and then any
-                        \ characters we fetch from the error message
+                        \ return on the first loop iteration)
 
  INY                    \ Increment the loop counter
 
  LDA (&FD),Y            \ Fetch the Y-th byte of the block pointed to by
-                        \ (&FD &FE), so that's the Y-th character of the message
-                        \ pointed to by the MOS error message pointer
+                        \ (&FE &FD), which contains the error message
 
  BNE BRBRLOOP           \ If the fetched character is non-zero, loop back to the
                         \ JSR OSWRCH above to print the it, and keep looping
@@ -709,50 +653,41 @@ ENDIF
 \       Name: IRQG
 \       Type: Subroutine
 \   Category: Drawing the screen
-\    Summary: The game's interrupt handler: the vertical sync
+\    Summary: The game's interrupt handler: the display end, and the flip
 \
 \ ------------------------------------------------------------------------------
 \
-\ Port: the field is two CRTC frames, the screen (lines 0-191, MODE 1 at the
-\ 2 MHz clock) and the original's mode 5 dashboard (lines 192-311, at the
-\ 1 MHz clock), switched in mid-line on an exact cycle (the rupture,
-\ elite-rupture.asm, docs/video-timing.md). The system VIA's timer 1 fires
-\ two lines before each switch: that goes to RUPT, which makes the switch and
-\ then passes the interrupt on to the MOS (its 100 Hz clock). The vertical
-\ sync, in frame B, is handled as LINSCN did, without the mode: it sets DL for
-\ WSCAN, writes the screen's palette (which the energy bomb's flash changes
-\ for a frame) and decrements LASCT. Every other interrupt goes to the MOS's
-\ handler. The loader's LOAD routine installs it.
+\ Port: the Electron's ULA raises the display-end interrupt once a field, at
+\ the end of the last displayed line (line 256 in MODE 5). The handler does
+\ what the original's vertical sync handler did, without the mode switch: it
+\ sets DL for WSCAN and decrements LASCT; it writes the CMYK palette back
+\ (which the energy bomb's flash changes); and it carries out the frame
+\ layer's flip: if the frame layer has asked for one (GFLIP), buffer GPEND is
+\ shown from the next field on (the ULA latches the screen start address at
+\ the field's start, so the buffer that was on show is not read again), but
+\ not in the field after a flip (rflip), so that a frame is on show for two
+\ fields at least: 25 frames a second at most, as the BBC Master port's.
+\ Every interrupt, this one too, then goes on to the MOS's handler, which
+\ clears it. The loader's LOAD routine installs it.
 \
 \ ******************************************************************************
 
 .IRQG
 
- BIT VIA+&4D            \ If timer 1 has fired (bit 6, V), this is one of the
- BVS irqt               \ rupture's two points: set up the 6845 for the next
-                        \ CRTC frame at irqt
+ LDA &FE00              \ If this is not the display end (bit 2 of the ULA's
+ AND #%00000100         \ interrupt status), pass it straight to the MOS
+ BEQ irqm
 
- LDA #%00000010         \ If this is not the vertical sync (CA1), pass it to the
- BIT VIA+&4D            \ MOS, through IRQMOS (the original's handler kept the
- BNE irqv               \ MOS's vector in VEC, at &7FFE, which the docked code
- JMP (IRQMOS)           \ overwrites: the original only rarely needed it)
-
-.irqv
-
- TYA                    \ Store Y on the stack
+ TXA                    \ Store X on the stack
  PHA
 
  LDA #30                \ Set the line scan counter to a non-zero value, as
  STA DL                 \ LINSCN did, so WSCAN can wait for it to change
 
- LDY #15                \ Write the palette, PALCMYK's sixteen bytes
-
-.irqp
-
- LDA PALCMYK,Y
- STA VIA+&21
- DEY
- BPL irqp
+ LDA #ULAPAL0           \ Write the palette (black, cyan, magenta, yellow)
+ STA &FE08
+ LDA #ULAPAL1
+ STA &FE09
 
  LDA LASCT              \ Decrement the value of LASCT, but if we go too far
  BEQ P%+5               \ and it becomes negative, bump it back up again (this
@@ -762,26 +697,44 @@ ENDIF
 
  DEC LASCT
 
- PLA                    \ Restore Y from the stack
- TAY
+ LDX #0                 \ If the frame layer has asked for a flip (GFLIP), and
+ LDA GFLIP              \ the last field did not flip (rflip), show buffer
+ BEQ irq3               \ GPEND from the next field on, and note that it is
+ LDA rflip              \ done
+ BNE irq3
+ LDA GPEND
+ STA GFRONT
+ STX GFLIP
+ INX
 
- LDA VIA+&41            \ Read the System VIA's IRA to clear the CA1 interrupt
+.irq3
 
- LDA &FC                \ Restore A from the MOS's save register and return
- RTI                    \ (the vertical sync is not passed to the MOS, as in
-                        \ the original, so the MOS never rewrites the ULA)
+ STX rflip              \ (rflip: 1 if this field flipped)
 
-.irqt
+ LDX GFRONT             \ The screen start for the buffer on show, GFRONT (0
+ LDA ssa,X              \ for BUF0, 1 for SCREEN%)
+ STA &FE03
 
- JMP RUPT               \ The rupture's two points: switch the 6845's clock and
-                        \ set up the next CRTC frame (RUPT, elite-rupture.asm,
-                        \ which passes the interrupt on to the MOS after it)
+ PLA                    \ Restore X from the stack
+ TAX
+
+.irqm
+
+ JMP (IRQMOS)           \ Go on to the MOS's handler
+
+.ssa
+
+ EQUB SSA0, SSA1        \ The screen start address register &FE03 for each
+                        \ buffer (&FE02 stays 0)
+
+.rflip
+
+ EQUB 0                 \ 1 if the last field flipped
 
 .PANR
 
- EQUB 7                 \ The dashboard rows to show in frame B: 7, or 0 to hide
-                        \ the dashboard (DET1)
-
+ EQUB 7                 \ The dashboard rows to show (the original's DET1 hides
+                        \ the dashboard; on the Electron it stays)
 
 .IRQMOS
 

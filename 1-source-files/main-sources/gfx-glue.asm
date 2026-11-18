@@ -63,7 +63,7 @@ FJT = &BFC0             \ bank 6's dispatcher (gfx-bank6.asm)
  PHA                    \ in
  LDA BANK5
  STA &F4
- STA &FE30
+ STA ROMSEL
  LDA rtA                \ put A, X and Y back for the routine
  LDX rtX
  LDY rtY
@@ -72,7 +72,7 @@ FJT = &BFC0             \ bank 6's dispatcher (gfx-bank6.asm)
  STA rtA                \ page the caller's bank back in, keeping A
  PLA
  STA &F4
- STA &FE30
+ STA ROMSEL
  LDA rtA
  RTS
 
@@ -106,12 +106,12 @@ ENDMACRO
  PHA
  LDA BANK6              \ page bank 6 in (&F4 first, as elite-far.asm)
  STA &F4
- STA &FE30
+ STA ROMSEL
  JSR FJT                \ the entry X, with A = GA, and Y as it was
  TAX                    \ keep A while the bank is paged (X is not kept)
  PLA                    \ page the caller's bank back in
  STA &F4
- STA &FE30
+ STA ROMSEL
  TXA                    \ A as the entry left it
  RTS
 
