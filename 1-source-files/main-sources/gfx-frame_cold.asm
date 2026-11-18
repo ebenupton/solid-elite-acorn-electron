@@ -135,8 +135,9 @@
 \ fz_n.
 
 .f_poly2
- LDY #2
- LDA (fz_q),Y           \ the colour byte: a hue ramp (bit 7 clear), or the
+ LDY fz_q
+.^fpo_q2
+ LDA &FFFF,Y            \ (the list + 2: f_shpat) the colour byte: a hue ramp (bit 7 clear), or the
  BPL fpo8               \ slot's
  LSR A
  LSR A

@@ -17,19 +17,7 @@
 
 .F_INIT
  STY f_ysav
- LDX #&21               \ R_INIT uses &06-&27: keep the game's values
-.fin0
- LDA &06,X
- STA f_zsv,X
- DEX
- BPL fin0
- JSR T_INIT
- LDX #&21
-.fin4
- LDA f_zsv,X
- STA &06,X
- DEX
- BPL fin4
+ JSR T_INIT              \ (R_INIT writes no zero page)
  LDA #0
  STA GMODE
  STA GFLIP

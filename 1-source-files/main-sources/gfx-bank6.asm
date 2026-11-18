@@ -52,6 +52,10 @@
  INCBIN "3-assembled-output/C6.bin"   \ it: C6.bin, C6SZ bytes)
  ASSERT P% = C6% + C6SZ
 .F_START
+.FZB    SKIP 16         \ the frame layer's scratch (gfx-frame.asm's fz_*: once
+                        \ the zero page's &D2-&E1), first, as the code's
+                        \ instructions take it as absolute
+.f_fo   SKIP 1          \ f_ship's offset in the face list
 
  INCLUDE "3-assembled-output/gfx-frame-bank6.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank6.asm"
@@ -67,7 +71,7 @@
 .F_RP   SKIP 29 * MAXSH \ the ship records (F_SHIP): INWK 0-8, XX16, XX0, each
 F_SZL = F_RP + 6 * MAXSH  \ a field to an array of MAXSH (the ship's z, INWK
 F_SZH = F_RP + 7 * MAXSH  \ 6-7: the sort's)
-.f_zsv  SKIP &22 + 16   \ F_FRAME's keep of &06-&27 and FZ's &D2-&E1
+.f_zsv  SKIP &22        \ F_FRAME's keep of &06-&27
 F_SRN = MAXSH * 15      \ (the most faces is 15)
 .F_SR   SKIP F_SRN      \ the ships' faces' levels (F_SHIP)
 .F_SLV  SKIP 52         \ the docking slot's vertices, as R_PXL .. R_PYH + 3
