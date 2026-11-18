@@ -3363,8 +3363,11 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  BNE P%+4
  LDA #&EE               \ pixel 3 of column 31 is the border
  STA fglm+1
- LDA #&19               \ ORA abs,Y: the glyph's pixels set in the ink
- STA fglo
+ LDA #&19               \ ORA abs,Y: the glyph's pixels set in the ink, over
+ STA fglo               \ its shadow
+ STA f_gshd
+ LDA #0
+ STA f_gp
  ASSERT F_TCOL = &FF    \ ink is all-ones: (m AND ink) OR (NOT m AND s) = m OR s
  LDA fz_i               \ first line y = 8*row
  ASL A
@@ -3390,7 +3393,10 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 
 \ f_gl: the glyph's rows Y + 1 to (fgl4) - 1, from f_gfont's glyph into
 \ f_gcell's cell, each row's pixels masked (fglm) and combined with the
-\ screen by the operation at fglo (ORA or EOR abs,Y)
+\ screen by the operation at fglo (ORA or EOR abs,Y); with f_gshd non-zero
+\ (the frames' text, ORed over whatever is drawn) a shadow first: the
+\ pixels one right and one down of the glyph's, and the glyph's own,
+\ blacked, so that the yellow glyph reads over a face of any colour
 
 .fgl0
  TYA                    \ row Y: the high nibble of byte Y DIV 2 (Y even) or
@@ -3407,7 +3413,29 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
 .fgl2
  AND #15
 .fgl5
+ STA f_gn
+ LDX f_gshd             \ (no shadow: F_DCHAR)
+ BEQ fgl6
+ LSR A                  \ the shadow: this row's pixels one right, the last
+ ORA f_gp               \ row's and one right of them, with this row's own
+ STA f_gq
+ LDA f_gp
+ LSR A
+ ORA f_gq
+ ORA f_gn
  TAX
+ LDA f_gn
+ STA f_gp
+ LDA f_nib,X
+ BEQ fgl3
+ AND fglm+1             \ (not over a border pixel)
+ EOR #&FF               \ blacked first
+.fgla
+ AND &FFFF,Y            \ (patched: the cell's address)
+.fglb
+ STA &FFFF,Y            \ (patched: the cell's address)
+.fgl6
+ LDX f_gn
  LDA f_nib,X
  BEQ fgl3
 .fglm
@@ -3456,6 +3484,8 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  ADC f_gb
  STA fglo+2
  STA fgls+2
+ STA fgla+2
+ STA fglb+2
  TXA                     \ 8 * col (C = 0: col < 32)
  ASL A
  ASL A
@@ -3470,9 +3500,13 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  ADC f_gb
  STA fglo+1
  STA fgls+1
+ STA fgla+1
+ STA fglb+1
  BCC fgc9
  INC fglo+2
  INC fgls+2
+ INC fgla+2
+ INC fglb+2
 .fgc9
  RTS
 
@@ -3494,7 +3528,9 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  LDA f_ysav
  LDY #HI(SCREEN%)
  JSR f_gcell
- LDA #&FF               \ no mask, rows 0 to 7
+ LDA #0                 \ no shadow, no mask, rows 0 to 7
+ STA f_gshd
+ LDA #&FF
  STA fglm+1
  LDA #8
  STA fgl4+1
@@ -3503,6 +3539,10 @@ F_TCOL = &FF            \ text ink: yellow (logical colour 3)
  LDY f_ysav
  RTS
 
+.f_gn EQUB 0            \ f_gl's: this row's pixels, the last row's, the
+.f_gp EQUB 0            \ shadow's, shadows on (non-zero)
+.f_gq EQUB 0
+.f_gshd EQUB 0
 .f_gc EQUB 0            \ f_glyph's column, f_gcell's row and base
 .f_gr EQUB 0
 .f_gb EQUB 0
