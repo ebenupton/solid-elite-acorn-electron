@@ -155,7 +155,13 @@ keeps its colours and stays on show.
   the Model B port; then it clears the interrupt itself and returns. The
   MOS's own display-end handler is not run: it writes its VDU variables in
   page 3, which is the game's `UP` (`DLY` is at `&034A`), and the screen
-  start address. Every other interrupt (the MOS's clock) goes on to the MOS.
+  start address. The MOS's clock goes on to the MOS only in direct mode
+  (`GMODE` bit 7 clear), where its tick scans the keyboard into the buffer
+  that the game's text input reads; in space mode `IRQG` clears it itself,
+  as nothing in flight needs the tick (the game reads the keyboard itself,
+  and `IRQG` ticks the sound engine first on every interrupt), which saves
+  about 700 cycles a hundred times a second. Any other interrupt goes on to
+  the MOS.
   No game code touches the System VIA's old addresses (on the Electron
   they mirror the ULA's registers): the joystick's fire button reads as up
   and `MT26` no longer enables the VIA's CA2 interrupt.
@@ -175,6 +181,14 @@ keeps its colours and stays on show.
   Electron Elite, so the game sees the BBC Micro's key numbers throughout.
   `TT217` translates keys through a copy of the BBC MOS 1.20's table
   (`KTRAN`, in the docked code's home bank), as the Electron's MOS has none.
+  In the flight code, `DKS4`'s single-key test reads the keyboard matrix
+  itself (`kbfast`, in the low pass, as paging the keyboard in unmaps
+  sideways RAM): `kbkey` gives the matrix code (column, row) of each BBC
+  Micro internal key number that the MOS's `KEYV` reports as a key of the
+  matrix, as measured on the MOS, and `kbfast` pages the keyboard in, reads
+  the column and pages the bank back (through bank 12, as the ULA ignores
+  a write of 0-7 while 8-11 is paged), in a fifth of `KEYV`'s time; any
+  other number still goes to `KEYV`.
 * **Disc.** The ACP 1770 DFS behaves as the Model B's DFS for the game's
   purposes: `OSWORD &7F` reads sectors (`CATD`), and its NMI code stays
   below `&0D7A`. Two differences: it takes `*L.` for another command, so the
@@ -195,17 +209,43 @@ and the disc and MOS work at load time.
 | `&0400-&07FF` | the resident block A: the bank numbers, the far calls and trampolines, `PCLI`, the interrupt handler |
 | `&0800-&0DFF` | the MOS's page 8, `QQ16`, `K%` and the line heaps, DFS's NMI page |
 | `&0E00-&18FF` | `WP` (the original's, over DFS's catalogue), DFS's workspace |
-| `&1900-&1E3F` | the program's main RAM part: the low pass (`WSCAN`, `DELAY`) and the hot code that does not fit bank 4 (1,331 bytes in flight) |
+| `&1900-&1E3F` | the program's main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass (`WSCAN`, `DELAY`, `ovf1`, the flight code's `kbfast` and `kbkey`), then `hotm`: the flight code's hot blocks tagged `Area: hot, main` that do not fit `D.LOW` (`BLINE`, `DOCKIT`, `STARS2`, `BUMP2`, `NWSHP`) |
 | `&1E40-&1FFF` | the mailbox, the missile's blueprint, the shared variables (`GVARS`), `SNDH`, the circle engine's variables, `VEC` |
-| `&2000-&2FFF` | the staging area's first part (`STAGE%` = `&2000`, on over buffer 0 for a program's images) |
+| `&2000-&2C4F` | the staging area's first part (`STAGE%` = `&2000`, on over buffer 0 for a program's images; the files loaded in flight, the blueprint sets and the overlays, end below `&2C50`) |
+| `&2C50-&2FFF` | the flight code's second main RAM part, `D.LOW` (`hotl`: `TACTICS`, `TT17` to `SFX`), which `DEEOR` loads each time the flight code starts (`LOWLD`), as a program's load stages over it |
 | `&3000-&57FF` | buffer 0 |
 | `&5800-&7FFF` | buffer 1 (the direct-mode screen) |
 | banks 4-7 | as the Model B port: 4 home, 7 cold (its last page, the Model B's DFS page, now the disc state's), 5 the rasteriser (and the sound engine), 6 the frame layer (after the flight code's cold 6 pass) |
 
 `3-assembled-output/memory-map.md` is the full map as built. Free: flight
-bank 4 40 bytes (above the blueprint slot), flight main RAM part 13, flight
-bank 7 274 (the renderer's window), bank 5 about 150 in its image, bank 6
-about 280; the docked program has 2.7K in bank 4 and 5K in bank 7.
+bank 4 111 bytes (above the planet's surface), flight main RAM part 32 and
+`D.LOW` 45, flight bank 7 331 (the renderer's window), bank 5 about 150 in
+its image, bank 6 242 and the cold 6 pass's room 263; the docked program
+has 2.7K in bank 4 and 5K in bank 7.
+
+**Which code is in main RAM.** The flight code's hot pass is placed by
+measurement: a hot block whose header says `Area: hot, main`
+(`2-build-files/streams.py`) goes to main RAM, first to `D.LOW`, then to
+`hotm`, and every other hot block goes to bank 4, which now holds them all.
+The tagged blocks are the units that ran least over the whole gate run
+(cycles an iteration, `eramacc.mjs --iters 10000`) and in the benchmark
+scenes (`bbench.mjs --prof`), against what had been at `&1900` because
+bank 4 was full:
+
+| Moved to main RAM | bytes | cycles an iteration in the gate run | Moved into bank 4 | bytes | cycles an iteration in the gate run |
+|---|---:|---:|---|---:|---:|
+| `TACTICS` (parts 1-7) | 579 | 99 | `MUT1`..`MULT1` | 77 | 2,211 |
+| `TT17`..`SFX` (with `KILLSHP`) | 320 | 58 | `LL38` | 32 | 1,399 (7,560 flight, 14,068 zone) |
+| `STARS2`..`QSMUL` (side views) | 255 | 1 | `LL5` | 60 | 844 |
+| `DOCKIT` | 187 | 32 | `DV42`..`DVID4` | 43 | 323 |
+| `NWSHP` | 166 | 76 | `MLS2`..`MLS1` | 76 | 321 (6,159 rear) |
+| `BLINE` | 146 | 55 | `SPS1`..`TAS2`, `cntr`, `MFRAME`, `GINF`, `SUNSC`, `H_LL42`..`H_EE31`, `PLS22`, `HITCH` and the rest | 660 | 1,000 together |
+| `BUMP2`..`REDU2` | 128 | 27 | | | |
+
+`TIDY`, `TIS1`, `TIS2`, `TIS3`, `DVIDT` (from the cold 6 pass) and `NORM`
+(from the cold bank) are in bank 4 too, in the room this made: there they
+need no far call, where before each `TIDY` made about ten (into `NORM`, back
+for `SQUA` and `LL5`, into bank 6 for `TIS2`, home for `MAD` and `MULT12`).
 
 ## Sound
 
@@ -298,18 +338,22 @@ sun's parking) on jsbeeb's Model B as before, and the candidate on clkh
 (injected at `DKSX`, the instruction after the Electron's keyboard read, and
 at `Rd2`), comparing the game state at every main-loop iteration.
 
-**Status: VERIFY PASS** at `749eb0b` (`6-harness/verify.sh`, every step,
-nothing skipped): test_raster, the build, test_frame, test_routines; the
-game state identical to the original's at all 10,000 iterations of the
-pilot's run (three launches, two dockings, three hyperspace jumps, with
-`--deadregs` and the reference's MV40 sites required); redock (docked, launched,
-docked again with real keys), the save test (the saved commander file
+**Status: VERIFY PASS** at the branch's last code commit (`DKS4`'s direct key test; 11.47 against 6.39 flight iterations a second, 0.557) (`6-harness/verify.sh`, every step,
+nothing skipped), and at each commit of the performance pass before it:
+test_raster, the build, test_frame, test_routines; the game state
+identical to the original's at all 10,000 iterations of the pilot's run
+(three launches, two dockings, three hyperspace jumps, with `--deadregs`
+and the reference's MV40 sites required); redock (docked, launched, docked
+again with real keys, the docking computer switched on with C in flight,
+through `DKS4`'s direct key test); the save test (the saved commander file
 byte for byte the original's, load, the error path, the catalogue, the
 launch), the views and the flight screens (the overlays loaded); the sun
 parking's proofs and scenes (zone, views, full, handback, clouds, events)
 with the candidate on clkh; `circles=off` built and 1,500 iterations in
-step. The last commit (`dfc12e8`, the text's drop shadow, renderer only)
-passes test_frame and the 10,000-iteration comparison.
+step. The performance pass changes no pixel: `bbench.mjs --shots` gives
+the seven scenes' screens identical before and after it. `DKS4`'s
+direct test was checked key by key in flight (KYTB's seven keys, held on
+clkh, read as pressed at `DKSX`, and none at rest).
 
 What the Electron port changed in the harness and tests: the candidate's
 `runElite` on clkh, with the same hooks, filing-system exclusions (also
@@ -324,29 +368,96 @@ for the title's slow frames, and press SHIFT+0 for @.
 ## Speed
 
 Frozen scenes (`6-harness/bbench.mjs`, cycles per main-loop iteration at
-the 2 MHz clock; its noise is about 1.5%):
+the 2 MHz clock; its noise is about 1.5% between builds whose code moves,
+and none between runs of one build):
 
-| Scene | The original (BBC Micro, wireframe) | Model B port (README) | Electron, before the migration | Electron, now | speed against the original |
-|---|---:|---:|---:|---:|---:|
-| Flight | 278,661 | 227,289 | 286,186 | 290,769 | 0.96 |
-| Combat | 132,101 | 118,957 | 150,066 | 152,791 | 0.86 |
-| Beach ball | 286,830 | 266,741 | 342,065 | 341,610 | 0.84 |
-| Sun | 235,743 | 266,224 | 316,246 | 313,295 | 0.75 |
-| Docking | 328,282 | 479,984 | 557,061 | 559,262 | 0.59 |
-| Station's zone | 386,321 | 417,851 | 508,282 | 516,642 | 0.75 |
-| Rear view | 290,628 | 254,519 | 333,612 | 333,968 | 0.87 |
+| Scene | The original (BBC Micro, wireframe) | Model B port (README) | Electron, before the performance pass | Electron, now | change | speed against the original |
+|---|---:|---:|---:|---:|---:|---:|
+| Flight | 278,661 | 227,289 | 290,695 | 271,630 | -6.6% | 1.03 |
+| Combat | 132,101 | 118,957 | 152,785 | 140,403 | -8.1% | 0.94 |
+| Beach ball | 286,830 | 266,741 | 341,542 | 315,588 | -7.6% | 0.91 |
+| Sun | 235,743 | 266,224 | 313,241 | 295,817 | -5.6% | 0.80 |
+| Docking | 328,282 | 479,984 | 559,043 | 527,016 | -5.7% | 0.62 |
+| Station's zone | 386,321 | 417,851 | 516,539 | 487,775 | -5.6% | 0.79 |
+| Rear view | 290,628 | 254,519 | 333,920 | 304,347 | -8.9% | 0.95 |
+
+Each commit of the performance pass, in the scenes' cycles per iteration:
+
+| Commit | Flight | Combat | Beach ball | Sun | Docking | Zone | Rear |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| before | 290,695 | 152,785 | 341,542 | 313,241 | 559,043 | 516,539 | 333,920 |
+| the coldest hot blocks to main RAM, the hot ones into bank 4 | 286,948 | 149,978 | 338,784 | 312,550 | 555,412 | 510,328 | 325,739 |
+| the MOS's clock tick skipped in space mode | 282,106 | 147,459 | 333,050 | 307,260 | 546,039 | 501,714 | 320,227 |
+| fast trampolines (`FT_*`) | 279,093 | 147,022 | 326,744 | 303,435 | 538,802 | 496,558 | 315,055 |
+| `TIDY`'s family into bank 4 | 275,858 | 142,484 | 324,300 | 301,986 | 537,163 | 493,475 | 312,687 |
+| the disc rows' boundaries snapped in line | 273,757 | 142,491 | 317,690 | 297,909 | 529,104 | 489,879 | 306,472 |
+| `DKS4`'s direct key test | 271,630 | 140,403 | 315,588 | 295,817 | 527,016 | 487,775 | 304,347 |
 
 The gate's piloted run (10,000 iterations: three launches, two dockings,
 three hyperspace jumps, most of it on the long approaches to big planets):
 the original 11.47 flight iterations a second (174,293 cycles), the
-Electron 5.98 (334,348 cycles), 0.52 of the original's speed; the Model B
-port's README gives 7.47 against 12.63 for its run (0.59).
+Electron 6.39 (312,855 cycles), 0.56 of the original's speed (before the
+performance pass 5.98, 334,348 cycles, 0.52); the Model B port's README
+gives 7.47 against 12.63 for its run (0.59).
 
 The Electron runs the same 2 MHz 6502 from sideways RAM and ROM, but every
 main-RAM access costs a 1 MHz cycle (two or three CPU cycles), and the
 screen, the stack, zero page and the trampolines are all in main RAM; the
 screen is half as wide in pixels as the Model B port's, so fills cost
-fewer stores.
+fewer stores. Of the remaining gap to the original, the Model B port's own
+(its filled renderer's discs and faces, in docking above all) is most;
+what is the Electron's own is main RAM's traffic, below, about a quarter
+of the cycles.
+
+## The profile
+
+`6-harness/bbench.mjs --prof FILE` profiles each scene over its 128
+iterations on clkh: the cycles run at each label (and the times it was
+entered), the main-RAM accesses each label makes by kind and their cycles,
+and the calls from label to label. Per iteration, now, by where the code
+runs (cycles; bank 4 the game's hot code, 5 the rasteriser, 6 the frame
+layer, 7 the game's cold code and the disc layer's painter, main RAM the
+trampolines, the interrupt, the main RAM part and the MOS):
+
+| Scene | bank 4 | bank 5 | bank 6 | bank 7 | main RAM | main RAM's share of the cycles (all accesses) |
+|---|---:|---:|---:|---:|---:|---:|
+| Flight | 156,512 | 44,578 | 50,807 | 8,169 | 11,478 | 32% |
+| Combat | 106,839 | 15,311 | 11,026 | 906 | 6,238 | 38% |
+| Beach ball | 122,146 | 43,799 | 107,412 | 28,538 | 13,608 | 27% |
+| Sun | 59,864 | 66,971 | 72,002 | 83,027 | 13,864 | 24% |
+| Docking | 120,788 | 117,606 | 112,923 | 159,203 | 16,412 | 23% |
+| Zone | 225,221 | 100,777 | 100,313 | 44,813 | 16,560 | 28% |
+| Rear | 136,674 | 28,423 | 99,647 | 25,029 | 14,490 | 29% |
+
+The largest single costs, averaged over the seven scenes: the disc layer's
+painter in bank 7 (`r_drg` 10,300 cycles an iteration, `r_sw`'s spans
+10,200, `r_dmb` 8,500: in docking these three are 96,000, the station's
+old place on the planet repainted in each buffer before the station is
+drawn over it); the game's ship projection in bank 4 (`LL51`'s dot
+products 8,900 and the `FMLTU` they call 189 times an iteration, 15,000
+with it, `MAL2`/`MAL3`, `LL57`, `LL48`); the frame layer's batches of disc
+rows (`fsn9`, `f_snap`, `fdb4`: 17,000 before the snap was put in line,
+12,000 now); the circle engine's rows (`PC_ROWS`: `prl3`-`prl5`, `prw1`,
+`pr_put`, 15,000); bank 5's `R_GETW` (4,000) and its polygons.
+
+Main RAM's traffic is spread thin: the stack (11,300 accesses an iteration
+in the gate's run) comes from `JSR`/`RTS` in every routine, `ll51`'s and
+`FMLTU`'s first (1,400 and 1,100 cycles), then the painter's and the frame
+layer's per-row calls; zero page (10,100) from the game's own variables,
+which every bank shares; the mailbox (`fsn9`, `r_dmb`, `dp_ld`, `dp_st`,
+`fdb4`, `R_GETW`: about 9,000 cycles). Moving the game's zero page to a bank
+would gain little: an absolute access in sideways RAM costs one cycle more
+than a zero-page one, against the 1.2 a main-RAM access adds.
+
+**The screen.** Screen accesses are 1-2% of the cycles in every scene
+(flight: 371 reads and 188 writes an iteration; docking 3,745 and 1,529).
+The reads are the edge bytes' read-modify-write in the painter's `r_sw`
+(two reads a byte, `EOR`/`AND`/`EOR`, which is still cheaper than one read
+and a mask from main RAM), bank 5's row ends and the dashboard's EOR plots
+(`CPIX2`, `CP1`: 60 reads, 40 writes in combat). The dashboard is drawn in
+both buffers only when an indicator changes (`DLAST`); no row is cleared
+that is already clear (the frame clears only what was written, through the
+written extents). Nothing here is worth more than a few hundred cycles.
 
 ## Main-RAM traffic
 
@@ -357,39 +468,39 @@ cycles they take:
 | Build | zero page | stack | other low | screen reads | screen writes | code | total accesses | their cycles | of all cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | before the migration (7b49dd2) | 25,964 | 14,717 | 8,726 | 1,433 | 553 | 7,444 | 58,837 | 128,330 | 36% of 359,128 |
-| now (renderer state in its banks) | 10,247 | 14,811 | 8,753 | 1,352 | 492 | 7,573 | 43,227 | 95,238 | 27% of 352,391 |
+| before the performance pass (renderer state in its banks) | 10,249 | 14,816 | 8,753 | 1,397 | 514 | 7,577 | 43,304 | 95,405 | 27% of 354,430 |
+| now | 10,106 | 11,288 | 7,889 | 1,397 | 514 | 4,391 | 35,585 | 79,179 | 24% of 330,458 |
 
-The migration moved the renderer's own state out of zero page into the
-banks that use it (bank 5's scratch and inputs' copies, the frame layer's
-`FZ`, the circle rows' scratch, the disc painter's scratch), turning `(zp),Y`
-pointers into self-modified `abs,Y` operands patched once per row: zero page
-traffic fell by 61% and main RAM's share of the cycles from 36% to 27%, but
-the iteration is only about 2% faster (and the frozen scenes within the
-noise), because the absolute addressing and the patching cost about what
-the slower accesses did. What is left: the stack (`JSR`/`RTS` everywhere,
-the far calls' frames), the mailbox (the disc layer's batches between banks
-6, 5 and 7: `fsn9`, `r_dmb`, `dp_ld`, `dp_st`, `fdb4`, `R_GETW`), the
-trampolines' code (`fpc`, `farc`, `farret`, `rtgo`, `rtl`, `rtj`: about 15K
-cycles an iteration) and the game's own zero page (`MVS5`, `MAL2`, the
-stardust: the game's variables are shared by all four banks).
+The code fetched from main RAM fell by 42% (the hot code out of `&1900`,
+the MOS's clock tick, the fast trampolines, `DKS4`'s key test), the stack
+by 24% (the far calls and `TIDY`'s, the MOS's interrupt frames, `f_snap`'s
+calls). What is left: the stack and zero page, as above; the mailbox; the
+remaining far calls (`SC5` and `DIALS` into the cold bank, the frame
+layer's `f_gproj` into the home bank, the cold 6 pass's compass) and the
+generic trampolines into bank 5 (`rtgo`: about 12 calls an iteration).
 
 ## Open issues
 
-* **Hot game code in main RAM.** The flight program's hot pass overflows
-  bank 4 into main RAM (1,331 bytes at `&1900`: the low pass, `MULT1`,
-  `DVID4`, `LL5`, `SPS1`, the keyboard and others), as on the Model B. Bank
-  4 is full; moving it needs about 1.3K of room found in the banks.
-* **Main RAM's remaining traffic** (above): the mailbox and the trampolines
-  are the next targets; the game's zero page would need the game's
-  variables moved into a bank, which they are shared across.
+* **The disc layer's overdraw.** In docking and the station's zone the
+  painter repaints the planet under the station's old place in each buffer
+  (the dirty extents), and the station is then drawn over most of it again:
+  painting only outside the station's new silhouette (its faces' spans,
+  known before the discs are drawn) would save most of `r_drg` and `r_sw`
+  there, but needs room in bank 6 for the silhouette.
+* **Main RAM's remaining traffic** (above): the stack and zero page are the
+  game's own; the disc layer's batches are 8 rows with boundaries (16
+  without), so `R_GETW` and `FT_DPROWS` run 10-20 times an iteration, which
+  a bigger mailbox would halve; the generic trampolines and far calls that
+  are left run 20-30 times an iteration.
 * **Palette effects.** The escape pod's dashboard colours and the death's
   hidden dashboard have no fixed-palette equivalent (the dashboard stays
   on show, in its colours); the energy bomb flashes colour 0 white for a
   field.
 * **Title and slow frames.** The title's Cobra fills the window, and frames
   there take a few tenths of a second, so a key must be held that long.
+  A latch in the interrupt (a scan while the title runs) would fix it, but
+  the resident block has no bytes left for it; the title's own loop reads
+  the keyboard once a frame (`RDKEY`).
 * **Real hardware** is untested: the ULA paging quirk, the Plus 3's 1770
   DFS and sideways RAM boards in slots other than 12-15 are handled as
   documented but run only in clkh.
-* **History.** The branch's commits are the work as it went (agents'
-  branches merged in), not yet a clean series.
