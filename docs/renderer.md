@@ -7,35 +7,66 @@ port's filled, dithered, double-buffered renderer, rewritten for the NMOS
 ## The rasteriser's bank 5
 
 The rasteriser is the Master port's (`gfx-raster*.asm`: filled convex
-polygons, lines, spans, dots and stars into a MODE 1 buffer, each shape
-extending its rows' dirty extents, and each buffer repairing its own dirty
-rows at the start of its next frame), in NMOS 6502 code, with buffer 0 at
-`&1000` and no ACCCON. `2-build-files/bank5.py` assembles `gfx-bank5.asm`
+polygons, lines, spans, dots and stars, each shape extending its rows'
+dirty extents, and each buffer repairing its own dirty rows at the start of
+its next frame), in NMOS 6502 code, drawing into the Electron's MODE 5
+buffers. `2-build-files/bank5.py` assembles `gfx-bank5.asm`
 (making long any branch that the longer NMOS code put out of range) and
-writes `3-assembled-output/BANK5.bin` (the bank's image from `R_POLY` at
-`&9800` to its end: the 24 row runs below it are not shipped, `R_INIT`
-makes them) and `bank5-symbols.txt`; `make` runs it. The loader's `LOAD`
-routine loads it from the disc's `R.BANK` into bank 5 (through `STAGE%`, as
-`PCLI` loads a program), from `R_IMG%` (which `bank5.py` writes to
-`3-assembled-output/bank5-entry.asm`).
+writes `3-assembled-output/BANK5.bin` (the bank's image from `R_IMG%`,
+`&9100`, to its end: the row runs and row tables below it are not shipped,
+`R_INIT` makes them) and `bank5-symbols.txt`; `make` runs it. The loader's
+`LOAD` routine loads it from the disc's `R.BANK` into bank 5 (through
+`STAGE%`, as `PCLI` loads a program), from `R_IMG%` (which `bank5.py`
+writes to `3-assembled-output/bank5-entry.asm`).
+
+### The screen
+
+Two whole MODE 5 screens (ELECTRON-REPORT.md, "Display"): buffer 0 at
+`BUF0` and buffer 1, the direct-mode screen, at `SCREEN%`, `&2800` higher;
+320 bytes a character row, the window in character rows 0-23 and cells
+4-35 of each. The coordinates are the game's, x 0-255 and y 0-191: game x
+is MODE 5 pixel `x DIV 2`, in byte column `x DIV 8`, pixel `(x DIV 2) AND
+3` in it. So:
+
+* a span of game x `xl`..`xr` (a polygon's row, a disc's, the repair's)
+  fills MODE 5 pixels `xl DIV 2` to `xr DIV 2`; two shapes that share an
+  edge at an odd game x both write the MODE 5 pixel it splits (the later
+  wins), and none leaves a gap;
+* lines, dots and stars are worked out at the game's resolution, each
+  pixel setting the MODE 5 pixel it falls in (`R_LINE`'s mask steps a
+  pixel at every second x step);
+* dirty and written extents stay in game x, and the repair widens them to
+  whole bytes (eight game x).
+
+A row's 32 bytes are 256 contiguous bytes, so one pointer, the row's
+address in column 0 (`r_ylo`, and `r_ypg` or `r_ypg0` for the buffer:
+`SCREEN%` or `BUF0` + 320 (y DIV 8) + 32 + (y AND 7)), with Y = 8 x the
+column, reaches all of them; a character row's address's low byte is 32,
+96, 160 or 224, so its lines never cross a page. The per-x tables (`r_xo`
+= 8 x the column, the masks `r_lm` and `r_rm`, the runs' offsets `r_jm`
+and `r_j`) take the game's x and absorb the halving. Columns 0 and 31 hold
+the border's MODE 5 pixels (game x 0-1, 254-255): the repair masks them,
+and the frame's window is 2..253.
+
+The row runs, one per character row, are `STA abs,Y` stores (Y = the row)
+of columns 1 to 31 (and a 32nd, never run, so that `r_pgfix` patches them
+in passes of eight), made for buffer 1; a run used for buffer 0 has `&28`
+taken off each store's high byte (`r_pgfix`), as the buffers are `&2800`
+apart.
 
 ### The memory
 
 | Where | What |
 |---|---|
-| main `&1000-&3FFF` | buffer 0 (`BUF0`, elite-map.asm) |
-| main `&4000-&6FFF` | buffer 1 (`SCREEN%`, the direct-mode screen) |
-| main `&7E60-&7EFF` | the mailbox, `MBOX`: each call's inputs (below) |
+| main `BUF0` | buffer 0 (elite-map.asm) |
+| main `SCREEN%` | buffer 1, `BUF0` + `&2800` (the direct-mode screen) |
+| main `MBOX` | the mailbox: each call's inputs (below) |
 | zero page `&06-&27` | the colour pair, span ends and clip window (`&06-&0F`), and the rasteriser's scratch (`&10-&27`); the caller saves and restores the game's bytes there around a frame |
-| bank 5 `&8000-&97FF` | the 24 row runs, a page each (`gfx-raster.asm`'s bank 5 runs pass: a page whose number is a multiple of 32, for the repair), which `R_INIT` makes at start; in their 65-byte tails, the stars' records (each buffer's `r_s0y`, `r_s1y` = `r_s0y` + `&300`, and so on) and variables, and `R_LINE`'s |
-| bank 5 `&9800-&A7FF` | `R_POLY` (both phases) and `R_LINE` (69 bytes free) |
+| bank 5 `&8000-&8BFF` | the 24 row runs, two a page (row r's at `r_run0` + `&80` r: `gfx-raster.asm`'s bank 5 runs pass, at a page whose number is a multiple of 16), which `R_INIT` makes at start |
+| bank 5 `&8C00-&90FF` | the row tables `r_ypg`, `r_ypg0`, `r_ylo` (each at a page's start), which `R_INIT` makes too; the stars' records (buffer 1's: buffer 0's + `&100`), and the variables, `R_LINE`'s too |
+| bank 5 `&9100-&A7FF` | `R_POLY` (both phases) and `R_LINE` |
 | bank 5 `&A800-&ADFF` | the state: both buffers' dirty extents (`R_DIRTYL0`, `R_DIRTYR0`, `R_DIRTYL1` = `R_DIRTYL0` + `&300`, `R_DIRTYR1`), this frame's written extents (`R_WL`, `R_WR`), `R_POLY`'s edge tables |
-| bank 5 `&AE00-&BFFE` | the shared region (`gfx-raster.asm`): `R_SETBUF` and `r_pgfix`, the spans' core, the per-x tables at `&B400` (`R_TAB%`), the row pages, the stars, `r_setup`, the repair (`R_REPAIR`, `r7_rowrep`), the disc layer's transfer (`R_GETW`, `R_DRAINQ`: `gfx-raster_dq.asm`), then the bank 5 end passes: `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY` and `R_INIT` (which makes the row runs, then calls `r_setup`), and `RJT`, the jump table, at `&BFD5` (1 byte free, to the bank's top); below the per-x tables, `R_LINE`'s cold part, the private state, `R_RESETBUF`, the frame layer's query, `r_wq` (`gfx-raster_dq.asm`'s bank 5 gap pass), and `pf_tilt` (25 bytes free) |
-
-Each region but the row runs' code and `R_INIT` is where it was when the row
-runs were assembled after the per-x tables, moved by whole pages, so that no
-branch or indexed read crosses a page it did not (the row runs' pages now
-come first, as the repair needs their page number to be a multiple of 32).
+| bank 5 `&AE00-&BFFF` | `R_SETBUF` and `r_pgfix`, the spans' core, the per-x tables at `&B400` (`R_TAB%`), the stars, `r_setup`, the repair (`R_REPAIR`, `r7_rowrep`), the disc layer's transfer (`R_GETW`, `R_DRAINQ`: `gfx-raster_dq.asm`), then the bank 5 end passes: `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY` and `R_INIT`, and `RJT`, the jump table; below the per-x tables, `R_LINE`'s cold part, the private state, `R_RESETBUF`, the frame layer's query, `r_wq` (`gfx-raster_dq.asm`'s bank 5 gap pass), and `pf_tilt` |
 
 Nothing of the rasteriser's state is in main RAM but the mailbox. Bank 5
 uses no zero page outside `&06-&27`: the NMOS conversion's temporaries are

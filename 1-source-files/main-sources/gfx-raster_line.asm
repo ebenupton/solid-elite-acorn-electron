@@ -566,14 +566,22 @@
   DEY
   BPL ct
   LDX l_y0                \ X = row, l_x = x
-  LDY l_x                 \ the byte of (l_x, row X): RZ_PP + Y (NMOS: from
-  CPY #&80                \ the shared region's r_ypg and r_xo, for room)
+  TXA                     \ the byte of (l_x, row X): RZ_PP + Y, RZ_PP the
+  AND #&F8                \ character row's address in its column (from the
+  TAY                     \ shared region's r_ylo, r_ypg and r_xo, for room),
+  LDA r_ylo,Y             \ Y = row AND 7
+  LDY l_x
+  CLC
+  ADC r_xo,Y
+  STA RZ_PP
+  TXA
+  AND #&F8
+  TAY
 .^r_yp5
-  LDA r_ypg,X
+  LDA r_ypg,Y
   ADC #0
   STA RZ_PP+1
-  LDA r_xo,Y
-  STA RZ_PP
+  LDY l_x
   LDA r_lm,Y              \ pixels x..3 AND pixels 0..x of its byte = pixel x
   AND r_rm,Y
   STA l_m
@@ -612,9 +620,12 @@
   INY
   CPY #8
   BNE lyl_y
-  LDY #0
+  LDY #0                  \ (C = 1) the next character row: 320 on
+  LDA RZ_PP
+  ADC #LO(320) - 1
+  STA RZ_PP
   LDA RZ_PP+1
-  ADC #1
+  ADC #HI(320)
   STA RZ_PP+1
 .lyl_y
   LDA l_e
@@ -625,6 +636,9 @@
   SBC l_b
   STA l_e
   DEC l_x
+  LDA l_x                 \ (x odd: into the next MODE 5 pixel left)
+  LSR A
+  BCC lyl
   ASL l_m
   BCC lyl
   LDA #&11
@@ -659,9 +673,12 @@
   INY
   CPY #8
   BNE lyr_y
-  LDY #0
+  LDY #0                  \ (C = 1) the next character row: 320 on
+  LDA RZ_PP
+  ADC #LO(320) - 1
+  STA RZ_PP
   LDA RZ_PP+1
-  ADC #1
+  ADC #HI(320)
   STA RZ_PP+1
 .lyr_y
   LDA l_e
@@ -672,6 +689,9 @@
   SBC l_b
   STA l_e
   INC l_x
+  LDA l_x                 \ (x even: into the next MODE 5 pixel right)
+  LSR A
+  BCS lyr
   LSR l_m
   BCC lyr
   LDA #&88
@@ -711,14 +731,20 @@
   DEX
   DEY
   BPL lxu_y
-  LDY #7
-  LDA RZ_PP+1
+  LDY #7                  \ the last character row: 320 back
+  LDA RZ_PP
   SEC
-  SBC #2
+  SBC #LO(320)
+  STA RZ_PP
+  LDA RZ_PP+1
+  SBC #HI(320)
   STA RZ_PP+1
 .lxu_y
 .lxu_x
   INC l_x
+  LDA l_x                 \ (x even: into the next MODE 5 pixel right)
+  LSR A
+  BCS lxu
   LSR l_m
   BCC lxu
   LDA #&88
@@ -759,13 +785,19 @@
   INY
   CPY #8
   BNE lxd_y
-  LDY #0
+  LDY #0                  \ (C = 1) the next character row: 320 on
+  LDA RZ_PP
+  ADC #LO(320) - 1
+  STA RZ_PP
   LDA RZ_PP+1
-  ADC #1
+  ADC #HI(320)
   STA RZ_PP+1
 .lxd_y
 .lxd_x
   INC l_x
+  LDA l_x                 \ (x even: into the next MODE 5 pixel right)
+  LSR A
+  BCS lxd
   LSR l_m
   BCC lxd
   LDA #&88

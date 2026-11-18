@@ -232,8 +232,32 @@ class Machine:
 
 
 # ----------------------------------------------------------------------------- reference
+# The Electron's MODE 5 screen (ELECTRON-REPORT.md, "Display"): 320 bytes a
+# character row, the space view in cells 4-35 of rows 0-23.  Game x 0-255 is
+# MODE 5 pixel x >> 1: column x >> 3, pixel (x >> 1) & 3 in the byte (pixel 0
+# in bits 7 and 3).  A game span [xl, xr] fills MODE 5 pixels [xl >> 1, xr >>
+# 1]; lines, dots and stars are rasterised at the game's resolution and each
+# of their pixels sets the MODE 5 pixel it falls in (so two game pixels in
+# one MODE 5 pixel set it twice, the later's colour winning: the same colour
+# pair at a row).
+SCRSZ = 0x2800                     # a buffer: 32 character rows of 320 bytes
+
+
 def addr(x, y):
-    return (y >> 3) * 0x200 + (y & 7) + 8 * (x >> 2)
+    return (y >> 3) * 320 + 32 + (y & 7) + 8 * (x >> 3)
+
+
+def mask(x):
+    """the MODE 5 pixel's bits in its byte (game x)"""
+    return 0x88 >> ((x >> 1) & 3)
+
+
+def where(a):
+    """(row y, column c) of buffer offset a in the space view, or None"""
+    r, o = divmod(a, 320)
+    if r >= 24 or not 32 <= o < 288:
+        return None
+    return 8 * r + (o & 7), (o - 32) >> 3
 
 
 class Ref:
@@ -248,13 +272,13 @@ class Ref:
 
     def setpix(self, x, y, ce, co):
         c = co if y & 1 else ce
-        m = 0x88 >> (x & 3)
+        m = mask(x)
         a = addr(x, y)
         self.b[a] = (self.b[a] & ~m & 0xFF) | (c & m)
 
     def getpix(self, x, y):
         v = self.b[addr(x, y)]
-        p = x & 3
+        p = (x >> 1) & 3
         return (((v >> (7 - p)) & 1) << 1) | ((v >> (3 - p)) & 1)
 
     def span(self, y, xl, xr, ce, co):
@@ -338,7 +362,7 @@ def star_ref(ref, x, y, s, scol):
         byts = {}
         for px in xs:
             if ref.cl <= px <= ref.cr:
-                byts.setdefault(px >> 2, []).append(px)
+                byts.setdefault(px >> 3, []).append(px)
         for c, pxs in byts.items():
             if all(ref.getpix(px, py) == 0 for px in pxs):
                 for px in pxs:
@@ -547,7 +571,7 @@ class Tester:
         m, rnd = self.m, self.rnd
         self.set_clip((1, 254, 1, 191))
         for it in range(n):
-            scr = bytes(rnd.randrange(256) for _ in range(0x3000)) if it % 50 == 0 else m.screen()
+            scr = bytes(rnd.randrange(256) for _ in range(SCRSZ)) if it % 50 == 0 else m.screen()
             m.set_screen(scr)
             ref = Ref(scr, self.clip)
             y = rnd.randrange(0, 192)
@@ -573,7 +597,7 @@ class Tester:
             dl, dr = dirt[y]
             dirt[y] = (min(dl, l), max(dr, r))
         if self.m.screen() != bytes(ref.b):
-            diff = [i for i in range(0x3000) if self.m.screen()[i] != ref.b[i]]
+            diff = [i for i in range(SCRSZ) if self.m.screen()[i] != ref.b[i]]
             raise AssertionError('poly %s: %d bytes differ, first %04X' % (verts, len(diff), diff[0]))
         if self.dirty(b) != dirt:
             ys = [y for y in range(192) if self.dirty(b)[y] != dirt[y]]
@@ -600,7 +624,7 @@ class Tester:
                 else:
                     self.set_clip((1, 254, 1, 191))
                 b = rnd.randrange(2)
-                m.set_screen(bytes(rnd.randrange(256) for _ in range(0x3000)))
+                m.set_screen(bytes(rnd.randrange(256) for _ in range(SCRSZ)))
                 ref, dirt = self.reset_state(b)
             verts = random_poly(rnd)
             cyc, sp = self.poly_case(verts, ref, b, dirt)
@@ -663,7 +687,7 @@ class Tester:
                 else:
                     self.set_clip((1, 254, 1, 191))
                 b = rnd.randrange(2)
-                m.set_screen(bytes(rnd.randrange(256) for _ in range(0x3000)))
+                m.set_screen(bytes(rnd.randrange(256) for _ in range(SCRSZ)))
                 ref, dirt = self.reset_state(b)
             kind = rnd.random()
             if kind < 0.5:
@@ -712,7 +736,7 @@ class Tester:
         sc0 = scenario or ''
         # the game's window is 2..253 while discs may reach 1..254
         self.set_clip((2, 253, 1, 191) if sc0.startswith('band') and rnd.random() < 0.6 else (1, 254, 1, 191))
-        bufs = [bytes(rnd.randrange(256) for _ in range(0x3000)) for _ in range(2)]
+        bufs = [bytes(rnd.randrange(256) for _ in range(SCRSZ)) for _ in range(2)]
         outside = [None, None]
         use_reset = rnd.random() < 0.5
         reset_at = rnd.randrange(3, max(4, nframes)) if rnd.random() < 0.5 else -1
@@ -917,40 +941,43 @@ class Tester:
             for x, y, s in stars:
                 star_ref(ref, x, y, s, scol)
             starpix = set()
-            for a in range(0x3000):
+            for a in range(SCRSZ):
                 if pre[a] != ref.b[a]:
+                    y, c = where(a)
                     for p in range(4):
                         if (pre[a] ^ ref.b[a]) & (0x88 >> p):
-                            starpix.add((4 * ((a % 0x200) // 8) + p, (a // 0x200) * 8 + (a & 7)))
+                            starpix |= {(8 * c + 2 * p, y), (8 * c + 2 * p + 1, y)}
             got = m.screen()
             if got != bytes(ref.b):
-                diff = [i for i in range(0x3000) if got[i] != ref.b[i]]
+                diff = [i for i in range(SCRSZ) if got[i] != ref.b[i]]
                 a = diff[0]
-                y = (a // 0x200) * 8 + (a & 7)
-                rows = sorted(set((d // 0x200) * 8 + (d & 7) for d in diff))
+                y, c0 = where(a) or (-1, -1)
+                rows = sorted(set((where(d) or (-1,))[0] for d in diff))
                 if os.environ.get('RDEBUG'):
-                    ra = (y >> 3) * 0x200 + (y & 7)
-                    print('got', ''.join('%02x' % got[ra + 8 * c] for c in range(64)))
-                    print('exp', ''.join('%02x' % ref.b[ra + 8 * c] for c in range(64)))
+                    ra = addr(0, y)
+                    print('got', ''.join('%02x' % got[ra + 8 * c] for c in range(32)))
+                    print('exp', ''.join('%02x' % ref.b[ra + 8 * c] for c in range(32)))
                 raise AssertionError('frame %d (%s, buf %d): %d bytes differ, first row %d col %d; rows %s'
-                                     % (f, sc, b, len(diff), y, (a % 0x200) // 8, rows[:12]))
+                                     % (f, sc, b, len(diff), y, c0, rows[:12]))
             # written-extent check: every byte that changed vs this buffer's last
             # frame lies in WL/WR (disc, star erase/plot) or DIRTY (shapes)
             old = bufs[b]
             dirt = self.dirty(b)
             wl2 = [(m.rd('R_WL', y), m.rd('R_WR', y)) for y in range(192)]
-            for a in range(0x3000):
+            for a in range(SCRSZ):
                 if got[a] != old[a]:
-                    y = (a // 0x200) * 8 + (a & 7)
-                    c = (a % 0x200) // 8
+                    w = where(a)
+                    if w is None:
+                        raise AssertionError('frame %d: byte &%04X outside the window changed' % (f, a))
+                    y, c = w
                     for p in range(4):
-                        x = 4 * c + p
                         mm = 0x88 >> p
                         if (got[a] ^ old[a]) & mm:
-                            ok = (wl2[y][1] and wl2[y][0] <= x <= wl2[y][1]) or (dirt[y][0] <= x <= dirt[y][1]) \
-                                or (x, y) in starpix or (x, y) in lxpix or (x, y) in oldstars[b]
+                            xs = (8 * c + 2 * p, 8 * c + 2 * p + 1)
+                            ok = any((wl2[y][1] and wl2[y][0] <= x <= wl2[y][1]) or (dirt[y][0] <= x <= dirt[y][1])
+                                     or (x, y) in starpix or (x, y) in lxpix or (x, y) in oldstars[b] for x in xs)
                             if not ok:
-                                raise AssertionError('frame %d: pixel %d,%d changed outside WL/DIRTY' % (f, x, y))
+                                raise AssertionError('frame %d: pixel %d,%d changed outside WL/DIRTY' % (f, xs[0], y))
             bufs[b] = got
             oldstars[b] = starpix       # erased next time on this buffer (no WL/WR needed)
             self.stat('starerase', cyc_e)

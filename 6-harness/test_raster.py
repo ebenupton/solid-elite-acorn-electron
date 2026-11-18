@@ -12,17 +12,21 @@ of the current sources):
   * the machine is py65's NMOS 6502 (the Model B's), with bank 5's image at
     &8000-&BFFF and nothing else paged; each entry point is called through
     bank 5's jump table, RJT, as the frame layer's trampolines call it;
-  * the screen is buffer 0 at &1000 or buffer 1 at &4000 (gfx-rws.asm's
-    BUF0 and SCREEN%), as the last R_SETBUF chose: the reference model's
-    12K screen is that buffer's;
+  * the screen is buffer 0 (BUF0) or buffer 1 (SCREEN%, &2800 higher:
+    elite-map.asm), as the last R_SETBUF chose, each a whole MODE 5 screen
+    (raster_model.py's geometry: the space view in cells 4-35 of character
+    rows 0-23, game x as MODE 5 pixel x >> 1): the reference model's 10K
+    screen is that buffer's;
   * the inputs (vertices, line ends, stars) are in the mailbox, MBOX
     (MBOX), the state in bank R: the model reads and writes them by name, so
     it needs no change;
+  * the mailbox's bytes are not screen: where the map puts the mailbox in
+    a buffer (below the window), they are left out of the comparisons;
   * the write guard allows exactly the renderer's zero page (&06-&27), the
     stack page, the two screen buffers, the mailbox and bank 5; and the row
     runs must be left as they were (no RTS left planted), except that a
-    page's stores may have been moved to the other buffer (r_pgfix: the
-    high byte of each STA's operand, by &30);
+    run's stores may have been moved to the other buffer (r_pgfix: the
+    high byte of each STA's operand, by &28);
   * there is no disc layer (no R_DISCROWS): the frames test runs its 'none'
     scenario (no disc), with R_REPAIR where the model calls R_DISCROWS;
   * R_POLY's 4-row colour: every polygon is drawn with R_COL2 = R_COLE and
@@ -49,6 +53,7 @@ FILES = ['gfx-raster.asm', 'gfx-raster_poly.asm', 'gfx-raster_line.asm', 'gfx-ra
 CONFIG = {}
 tr.NSTARS = int(re.search(r'^\s*NOST\s*=\s*(\d+)', open(os.path.join(MS, 'elite-source-flight.asm'),
                 encoding='latin-1').read(), re.M).group(1)) + 1   # (the stars the game records: MB_SX ..)
+RUNSZ = 3 * 32 + 2                               # a row run (gfx-raster.asm's R_RUNSZ)
 ENTRIES = ['R_INIT', 'R_SETBUF', 'R_RESETBUF', 'R_REPAIR', 'R_SPAN', 'R_MARKDIRTY', 'R_DOT',
            'R_POLY', 'R_LINE', 'R_STARERASE', 'R_STARPLOT']
 
@@ -59,7 +64,7 @@ def rws_constants():
     out = {}
     for f in ('elite-map.asm', 'gfx-rws.asm'):
         for l in open(os.path.join(MS, f), encoding='latin-1'):
-            m = re.match(r'^\s*([A-Za-z_][\w]*)\s*=\s*([^\\]+)', l)
+            m = re.match(r'^\s*([A-Za-z_][\w%]*)\s*=\s*([^\\]+)', l)
             if m:
                 e = re.sub(r'&([0-9A-Fa-f]+)', r'0x\1', m.group(2)).strip()
                 try:
@@ -176,8 +181,7 @@ class Machine(tr.Machine):
         self.lo, self.hi = 0x8000, 0xC000
         self.image = list(image)
         self.jt = {n: self.syms['RJT'] + 3 * i for i, n in enumerate(ENTRIES)}
-        b0, b1 = self.syms['BUF0'], 0x4000
-        self.base = (b0, b1)
+        self.base = (self.syms['BUF0'], self.syms['SCREEN%'])
 
     def call(self, name, a=0, x=0, y=0, maxcyc=20_000_000):
         if name == 'R_DISCROWS':                 # (no disc layer: its repair, with no
@@ -207,8 +211,8 @@ class Machine(tr.Machine):
 
     def check_writes(self, snap, name):
         mem, s = self.mem, self.syms
-        allowed = [(0x06, 0x28), (0x100, 0x200), (s['BUF0'], 0x7000), (s['MBOX'], s['MBOX'] + 0x100),
-                   (0x8000, 0xC000)]
+        allowed = [(0x06, 0x28), (0x100, 0x200), (s['BUF0'], s['BUF0'] + 2 * tr.SCRSZ),
+                   (s['MBOX'], s['MBOX'] + 0x100), (0x8000, 0xC000)]
         a0 = 0
         for lo, hi in sorted(allowed) + [(0x10000, 0x10000)]:
             if a0 < lo and mem[a0:lo] != snap[a0:lo]:
@@ -218,21 +222,31 @@ class Machine(tr.Machine):
             a0 = max(a0, hi)
         r0 = s['r_run0']
         for r in range(24 if name != 'R_INIT' else 0):   # (R_INIT makes them)
-            b = r0 + 256 * r
-            for i in range(189):
+            b = r0 + 0x80 * r
+            for i in range(RUNSZ - 1):           # (the spare, R_NOPL, takes the STA put back)
                 if mem[b + i] != snap[b + i]:
-                    if not (i % 3 == 2 and (mem[b + i] - snap[b + i]) & 255 in (0x30, 0xD0)):
+                    if not (i % 3 == 2 and i < 96 and (mem[b + i] - snap[b + i]) & 255 in (0x28, 0xD8)):
                         raise AssertionError('%s left run %d modified at +%d' % (name, r, i))
 
     def screen(self):
         b = self.base[self.buf]
-        return bytes(self.mem[b:b + 0x3000])
+        out = bytearray(self.mem[b:b + tr.SCRSZ])
+        for a in self.mbox_in(b):                # (the mailbox is not screen, where
+            out[a - b] = 0                       # the map puts it in a buffer's rows
+        return bytes(out)                        # below the window)
+
+    def mbox_in(self, b):
+        m0 = self.syms['MBOX']
+        return [a for a in range(m0, m0 + 0x100) if b <= a < b + tr.SCRSZ]
 
     def set_screen(self, data):
         """both buffers (the model sets a frame's screen before its R_SETBUF:
         on the Master both buffers are at one address)"""
         for b in self.base:
-            self.mem[b:b + 0x3000] = list(data)
+            keep = {a: self.mem[a] for a in self.mbox_in(b)}
+            self.mem[b:b + tr.SCRSZ] = list(data)
+            for a, v in keep.items():
+                self.mem[a] = v
 
 
 def star_ref(ref, x, y, s, scol):
@@ -247,9 +261,9 @@ def star_ref(ref, x, y, s, scol):
         byts = {}
         for px in xs:
             if ref.cl <= px <= ref.cr:
-                byts.setdefault(px >> 2, []).append(px)
+                byts.setdefault(px >> 3, []).append(px)
         for c, pxs in byts.items():
-            if all(ref.getpix(4 * c + p, py) == 0 for p in range(4)):
+            if all(ref.getpix(8 * c + 2 * p, py) == 0 for p in range(4)):
                 for px in pxs:
                     ref.setpix(px, py, scol, scol)
 
@@ -303,7 +317,7 @@ def test_lines(self, n):
                 self.set_clip((1, 254, 1, 191))
             b = rnd.randrange(2)
             m.call('R_SETBUF', a=b)
-            m.set_screen(bytes(rnd.randrange(256) for _ in range(0x3000)))
+            m.set_screen(bytes(rnd.randrange(256) for _ in range(tr.SCRSZ)))
             ref, dirt = self.reset_state(b)
         x0, y0 = end(rnd.randrange(4))
         x1, y1 = end(rnd.randrange(4))
@@ -356,14 +370,19 @@ def main():
     print(m.sizemsg, '; %d R_SETBUF patch sites' % nsites)
     rnd = random.Random(a.seed)
     m.call('R_INIT')
-    r0 = m.syms['r_run0']                        # (the row runs it made: STA &4000 +
-    for r in range(24):                          # &200 r + 8 c - 8 r, Y for c = 1..63,
-        run = []                                 # RTS, 0: gfx-raster.asm)
-        for c in range(1, 64):
-            a_ = 0x4000 + 0x200 * r + 8 * c - 8 * r
+    r0, scr, buf0 = m.syms['r_run0'], m.syms['SCREEN%'], m.syms['BUF0']   # (the row runs it
+    for r in range(24):                          # made: STA SCREEN% + 320 r + 32 + 8 c
+        run = []                                 # - 8 r, Y for c = 1..32, RTS, 0, at
+        for c in range(1, 33):                   # r_run0 + &80 r: gfx-raster.asm)
+            a_ = scr + 320 * r + 32 + 8 * c - 8 * r
             run += [0x99, a_ & 255, a_ >> 8]
-        if m.mem[r0 + 256 * r:r0 + 256 * r + len(run) + 2] != run + [0x60, 0]:
+        if m.mem[r0 + 0x80 * r:r0 + 0x80 * r + RUNSZ] != run + [0x60, 0]:
             raise SystemExit('R_INIT: row run %d is not as made' % r)
+    for y in range(192):                         # (and the row tables)
+        a_ = scr + 320 * (y >> 3) + 32 + (y & 7)
+        if (m.mem[m.syms['r_ylo'] + y], m.mem[m.syms['r_ypg'] + y], m.mem[m.syms['r_ypg0'] + y]) != \
+                (a_ & 255, a_ >> 8, (a_ - scr + buf0) >> 8):
+            raise SystemExit('R_INIT: row table entry %d is not as made' % y)
     print('R_INIT   ok (the 24 row runs made)')
     t = tr.Tester(m, rnd)
     only = a.only.split(',') if a.only else None

@@ -39,19 +39,20 @@
 
 \ ============================================================================
 \ R_INIT: make the 24 row runs (gfx-raster.asm), which R.BANK does not
-\ carry: in run page r, STA &4000 + &200 r + 8 c - 8 r, Y for c = 1 to 63,
-\ an RTS and a 0, for buffer 1 (as r_pgtag has them); row r + 1's first
-\ store is row r's last + 8. Then R_LINE's buffer (none yet) and the state.
+\ carry: the run of row r at r_run0 + &80 r, STA SCREEN% + 320 r + 32 + 8 c
+\ - 8 r, Y for c = 1 to 32, an RTS and a 0, for buffer 1 (as r_pgtag has
+\ them); row r + 1's first store is row r's first + 312. Then the row tables
+\ (r_ylo, r_ypg, r_ypg0), R_LINE's buffer (none yet) and the state.
 \
 \       Area: bank 5 end
 \ ============================================================================
 .R_INIT
 {
-  LDA #LO(&4008)          \ RZ_T0(1 0) = row 0's first store's address
+  LDA #LO(SCREEN% + 40)   \ RZ_T0(1 0) = row 0's first store's address
   STA RZ_T0
-  LDA #HI(&4008)
+  LDA #HI(SCREEN% + 40)
   STA RZ_T1
-  LDA #0                  \ RZ_PP(1 0) = run page 0
+  LDA #LO(r_run0)         \ RZ_PP(1 0) = row 0's run
   STA RZ_PP
   LDA #HI(r_run0)
   STA RZ_PP+1
@@ -81,10 +82,49 @@
   INY
   LDA #0
   STA (RZ_PP),Y
-  INC RZ_PP+1             \ the next row's page
+  LDA RZ_T0               \ the next row's first store: 312 on from this
+  CLC                     \ row's, 256 on already
+  ADC #312 - 256
+  STA RZ_T0
+  BCC nd
+  INC RZ_T1
+.nd
+  LDA RZ_PP               \ the next row's run, &80 on
+  EOR #&80
+  STA RZ_PP
+  BMI pg
+  INC RZ_PP+1
   LDA RZ_PP+1
-  CMP #HI(r_run0) + 24
+  CMP #HI(r_run0) + 12
   BNE pg
+  LDA #LO(SCREEN% + 32)   \ the row tables: RZ_T0(1 0) = character row 0's
+  STA RZ_T0               \ address in buffer 1
+  LDA #HI(SCREEN% + 32)
+  STA RZ_T1
+  LDY #0
+.rt
+  TYA                     \ (a character row's lines never cross a page)
+  AND #7
+  ORA RZ_T0
+  STA r_ylo,Y
+  LDA RZ_T1
+  STA r_ypg,Y
+  SEC
+  SBC #HI(SCREEN% - BUF0)
+  STA r_ypg0,Y
+  INY
+  TYA
+  AND #7
+  BNE rt
+  LDA RZ_T0               \ the next character row, 320 on
+  CLC
+  ADC #LO(320)
+  STA RZ_T0
+  LDA RZ_T1
+  ADC #HI(320)
+  STA RZ_T1
+  CPY #192
+  BNE rt
   LDA #&FF                \ R_LINE's DIRTY operands are for no buffer yet
   STA rl_lbuf
   JMP r_setup

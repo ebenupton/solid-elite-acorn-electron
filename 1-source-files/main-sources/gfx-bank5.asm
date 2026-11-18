@@ -8,10 +8,12 @@
 \ and shared region in bank 5); here bank 5 holds the rasteriser without its
 \ disc layer, which the flight code's window in bank 7 holds:
 \
-\   &8000-&97FF  the 24 row runs, a page each, which R_INIT makes at start
-\                (gfx-raster.asm's bank 5 runs: not in the image), with the
-\                stars' records and variables, and R_LINE's, in their tails
-\   &9800-&A7FF  R_POLY (both phases) and R_LINE (gfx-raster_poly.asm,
+\   &8000-&8BFF  the 24 row runs, two a page, which R_INIT makes at start
+\                (gfx-raster.asm's bank 5 runs: not in the image)
+\   &8C00-&90FF  the row tables (made at start too), with the stars'
+\                records and variables in the rest of their pages, and
+\                R_LINE's (not in the image)
+\   &9100-&A7FF  R_POLY (both phases) and R_LINE (gfx-raster_poly.asm,
 \                gfx-raster_line.asm)
 \   &A800-&ADFF  the state: each buffer's dirty extents, this frame's written
 \                extents (R_WL, R_WR) and R_POLY's edge tables
@@ -19,17 +21,12 @@
 \                the spans' core, the arithmetic; in the room below the
 \                per-x tables, R_LINE's cold part, the private state,
 \                R_RESETBUF, the frame layer's query (r_wq) and pf_tilt;
-\                the per-x tables at R_TAB% (&B400); the row pages, the
-\                stars; then r_setup, the repair (R_REPAIR and r7_rowrep:
+\                the per-x tables at R_TAB% (&B400); the stars; then r_setup, the repair (R_REPAIR and r7_rowrep:
 \                gfx-raster_rep.asm), the disc layer's requests
 \                (gfx-raster_dq.asm), the code a span's rows run (r_pclip,
 \                r_pset, R_SPAN, R_DOT, R_MARKDIRTY) and R_INIT, and RJT,
 \                the jump table, its address for the glue from this
 \                assembly (bank5.py)
-\
-\ Each region is where it was before the runs were made at start, moved by
-\ whole pages (the runs came after the per-x tables), so that no branch or
-\ indexed read crosses a page that it did not.
 \
 \ Each file is placed by its passes (2-build-files/streams.py: every block's
 \ "Area:" line names its place): this file INCLUDEs the bank 5 runs pass, the
@@ -38,8 +35,8 @@
 \ -bank5.asm, -bank5end.asm, -bank5gap.asm), which bank5.py has streams.py
 \ write first.
 \
-\ The row runs are made for buffer 1 (SCREEN%, &4000); r_pgfix moves a run
-\ page's stores to the buffer it is used for (gfx-raster.asm).
+\ The row runs are made for buffer 1 (SCREEN%); r_pgfix moves a run's
+\ stores to the buffer it is used for (gfx-raster.asm).
 \
 \ The image, BANK5.bin (R.BANK), is from R_IMG% (R_POLY) to the bank's end:
 \ bank5.py writes R_IMG% for the loader, which copies it there.
@@ -51,13 +48,14 @@
 
  CPU 0                  \ (the NMOS 6502: no 65C02 instruction in this bank)
 
- R_IMG% = &9800         \ R_POLY and R_LINE, then the rest of the bank: the image
+ R_IMG% = &9100         \ R_POLY and R_LINE, then the rest of the bank: the image
  R_ST% = &A800          \ the state
  R_TAB% = &B400         \ the per-x tables
 
  CLEAR &8000, &C000
 
- ORG &8000              \ the row runs (made at start) and their tails
+ ORG &8000              \ the row runs and row tables (made at start), the
+                        \ stars' records and variables
  INCLUDE "3-assembled-output/gfx-raster-bank5runs.asm"
  ASSERT P% = R_IMG%
 

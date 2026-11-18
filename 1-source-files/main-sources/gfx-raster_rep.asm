@@ -8,7 +8,7 @@
 \ R_REPAIR repairs the dirty rows outside the band it is given (the disc
 \ layer's rows, which its painter in bank 7 repairs), as r7_crep repairs a
 \ row that is no disc row: each row's extent, widened to whole bytes, blacked
-\ by one run through the row runs (the border bytes in columns 0 and 63
+\ by one run through the row runs (the border bytes in columns 0 and 31
 \ masked), its R_WL/R_WR set to that and its DIRTY emptied.  Afterwards
 \ R_WL/R_WR hold, per row, what the repair wrote (shapes drawn later are in
 \ DIRTY, not R_WL/R_WR).
@@ -22,6 +22,7 @@ c_NL  = &1A
 c_YE  = &1E
 c_M   = &23
 c_CO  = &22
+c_RP  = &1B
 
 \ ============================================================================
 \ R_REPAIR: the start of a frame on the current buffer, after R_STARERASE:
@@ -101,9 +102,10 @@ c_DZ  = &27
 
 \ ============================================================================
 \ r7_rowrep: rows Y .. c_YE - 1, each with a dirty extent blacked through its
-\ row run (the BBC Master port's, made NMOS, and for the Model B's two
-\ buffers: the run page checked for this buffer, r_pgfix, and the border
-\ bytes' screen page from the buffer's row pages)
+\ row run (the BBC Master port's, made NMOS, for two buffers: the run page
+\ checked for this buffer, r_pgfix, and the border bytes' row address from
+\ the buffer's row tables).  Columns 0 and 31 hold the border's pixels (game
+\ x 0-1 and 254-255) and are masked; columns 1 to 30 are whole bytes.
 \ ============================================================================
 .r7_rowrep
 {
@@ -118,39 +120,38 @@ c_DZ  = &27
   STA sd2+2
   STA fl2+2
   STA fs2+2
-.frow                     \ fast path: extent inside columns 1..62
+.frow                     \ fast path: extent inside columns 1..30
 .fl2
   LDA R_DIRTYR0,Y
   BEQ fnx
-  CMP #252
+  CMP #248
   BCS slow
   TAX                     \ X = R
-  ORA #3
+  ORA #7
   STA R_WR,Y
 .fl1
   LDA R_DIRTYL0,Y
-  AND #&FC                \ L AND &FC = 0 <=> L < 4
+  AND #&F8                \ L AND &F8 = 0 <=> L < 8
   BEQ slow
   STA R_WL,Y
   STX c_R                 \ (R)
-  TAX
-  LDA r_j-4,X             \ enter at column L DIV 4
-  STA fj+1
-  LDX c_R                 \ plant the RTS after column R DIV 4 (X: its
-  LDA r_j,X               \ offset, which the run keeps)
-  TAX
+  STA c_NL                \ (L AND &F8)
   LDA #&FF
 .fs1
   STA R_DIRTYL0,Y
-  TYA                     \ the run page of row Y
-  LSR A
-  LSR A
-  LSR A
-  ORA #HI(r_run0)         \ (= ADC: Y DIV 8 < 32)
+  JSR runat               \ the row's run: A = its base (C = 0)
+  STA fpl+1
+  STA fpr+1
+  LDX c_NL
+  ORA r_jm,X              \ enter at column L DIV 8
+  STA fj+1
+  LDA c_RP
   STA fj+2
   STA fpl+2
   STA fpr+2
-  JSR r_pgfix             \ (Model B: its stores for this buffer; keeps X, Y)
+  LDX c_R                 \ plant the RTS after column R DIV 8 (X: its
+  LDA r_j,X               \ offset, which the run keeps)
+  TAX
   LDA #r_opRTS
 .fpl
   STA &FF00,X             \ (the run page)
@@ -167,7 +168,7 @@ c_DZ  = &27
   CPY c_YE
   BCC frow
   RTS
-.slow                     \ an end in column 0 or 63: the general row code
+.slow                     \ an end in column 0 or 31: the general row code
   JSR row1
   JMP fnx
 
@@ -176,13 +177,13 @@ c_DZ  = &27
 .ld2
   LDA R_DIRTYR0,Y
   STA c_R
-  ORA #3
+  ORA #7
   STA R_WR,Y
 .ld1
   LDX R_DIRTYL0,Y
   STX c_L
   TXA
-  AND #&FC
+  AND #&F8
   STA R_WL,Y
   LDA #&FF
 .sd1
@@ -190,41 +191,34 @@ c_DZ  = &27
   LDA #0
 .sd2
   STA R_DIRTYR0,Y
-  TXA                     \ first byte column (0: the border's)
-  LSR A
-  LSR A
+  TXA                     \ first whole column x 8 (column 0: the border's)
+  AND #&F8
   BEQ e0
 .nl1
   STA c_NL
-  LDA c_R                 \ last byte column (63: the border's)
-  LSR A
-  LSR A
-  CMP #63
-  BEQ e63
-.nr1                      \ (A = the last column, C = 0 or 1)
+  LDA c_R                 \ the column after the last whole one x 8 (column
+  AND #&F8                \ 31: the border's)
+  CMP #248
+  BEQ e31
+  CLC
+  ADC #8
+.nr1                      \ (A = 8 x that column)
   CMP c_NL
-  BCC nx                  \ (NR = last + 1 <= NL: no whole byte)
-  ADC #0                  \ NR = the last column + 1 (C = 1 here: CMP)
-  ASL A                   \ plant the RTS at column NR (r_jm at 4 NR: 3 (NR - 1))
-  ASL A
-  TAX
+  BEQ nx                  \ (no whole byte)
+  BCC nx
+  TAX                     \ plant the RTS at that column
   LDA r_jm,X
   STA r1p+1               \ (its offset)
-  TYA                     \ the run page of row Y
-  LSR A
-  LSR A
-  LSR A
-  ORA #HI(r_run0)         \ (= ADC: Y DIV 8 < 32)
+  JSR runat               \ the row's run: A = its base (C = 0)
+  STA rpl+1
+  STA rpr+1
+  LDX c_NL
+  ORA r_jm,X
+  STA rj+1
+  LDA c_RP
   STA rj+2
   STA rpl+2
   STA rpr+2
-  JSR r_pgfix             \ (Model B: its stores for this buffer; keeps X, Y)
-  LDA c_NL
-  ASL A
-  ASL A
-  TAX
-  LDA r_jm,X
-  STA rj+1
 .r1p
   LDX #0                  \ (the plant's offset)
   LDA #r_opRTS
@@ -243,60 +237,68 @@ c_DZ  = &27
   STY RZ_Y
   JSR edge0
   LDY RZ_Y
-  LDA #1
+  LDA #8
   BNE nl1                 \ (always)
-.e63
+.e31
   STY RZ_Y
-  JSR edge63
+  JSR edge31
   LDY RZ_Y
-  LDA #62
+  LDA #248
   BNE nr1                 \ (always)
-\ edge0 / edge63: black pixels c_L .. c_R of row RZ_Y within column 0 / 63
+\ edge0 / edge31: black pixels c_L .. c_R of row RZ_Y within column 0 / 31
 .edge0
   LDX c_R
-  CPX #4
+  CPX #8
   BCC e0a
-  LDX #3
+  LDX #7
 .e0a
   LDA r_rm,X
   LDX c_L
   AND r_lm,X
   LDX #0
   BEQ eg                  \ (always)
-.edge63
-  LDA c_L
-  CMP #252
-  BCS e6a
-  LDA #252
-.e6a
-  AND #3
-  TAX
-  LDA c_R                 \ (>= 252)
-  AND #3
-  TAY
+.edge31
+  LDX c_L
+  CPX #248
+  BCS e3a
+  LDX #248
+.e3a
   LDA r_lm,X
-  AND r_rm,Y
-  LDX #&F8
+  LDX c_R
+  AND r_rm,X
+  LDX #248
 .eg
   EOR #&FF
   STA c_M
   STX c_CO
   LDY RZ_Y
-  TYA
-  AND #7
-  ORA c_CO
-  STA RZ_PA
+  LDA r_ylo,Y             \ the row's address (the buffer's row tables,
+  STA RZ_PA               \ R_SETBUF's)
 .^r_yp6
-  LDA r_ypg,Y             \ (Model B: the buffer's row page, R_SETBUF's)
-  CPX #0
-  BEQ eg1
-  ORA #1                  \ (column 63: the page's second half; the page is
-.eg1                      \ even)
+  LDA r_ypg,Y
   STA RZ_PA+1
-  LDY #0
+  LDY c_CO
   LDA (RZ_PA),Y
   AND c_M
   STA (RZ_PA),Y
+  RTS
+\ runat: row Y's run: its page in c_RP, its base in A (C = 0), its stores
+\ for this buffer (r_pgfix); keeps X and Y
+.runat
+  TYA
+  LSR A
+  LSR A
+  LSR A
+  JSR r_pgfix
+  TYA
+  LSR A
+  LSR A
+  LSR A
+  LSR A
+  ORA #HI(r_run0)
+  STA c_RP
+  LDA #0
+  ROR A
   RTS
 .dlh EQUB HI(R_DIRTYL0), HI(R_DIRTYL1)
 .drh EQUB HI(R_DIRTYR0), HI(R_DIRTYR1)

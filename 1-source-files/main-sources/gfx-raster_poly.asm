@@ -272,7 +272,8 @@
   LDA r_yend
   STA pb_ye_e+1
   STA pb_ye_o+1
-  LDA #190                \ nothing planted
+  LDA #R_NOPL             \ nothing planted
+  ORA RZ_RB
   STA RZ_PP
   LDA R_COLE              \ rows 4k, 4k+1 take COLE, COLO; rows 4k+2, 4k+3
   EOR R_COL2              \ COL2, COL3: RZ_CE/RZ_CO = this row pair's, toggled
@@ -457,33 +458,24 @@
 
 
 \ ----------------------------------------------------------------------------
-\ Phase B: rows RZ_Y.., RZ_SA of them; left table r_pbl1, right (exclusive)
-\ r_pbr1/r_pbr2.  Row pointers, run page (RZ_PP+1, r_jsr2+2), RZ_CE/RZ_CO
-\ (this row pair's colours) and RZ_XE/RZ_XO set; RZ_PP = the planted RTS
-\ (190: none).  Even rows take RZ_CE, odd rows RZ_CO; at each even row
-\ (a new pair) pb_tg toggles both to the other pair (a 4-row dither).
+\ Phase B: rows RZ_Y.., to the end row (pb_ye); left table r_pbl1, right
+\ (exclusive) r_pbr1/r_pbr2.  The row's address (RZ_PA), run page (RZ_PP+1,
+\ r_jsr2+2), RZ_CE/RZ_CO (this row pair's colours) and RZ_XE/RZ_XO set;
+\ RZ_PP = the planted RTS (R_NOPL: none).  Even rows take RZ_CE, odd rows
+\ RZ_CO; at each even row (a new pair) pb_tg toggles both to the other pair
+\ (a 4-row dither).  RZ_PA steps a line at each row and 320 - 7 at each
+\ character row.
 \ ----------------------------------------------------------------------------
 
 .pb_one_e
   LDY r_xo,X
-  LDA r_lm,X
-  LDX R_XR
-  AND r_rm,X
-  STA RZ_T7
-  CPX #&80
-  BCS pb_ob_e
   LDA (RZ_PA),Y
   EOR RZ_CE
-  AND RZ_T7
+  AND r_lm,X
+  LDX R_XR
+  AND r_rm,X
   EOR (RZ_PA),Y
   STA (RZ_PA),Y
-  JMP pb_skip_e
-.pb_ob_e
-  LDA (RZ_PB),Y
-  EOR RZ_CE
-  AND RZ_T7
-  EOR (RZ_PB),Y
-  STA (RZ_PB),Y
   JMP pb_skip_e
 .pb_plant_e
   TAX                     \ (NMOS: X = the new plant, Y = 0; X is reloaded
@@ -494,20 +486,6 @@
   LDA #r_opRTS
   STA (RZ_PP),Y
   JMP pb_go_e
-.pb_lb_e
-  LDA (RZ_PB),Y
-  EOR RZ_CE
-  AND r_lm,X
-  EOR (RZ_PB),Y
-  STA (RZ_PB),Y
-  JMP pb_l2_e
-.pb_rb_e
-  LDY r_xo,X              \ (A = RZ_CE)
-  EOR (RZ_PB),Y
-  AND r_rm,X
-  EOR (RZ_PB),Y
-  STA (RZ_PB),Y
-  JMP pb_skip_e
 .r_pbx_e
 .r_pbl1_e
   LDA &FFFF,Y
@@ -529,21 +507,20 @@
 .r_pt61 STA r_dl,Y
 .pb_d1_e
   EOR R_XR
-  CMP #4
+  CMP #8
   BCC pb_one_e
   LDY r_xo,X
-  CPX #&80
-  BCS pb_lb_e
   LDA (RZ_PA),Y
   EOR RZ_CE
   AND r_lm,X
   EOR (RZ_PA),Y
   STA (RZ_PA),Y
-.pb_l2_e
-  LDY R_XR                \ (no empty-run test: when no whole byte lies
-  LDA r_j-4,Y             \ between the ends, the entry is the plant and the
-  LDY r_j,X               \ JSR hits the RTS, as r_spc's)
-  STY r_jsr2_e+1
+  LDA r_j,X               \ (no empty-run test: when no whole byte lies
+  ORA RZ_RB               \ between the ends, the entry is the plant and the
+  STA r_jsr2_e+1          \ JSR hits the RTS, as r_spc's)
+  LDY R_XR
+  LDA r_jm,Y
+  ORA RZ_RB
   CMP RZ_PP
   BNE pb_plant_e
 .pb_go_e
@@ -551,9 +528,7 @@
   LDA RZ_CE
 .r_jsr2_e
   JSR &FFFF
-.pb_norun_e
-  LDX R_XR                \ N = (XR >= &80); A = RZ_CE still (NMOS: so the
-  BMI pb_rb_e             \ right edge starts EOR (RZ_PA),Y, as r_spc's)
+  LDX R_XR                \ right edge (A = RZ_CE still)
   LDY r_xo,X
   EOR (RZ_PA),Y
   AND r_rm,X
@@ -568,7 +543,6 @@
 .pb_c_e
   STY RZ_Y
   INC RZ_PA
-  INC RZ_PB
 .r_pbx_o
 .r_pbl1_o
   LDA &FFFF,Y
@@ -590,21 +564,20 @@
 .r_pt411 STA r_dl,Y
 .pb_d1_o
   EOR R_XR
-  CMP #4
+  CMP #8
   BCC pb_one_o
   LDY r_xo,X
-  CPX #&80
-  BCS pb_lb_o
   LDA (RZ_PA),Y
   EOR RZ_CO
   AND r_lm,X
   EOR (RZ_PA),Y
   STA (RZ_PA),Y
-.pb_l2_o
-  LDY R_XR                \ (no empty-run test: when no whole byte lies
-  LDA r_j-4,Y             \ between the ends, the entry is the plant and the
-  LDY r_j,X               \ JSR hits the RTS, as r_spc's)
-  STY r_jsr2_o+1
+  LDA r_j,X               \ (no empty-run test: when no whole byte lies
+  ORA RZ_RB               \ between the ends, the entry is the plant and the
+  STA r_jsr2_o+1          \ JSR hits the RTS, as r_spc's)
+  LDY R_XR
+  LDA r_jm,Y
+  ORA RZ_RB
   CMP RZ_PP
   BNE pb_plant_o
 .pb_go_o
@@ -612,9 +585,7 @@
   LDA RZ_CO
 .r_jsr2_o
   JSR &FFFF
-.pb_norun_o
-  LDX R_XR                \ N = (XR >= &80); A = RZ_CO still (NMOS: so the
-  BMI pb_rb_o             \ right edge starts EOR (RZ_PA),Y, as r_spc's)
+  LDX R_XR                \ right edge (A = RZ_CO still)
   LDY r_xo,X
   EOR (RZ_PA),Y
   AND r_rm,X
@@ -629,16 +600,13 @@
   BEQ pb_end
 .pb_c_o
   STY RZ_Y
-  TYA                     \ RZ_PA/RZ_PB lo = row AND 7
+  TYA
   AND #7
-  STA RZ_PA
-  STA RZ_PB
-  BEQ pb_cr               \ (NMOS: stored before, for pb_cr too)
+  BEQ pb_cr
+  INC RZ_PA
   JMP pb_tg
 .pb_one_o
   LDY r_xo,X
-  CPX #&80                \ XL, XR differ only in bits 0-1 (XL EOR XR < 4)
-  BCS pb_ob_o
   LDA (RZ_PA),Y
   EOR RZ_CO
   AND r_lm,X
@@ -646,30 +614,7 @@
   AND r_rm,X
   EOR (RZ_PA),Y
   STA (RZ_PA),Y
-  BCC pb_skip_o           \ (NMOS: C = 0 from the CMP #4 and the CPX)
-.pb_ob_o
-  LDA (RZ_PB),Y
-  EOR RZ_CO
-  AND r_lm,X
-  LDX R_XR
-  AND r_rm,X
-  EOR (RZ_PB),Y
-  STA (RZ_PB),Y
-  BCS pb_skip_o           \ (NMOS: C = 1 from the CPX #&80)
-.pb_lb_o
-  LDA (RZ_PB),Y
-  EOR RZ_CO
-  AND r_lm,X
-  EOR (RZ_PB),Y
-  STA (RZ_PB),Y
-  BCS pb_l2_o             \ (NMOS: C = 1 from the CPX #&80)
-.pb_rb_o
-  LDY r_xo,X              \ (A = RZ_CO)
-  EOR (RZ_PB),Y
-  AND r_rm,X
-  EOR (RZ_PB),Y
-  STA (RZ_PB),Y
-  JMP pb_skip_o           \ (NMOS: no BRA)
+  JMP pb_skip_o
 .pb_plant_o
   TAX                     \ (NMOS: X = the new plant, Y = 0; X is reloaded
   LDY #0                  \ after the run)
@@ -685,22 +630,30 @@
   STA (RZ_PP),Y
   RTS
 .pb_cr
-  TAX                     \ next character row: new run page (NMOS: X = 0
-  LDA #r_opSTA            \ from A = row AND 7, for (RZ_PP,X), as Y = RZ_Y
-  STA (RZ_PP,X)           \ is kept; RZ_PA/RZ_PB's low bytes are 0 already)
-  LDA #190
-  STA RZ_PP
-  LDX RZ_PA+1             \ (NMOS: the pages in X, for INX)
-  INX
-  INX
-  STX RZ_PA+1
-  INX
-  STX RZ_PB+1
+  TAX                     \ next character row: its run (NMOS: X = 0 from A =
+  LDA #r_opSTA            \ row AND 7, for (RZ_PP,X), as Y = RZ_Y is kept)
+  STA (RZ_PP,X)
+  LDA RZ_PA               \ (C = 0 from the CPY) the row's address: 320 on
+  ADC #LO(320 - 7)        \ from the last character row's line 7
+  STA RZ_PA
+  LDA RZ_PA+1
+  ADC #HI(320 - 7)
+  STA RZ_PA+1
+  LDA RZ_RB               \ the run: the other half of the page (an odd row),
+  EOR #&80                \ or the next page's first
+  STA RZ_RB
+  BMI pb_cr1
   INC RZ_PP+1
   INC r_jsr2_e+2
-  INC r_jsr2_o+2         \ (Y = RZ_Y still)
-  LDA RZ_PP+1             \ (Model B: the new run page's stores for this buffer:
-  JSR r_pgfix             \ X and Y kept)
+  INC r_jsr2_o+2
+.pb_cr1
+  ORA #R_NOPL             \ (nothing planted)
+  STA RZ_PP
+  TYA                     \ (Y = RZ_Y still) the run's stores for this buffer
+  LSR A                   \ (X and Y kept)
+  LSR A
+  LSR A
+  JSR r_pgfix
 .pb_tg                    \ (Y = RZ_Y) the next row pair's colours
   LDA RZ_CE
   EOR RZ_XE
