@@ -46,9 +46,12 @@ export function makeTraceHooks(spec, build, out) {
     const ex = (extra || "").split("+").filter(Boolean).map(n => { const [b, o] = n.split("~"); return [n, sy[b] + (+o || 0)]; });
     const hooks = [];
     for (const p of Object.values(build.progs)) for (const n of labels.split("+")) {
-        const a = p.sy[n];
-        if (a === undefined) continue;
-        const role = p.bank[n];
+        // (a routine in another pass is hooked at its body, as blib's
+        // hookOf does: the label itself is the hot copy's far-call stub)
+        const nm = [n + "_C", n + "_6", n].find(x => p.sy[x] !== undefined);
+        if (nm === undefined) continue;
+        const a = p.sy[nm];
+        const role = p.bank[nm];
         const img = p.images.find(im => (role === undefined || im.map === role || im.map === "m") && a >= im.base && a + 3 <= im.base + im.data.length);
         if (!img) continue;
         hooks.push({ name: n, a, map: img.map, sig: [0, 1, 2].map(i => img.data[a + i - img.base]), fn: ({ e, iter }) => {

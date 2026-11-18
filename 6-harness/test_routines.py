@@ -16,6 +16,7 @@ sample, so a speed-up's exactness is shown before the gate runs.
 Exit status 0 only if every test passes. --quick samples fewer inputs.
 """
 import os, random, re, sys
+ROMSEL_ADDR = 0xFE05     # the build's ROMSEL (elite-map.asm): the Electron's paging register
 from py65.devices.mpu6502 import MPU
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,7 +71,7 @@ def flight_constants(path):
 
 class PagedMemory:
     """the port's memory as the CPU sees it: main RAM, with one of the
-    sideways RAM banks at &8000-&BFFF, paged by a write to ROMSEL (&FE30), as
+    sideways RAM banks at &8000-&BFFF, paged by a write to ROMSEL (&FE05 on the Electron: ROMSEL_ADDR), as
     the far calls do"""
 
     def __init__(self, main, banks, cur):
@@ -87,7 +88,7 @@ class PagedMemory:
         if 0x8000 <= a < 0xC000:
             self.banks[self.cur][a - 0x8000] = v
         else:
-            if a == 0xFE30:
+            if a == ROMSEL_ADDR:
                 self.cur = v & 15
             self.main[a] = v
 

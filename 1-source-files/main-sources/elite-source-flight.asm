@@ -13957,7 +13957,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (A ?) = (-X * A + (S R)) / 96
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Shift-and-subtract division
 \
 \ ------------------------------------------------------------------------------
@@ -27762,13 +27762,14 @@ ENDIF
 
 .rdk6
 
- ORA #%10000000         \ Set bit 7, as DKS4 returns a pressed key
-
- BNE rdy                \ (this BNE is effectively a JMP)
+ ORA #%10000000         \ Set bit 7, as DKS4 returns a pressed key, with the C
+ CLC                    \ flag clear, as the Model B's RDKEY leaves it for a
+ BCC rdy                \ key (this BCC is effectively a JMP)
 
 .rdk5
 
- LDA #%10000000
+ LDA #%10000000         \ (and the C flag set, as for no key)
+ SEC
 
 .rdy
 
@@ -28458,6 +28459,9 @@ ENDIF
                         \ (RDKEY): a function key of the BBC Micro (kbfk) is
                         \ pressed when FUNC and its digit (kbdg) are
 
+ PHP                    \ Keep the flags (the original's DKS4 changes neither C
+                        \ nor V, and its callers read C)
+
  STY dksy+1             \ Store Y in the LDY at dksy, to restore it at the end
 
  TXA                    \ Keep the key in the LDA at dksk
@@ -28486,6 +28490,8 @@ ENDIF
 .dksy
 
  LDY #0                 \ Restore Y (the value is patched above)
+
+ PLP                    \ Restore the flags
 
 .DKSX
 
@@ -28540,6 +28546,9 @@ ENDIF
 .kbdg
 
  EQUB &27, &30, &31, &11, &12, &13, &34, &24, &15, &26   \ 0 to 9
+
+ RTS                    \ (DKS3's BPL DKS2-1 returns through the RTS that
+                        \ ends the original's DKS4, just before DKS2)
 
 \ ******************************************************************************
 \
@@ -29515,7 +29524,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Orthonormalise the orientation vectors for a ship
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Tidying orthonormal vectors
 \             Orientation vectors
 \
@@ -29685,7 +29694,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate A = A / Q
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Shift-and-subtract division
 \
 \ ------------------------------------------------------------------------------
@@ -29788,7 +29797,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate -(nosev_1 * roofv_1 + nosev_2 * roofv_2) / nosev_3
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -29864,7 +29873,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (P+1 A) = (A P) / Q
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
