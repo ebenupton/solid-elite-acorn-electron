@@ -52,27 +52,26 @@
 \ restores, and R_COLE, R_COLO and R_DCE (&06, &07, &0E: saved too, and set
 \ again before any use after the flare); R_XL, R_XR for R_MARKBOX
 
-fl_lq   = &06           \ a span's first byte's mask (before the row's)
-fl_rq   = &07           \ its last byte's
-fl_t    = &0E
-fl_u    = &12           \ the ghost's ink
-fl_i    = &13           \ the next ghost's number
-fl_gx   = &16           \ the ghost's centre (on the screen when the sun's
-fl_gy   = &17           \ centre is, as |k| <= 8: all 8-bit)
-fl_r    = &18           \ a disc's radius (a ring: the step, 2 or 4)
-fl_hw   = &19           \ a disc's half-width table (a ring: dx, dy)
-fl_pat  = &1B           \ the ghost's ink masks for rows y AND 3 = 0..3
-fl_d    = &1F           \ a disc's row offset d (a ring: the point's offset)
-fl_m    = &20           \ the row's mask (fl_or: the middle bytes')
-fl_sp   = &21           \ screen pointer (fl_or)
-fl_n    = &23           \ 8 * (bytes - 1) (fl_or)
-fl_cl   = &27           \ 8 x a span's first byte's column
-fl_vo   = &12           \ the probes (before the ghosts): offsets 0, a, b,
+fl_lq   = RZB + &06           \ a span's first byte's mask (before the row's)
+fl_rq   = RZB + &07           \ its last byte's
+fl_t    = RZB + &0E
+fl_u    = RZB + &12           \ the ghost's ink
+fl_i    = RZB + &13           \ the next ghost's number
+fl_gx   = RZB + &16           \ the ghost's centre (on the screen when the sun's
+fl_gy   = RZB + &17           \ centre is, as |k| <= 8: all 8-bit)
+fl_r    = RZB + &18           \ a disc's radius (a ring: the step, 2 or 4)
+fl_hw   = RZB + &19           \ a ring's dx, dy
+fl_pat  = RZB + &1B           \ the ghost's ink masks for rows y AND 3 = 0..3
+fl_d    = RZB + &1F           \ a disc's row offset d (a ring: the point's offset)
+fl_m    = RZB + &20           \ the row's mask (fl_or: the middle bytes')
+fl_n    = RZB + &23           \ 8 * (bytes - 1) (fl_or)
+fl_cl   = RZB + &27           \ 8 x a span's first byte's column
+fl_vo   = RZB + &12           \ the probes (before the ghosts): offsets 0, a, b,
                         \ -b, -a (&12-&16)
-fl_vn   = &17           \ the probes in sight
-fl_vx   = &18           \ a probe's x
-fl_vy   = &19           \ (scratch)
-fl_vh   = &1B           \ R / 2
+fl_vn   = RZB + &17           \ the probes in sight
+fl_vx   = RZB + &18           \ a probe's x
+fl_vy   = RZB + &19           \ (scratch)
+fl_vh   = RZB + &1B           \ R / 2
 
 FLNG = 8                \ ghosts
 FLHMAX = 26             \ the ring round the sun only for a sun this small
@@ -142,15 +141,15 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  AND #&F8               \ tables) + 8 * (x DIV 8)
  CLC
  ADC r_ylo,Y
- STA fl_sp
+ STA flv3+1
 .^r_yp7
  LDA r_ypg,Y
  ADC #0
- STA fl_sp+1
+ STA flv3+2
  TYA
  LSR A                  \ C: y odd (the sun's odd rows' colour)
- LDY #0
- LDA (fl_sp),Y          \ the probe's pixel still the sun's colour for the
+.flv3
+ LDA &FFFF              \ the probe's pixel still the sun's colour for the
  EOR FLM_SCE            \ row (a dithered row compares with its own byte)?
  BCC P%+5
  EOR FLM_SCX
@@ -285,10 +284,8 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
 .fl_disc
  LDA fl_rad,X           \ radius, half-widths
  STA fl_r
- LDA fl_hl,X
- STA fl_hw
- LDA #HI(fl_htab)
- STA fl_hw+1
+ LDA fl_hl,X            \ (its half-widths into fsd6's load: fl_htab is in
+ STA fsd6+1             \ one page)
  STX fl_d               \ masks[index][(j + number) AND 3] AND ink, j = 0..3
  LDA fl_m
  ASL A
@@ -381,7 +378,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  CMP #2
  BCS P%+4
  LDA #2
- STA R_XL
+ STA r_xl
  LDA fl_gx
  CLC
  ADC fl_t
@@ -391,7 +388,7 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
 .fbx1
  LDA #253
 .fbx2
- STA R_XR
+ STA r_xr
  LDA fl_gy
  CLC
  ADC fl_t
@@ -414,10 +411,10 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
  CPY R_BY1
  BEQ P%+4
  BCS fbx9
- LDA R_XR
- CMP R_XL
+ LDA r_xr
+ CMP r_xl
  BCC fbx9
- JMP R_MARKBOX
+ JMP r_mbox
 .fbx9
  RTS
 
@@ -557,7 +554,8 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  BEQ fsd8
 .fsd5                   \ the span gx - h..gx + h, clipped
  LDY fl_d
- LDA (fl_hw),Y
+.fsd6
+ LDA fl_htab,Y          \ (its half-widths: fl_disc)
  TAX
  EOR #&FF               \ XL = max(gx - h, 2)
  SEC
@@ -566,7 +564,7 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  CMP #2
  BCS P%+4
  LDA #2
- STA R_XL
+ STA r_xl
  TXA                    \ XR = min(gx + h, 253)
  CLC
  ADC fl_gx
@@ -574,19 +572,19 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  CMP #254
  BCC P%+4
  LDA #253
- STA R_XR
- CMP R_XL
+ STA r_xr
+ CMP r_xl
  BCC fsd8
  TAX                    \ the last byte's mask, the first's, the first's
  LDA r_rm,X             \ column (x 8) and 8 x (bytes - 1), shared by the
  STA fl_rq              \ two rows (the rasteriser's per-x tables)
- LDX R_XL
+ LDX r_xl
  LDA r_lm,X
  STA fl_lq
  TXA
  AND #&F8
  STA fl_cl
- LDA R_XR
+ LDA r_xr
  AND #&F8
  SEC
  SBC fl_cl
@@ -623,8 +621,8 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  BCC fsc9
  CMP #254
  BCS fsc9
- STA R_XL
- STA R_XR
+ STA r_xl
+ STA r_xr
  TAY
  AND #&F8               \ its byte's column (fl_cl), pixel mask
  STA fl_cl
@@ -652,7 +650,7 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  RTS
 
 \ fl_row: row A (inside the clip window), if its mask (fl_pat) is not zero:
-\ point fl_sp at its first byte (column fl_cl) and OR the bytes
+\ its first byte (column fl_cl) into fl_or's operands, and OR the bytes
 \ (fl_or, with the row's mask fl_m). Clobbers A, X, Y.
 
 .fl_row
@@ -664,43 +662,59 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  STA fl_m
 .fl_row1                \ (Y = row, fl_m = its mask)
  LDA r_ylo,Y            \ the row's address (the buffer's row tables) + 8 *
- CLC                    \ (XL DIV 8)
+ CLC                    \ (XL DIV 8), into fl_or's loads and stores
  ADC fl_cl
- STA fl_sp
+ STA flo4+1
+ STA flo5+1
+ STA flo6+1
+ STA flo7+1
+ STA flo8+1
+ STA flo10+1
 .^r_yp8
  LDA r_ypg,Y
  ADC #0
- STA fl_sp+1
+ STA flo4+2
+ STA flo5+2
+ STA flo6+2
+ STA flo7+2
+ STA flo8+2
+ STA flo10+2
                         \ (and on into fl_or)
 
-\ fl_or: OR the span at fl_sp into the back buffer: its last byte (offset
-\ fl_n) with fl_rq AND fl_m, then if fl_n > 0 the bytes between with fl_m and
-\ its first with fl_lq AND fl_m (fl_n = 0: the one byte, with fl_lq AND
-\ fl_m). Clobbers A, Y.
+\ fl_or: OR the span into the back buffer: its last byte (offset fl_n) with
+\ fl_rq AND fl_m, then if fl_n > 0 the bytes between with fl_m and its first
+\ with fl_lq AND fl_m (fl_n = 0: the one byte, with fl_lq AND fl_m). Clobbers
+\ A, Y.
 
 .fl_or
  LDY fl_n
  BEQ flo9
  LDA fl_rq
  AND fl_m
- ORA (fl_sp),Y
- STA (fl_sp),Y
+.flo4
+ ORA &FFFF,Y
+.flo5
+ STA &FFFF,Y
  SEC
  BCS flo3
 .flo2
- LDA (fl_sp),Y
+.flo6
+ LDA &FFFF,Y
  ORA fl_m
- STA (fl_sp),Y
+.flo7
+ STA &FFFF,Y
 .flo3
  TYA
  SBC #8
  TAY
  BNE flo2
-.flo9                   \ (Y = 0: NMOS, (fl_sp),Y for (fl_sp))
+.flo9                   \ (Y = 0)
  LDA fl_lq
  AND fl_m
- ORA (fl_sp),Y
- STA (fl_sp),Y
+.flo8
+ ORA &FFFF,Y
+.flo10
+ STA &FFFF,Y
  RTS
 
 .fl_dk  EQUB 0, 3, 2, 4, 2, 1, 2, 2 \ the k steps 8 -> 5 -> 3 -> -1 -> -3 ->
@@ -730,17 +744,6 @@ ENDMACRO
 .fl_h10 FLHW 10
 .fl_h18 FLHW 18
 ASSERT HI(fl_htab) = HI(P% - 1)
-.fl_ml  SKIP 2          \ 32 D (x, y), low and high bytes
-.fl_mh  SKIP 2
-.fl_sl  SKIP 2          \ the centres' sums S (x, y)
-.fl_sh  SKIP 2
-.fl_lev SKIP 1          \ the level less 3, turned down by the probes (-5..0)
-.fl_py  SKIP 1          \ fl_inpl's row, X, and its arithmetic's
-.fl_px  SKIP 1
-.fl_q   SKIP 2
-.fl_m1  SKIP 1
-.fl_m2  SKIP 1
-
 \ ******************************************************************************
 \
 \ The lens flare's step in the frame, F_FRAME's f_flt (R_FLARE is in bank 5,

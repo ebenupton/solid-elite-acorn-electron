@@ -5,10 +5,9 @@
 \ rp_mul16 and rp_div32) and rl_long (lines with d > 255).  They use the
 \ shared region (the arithmetic, r_pset, R_LINE's variables in a run page's
 \ tail) and the zero page, nothing of the polygon window's.  INCLUDE it in
-\ bank 5's assembly, after gfx-raster.asm (elite-gfx.asm: in the room below
-\ the per-x tables, from r_tfree).
+\ bank 5's assembly, at the end of its code (bank 5 end).
 \
-\       Area: bank 5 gap
+\       Area: bank 5 end
 \ ============================================================================
 
 \ rl_mdqa: rl_mdq with rp_mb = d and rp_v = a (rl_gen's rl_i and rl_j bounds);
@@ -96,13 +95,4 @@
 .done
   RTS
 }
-
-\ The rasteriser's private state (only the rasteriser reads or writes it, and
-\ R_INIT sets it up)
-.R_PRBUF    SKIP 1          \ the current buffer
-.R_PRDYT    SKIP 2          \ per buffer: the rows that may have a dirty extent
-.R_PRDYB    SKIP 2
-.R_PRSCNT   SKIP 2          \ per buffer: star records
-.R_PRWT     SKIP 1          \ the rows of WL/WR that may be non-empty
-.R_PRWB     SKIP 1
 

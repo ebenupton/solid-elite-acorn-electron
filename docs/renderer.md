@@ -61,16 +61,19 @@ apart.
 | main `BUF0` | buffer 0 (elite-map.asm) |
 | main `SCREEN%` | buffer 1, `BUF0` + `&2800` (the direct-mode screen) |
 | main `MBOX` | the mailbox: each call's inputs (below) |
-| zero page `&06-&27` | the colour pair, span ends and clip window (`&06-&0F`), and the rasteriser's scratch (`&10-&27`); the caller saves and restores the game's bytes there around a frame |
+| zero page `&06-&0F` | the callers' inputs: the colour pair, span ends, clip window and disc colours, which bank 5 only reads (each entry copies what it needs into the bank, `r_cole` and so on; the clip window at `R_SETBUF`); the frame layer saves and restores the game's bytes there around a frame |
 | bank 5 `&8000-&8BFF` | the 24 row runs, two a page (row r's at `r_run0` + `&80` r: `gfx-raster.asm`'s bank 5 runs pass, at a page whose number is a multiple of 16), which `R_INIT` makes at start |
-| bank 5 `&8C00-&90FF` | the row tables `r_ypg`, `r_ypg0`, `r_ylo` (each at a page's start), which `R_INIT` makes too; the stars' records (buffer 1's: buffer 0's + `&100`), and the variables, `R_LINE`'s too |
+| bank 5 `&8C00-&90FF` | the row tables `r_ypg`, `r_ypg0`, `r_ylo` (each at a page's start), which `R_INIT` makes too; the inputs' copies and the scratch (`r_zb`: `RZB` + the zero page address each once had); the stars' records (buffer 1's: buffer 0's + `&100`), and the variables, `R_LINE`'s too (and more in the 30 bytes after each of the first three runs) |
 | bank 5 `&9100-&A7FF` | `R_POLY` (both phases) and `R_LINE` |
 | bank 5 `&A800-&ADFF` | the state: both buffers' dirty extents (`R_DIRTYL0`, `R_DIRTYR0`, `R_DIRTYL1` = `R_DIRTYL0` + `&300`, `R_DIRTYR1`), this frame's written extents (`R_WL`, `R_WR`), `R_POLY`'s edge tables |
 | bank 5 `&AE00-&BFFF` | `R_SETBUF` and `r_pgfix`, the spans' core, the per-x tables at `&B400` (`R_TAB%`), the stars, `r_setup`, the repair (`R_REPAIR`, `r7_rowrep`), the disc layer's transfer (`R_GETW`, `R_DRAINQ`: `gfx-raster_dq.asm`), then the bank 5 end passes: `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY` and `R_INIT`, and `RJT`, the jump table; below the per-x tables, `R_LINE`'s cold part, the private state, `R_RESETBUF`, the frame layer's query, `r_wq` (`gfx-raster_dq.asm`'s bank 5 gap pass), and `pf_tilt` |
 
-Nothing of the rasteriser's state is in main RAM but the mailbox. Bank 5
-uses no zero page outside `&06-&27`: the NMOS conversion's temporaries are
-in bank 5 (`R_NTMP`, `R_NTMPY`, `R_NTMPX`).
+Nothing of the rasteriser's state is in main RAM (1 MHz on the Electron)
+but the mailbox: bank 5 writes no zero page, and reads only its callers'
+inputs there. Its screen pointers are self-modified operands: a character
+row's address patched into the code that reads and writes the screen (once
+a character row: `r_spcb` for the spans, `pb_base` for `R_POLY`'s rows,
+`rl_base` for the lines), indexed by Y = 8 x the column + the line.
 
 ### The interface
 

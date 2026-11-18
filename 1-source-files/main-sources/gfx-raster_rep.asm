@@ -16,13 +16,13 @@
 \       Area: bank 5
 \ ============================================================================
 
-c_L   = &18                 \ r7_rowrep's zero page (the rasteriser's scratch)
-c_R   = &19
-c_NL  = &1A
-c_YE  = &1E
-c_M   = &23
-c_CO  = &22
-c_RP  = &1B
+c_L   = RZB + &18                 \ r7_rowrep's zero page (the rasteriser's scratch)
+c_R   = RZB + &19
+c_NL  = RZB + &1A
+c_YE  = RZB + &1E
+c_M   = RZB + &23
+c_CO  = RZB + &22
+c_RP  = RZB + &1B
 
 \ ============================================================================
 \ R_REPAIR: the start of a frame on the current buffer, after R_STARERASE:
@@ -33,10 +33,10 @@ c_RP  = &1B
 \ the rows of its band; the rest, as its r7_crep, here). The buffer then has
 \ no dirty rows left to repair but the band's.
 \ ============================================================================
-c_BT  = &24                 \ the band
-c_BB  = &25
-c_DA  = &26                 \ the dirty rows
-c_DZ  = &27
+c_BT  = RZB + &24                 \ the band
+c_BB  = RZB + &25
+c_DA  = RZB + &26                 \ the dirty rows
+c_DZ  = RZB + &27
 .R_REPAIR
 {
   STA c_BT
@@ -273,14 +273,18 @@ c_DZ  = &27
   STX c_CO
   LDY RZ_Y
   LDA r_ylo,Y             \ the row's address (the buffer's row tables,
-  STA RZ_PA               \ R_SETBUF's)
+  STA eg2+1               \ R_SETBUF's) into the load and the store
+  STA eg3+1
 .^r_yp6
   LDA r_ypg,Y
-  STA RZ_PA+1
+  STA eg2+2
+  STA eg3+2
   LDY c_CO
-  LDA (RZ_PA),Y
+.eg2
+  LDA &FFFF,Y
   AND c_M
-  STA (RZ_PA),Y
+.eg3
+  STA &FFFF,Y
   RTS
 \ runat: row Y's run: its page in c_RP, its base in A (C = 0), its stores
 \ for this buffer (r_pgfix); keeps X and Y
@@ -348,22 +352,23 @@ c_DZ  = &27
 .R_SPANM
   JSR R_SPAN
   LDY RZ_Y
-  JMP R_MARKDIRTY
+  JMP r_mdirty
 
 \ ============================================================================
 \ R_MARKBOX (Model B): R_MARKDIRTY for rows Y .. R_BY1, each by R_XL..R_XR
 \ (the lens flare's ghosts, which bank 6 draws itself)
 \ ============================================================================
 .R_MARKBOX
+  R_IN2 R_XL, R_XR
+.r_mbox                   \ (this bank's: r_xl, r_xr)
 {
   STY rmb_y
 .lp
-  JSR R_MARKDIRTY
+  JSR r_mdirty
   LDY rmb_y
   CPY R_BY1
   INY
   STY rmb_y
   BCC lp
   RTS
-.rmb_y EQUB 0
 }

@@ -939,7 +939,7 @@ def flare_tests():
         for k, v in enumerate((px & 0xFFFF, py & 0xFFFF)):
             m.put16('FLM_PLX', v, 2 * k)
         m['FLM_PLR'] = r
-        mem.main[0x18] = x                       # (fl_vx, gfx-flare.asm's zero page)
+        mem.banks[RBANK][b5['r_zb'] - 6 + 0x18 - 0x8000] = x   # (fl_vx: RZB + &18, bank 5's)
         mem.sel = RBANK
         mem.main[STUB:STUB + 5] = bytes([0xA0, y, 0x20, b5['fl_inpl'] & 255, b5['fl_inpl'] >> 8])
         cy.append(m.gcall_at(STUB, 5))

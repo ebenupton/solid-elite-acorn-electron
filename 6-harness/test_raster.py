@@ -22,8 +22,9 @@ of the current sources):
     it needs no change;
   * the mailbox's bytes are not screen: where the map puts the mailbox in
     a buffer (below the window), they are left out of the comparisons;
-  * the write guard allows exactly the renderer's zero page (&06-&27), the
-    stack page, the two screen buffers, the mailbox and bank 5; and the row
+  * the write guard allows exactly the stack page, the two screen buffers,
+    the mailbox and bank 5 (no zero page: the callers' inputs there, &06-&0F,
+    are only read, and the scratch is bank 5's); and the row
     runs must be left as they were (no RTS left planted), except that a
     run's stores may have been moved to the other buffer (r_pgfix: the
     high byte of each STA's operand, by &28);
@@ -211,7 +212,7 @@ class Machine(tr.Machine):
 
     def check_writes(self, snap, name):
         mem, s = self.mem, self.syms
-        allowed = [(0x06, 0x28), (0x100, 0x200), (s['BUF0'], s['BUF0'] + 2 * tr.SCRSZ),
+        allowed = [(0x100, 0x200), (s['BUF0'], s['BUF0'] + 2 * tr.SCRSZ),
                    (s['MBOX'], s['MBOX'] + 0x100), (0x8000, 0xC000)]
         a0 = 0
         for lo, hi in sorted(allowed) + [(0x10000, 0x10000)]:

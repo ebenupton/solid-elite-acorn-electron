@@ -67,36 +67,37 @@
 \ ============================================================================
 .R_LINE
 {
+  R_IN2 R_COLE, R_COLO
   LDA R_X0+1              \ both ends in the window: the line loops
   ORA R_X1+1
   ORA R_Y0+1
   ORA R_Y1+1
   BNE gen
   LDA R_X0
-  CMP R_CL
+  CMP r_cl
   BCC gen
-  CMP R_CR
+  CMP r_cr
   BEQ f1
   BCS gen
 .f1
   LDA R_X1
-  CMP R_CL
+  CMP r_cl
   BCC gen
-  CMP R_CR
+  CMP r_cr
   BEQ f2
   BCS gen
 .f2
   LDA R_Y0
-  CMP R_CT
+  CMP r_ct
   BCC gen
-  CMP R_CB
+  CMP r_cb
   BEQ f3
   BCS gen
 .f3
   LDA R_Y1
-  CMP R_CT
+  CMP r_ct
   BCC gen
-  CMP R_CB
+  CMP r_cb
   BEQ f4
   BCS gen
 .f4
@@ -134,20 +135,20 @@
   BMI yt_ct
   BNE yno
   LDA R_Y0,X
-  CMP R_CT
+  CMP r_ct
   BCS yt1
 .yt_ct
-  LDA R_CT
+  LDA r_ct
 .yt1
   STA RZ_T0
   LDA R_Y0+1,Y            \ bottom
   BMI yno
   BNE yb_cb
   LDA R_Y0,Y
-  CMP R_CB
+  CMP r_cb
   BCC yb1
 .yb_cb
-  LDA R_CB
+  LDA r_cb
 .yb1
   CMP RZ_T0
   BCC yno
@@ -215,13 +216,13 @@
   STA rl_a
   LDA rl_ax+1,Y
   STA rl_a+1
-  LDA R_CL,X
+  LDA r_cl,X
   STA rl_lo
-  LDA R_CR,X
+  LDA r_cr,X
   STA rl_hi
-  LDA R_CL,Y
+  LDA r_cl,Y
   STA rl_nl
-  LDA R_CR,Y
+  LDA r_cr,Y
   STA rl_nh
   LDA #0                  \ from P1 when d major < 0
   LDY rl_dx+1,X           \ (NMOS: LDY for the sign, not BIT abs,X)
@@ -456,8 +457,9 @@
 }
 \ ============================================================================
 \ The line loops: Bresenham along the major axis from the left / top end, a
-\ pixel per step.  Pointer RZ_PP (+ Y = row AND 7), pixel mask l_m, colour
-\ by row AND 7 (rl_lct); X = row; DIRTY[b][row] extended per pixel (the
+\ pixel per step.  The character row's address in the loops' operands
+\ (rl_base), + Y = 8 * column + line, pixel mask l_m, the row's colour l_c;
+\ X = row; DIRTY[b][row] extended per pixel (the
 \ buffer's row range is the caller's).  l_n pixels (0: 256), all inside the
 \ window.
 \ ============================================================================
@@ -556,31 +558,25 @@
 }
 .rl_lgo
 {
-  LDY #6
-.ct
-  LDA R_COLE
-  STA rl_lct,Y
-  LDA R_COLO
-  STA rl_lct+1,Y
-  DEY
-  DEY
-  BPL ct
+  LDA r_cole              \ the row's colour, l_c (y0 odd: r_colo), toggled by
+  EOR r_colo              \ l_cx at each row
+  STA l_cx
   LDX l_y0                \ X = row, l_x = x
-  TXA                     \ the byte of (l_x, row X): RZ_PP + Y, RZ_PP the
-  AND #&F8                \ character row's address in its column (from the
-  TAY                     \ shared region's r_ylo, r_ypg and r_xo, for room),
-  LDA r_ylo,Y             \ Y = row AND 7
-  LDY l_x
-  CLC
-  ADC r_xo,Y
-  STA RZ_PP
   TXA
-  AND #&F8
-  TAY
+  LSR A
+  LDA r_cole
+  BCC P%+5
+  LDA r_colo
+  STA l_c
+  TXA                     \ the character row's address into the loops'
+  AND #&F8                \ operands (the byte of (l_x, row X) is that + Y, Y
+  TAY                     \ = 8 * column + line)
 .^r_yp5
   LDA r_ypg,Y
-  ADC #0
-  STA RZ_PP+1
+  STA rl_bh
+  LDA r_ylo,Y
+  STA rl_bl
+  JSR rl_base
   LDY l_x
   LDA r_lm,Y              \ pixels x..3 AND pixels 0..x of its byte = pixel x
   AND r_rm,Y
@@ -592,19 +588,26 @@
   STA jp+1
   LDA tab+1,Y
   STA jp+2
+  LDA l_x
+  AND #&F8
+  STA RZ_T3               \ (not RZ_T0: l_b)
   TXA
   AND #7
+  ORA RZ_T3
   TAY
 .jp
   JMP &FFFF
 .tab
   EQUW lyl, lyr, lxu, lxd
 .lyl
-  LDA (RZ_PP),Y
-  EOR rl_lct,Y
+.^rls0
+  LDA &FFFF,Y             \ (the character row's address: rl_base)
+  EOR l_c
   AND l_m
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
+.^rls1
+  EOR &FFFF,Y
+.^rls2
+  STA &FFFF,Y
   LDA l_x
 .^lyl_p0 CMP R_DIRTYL0,X
   BCS lyl_1
@@ -616,18 +619,16 @@
 .lyl_2
   DEC l_n
   BEQ lyl_d
-  INX
+  INX                     \ the next row down
   INY
-  CPY #8
+  TYA
+  AND #7
   BNE lyl_y
-  LDY #0                  \ (C = 1) the next character row: 320 on
-  LDA RZ_PP
-  ADC #LO(320) - 1
-  STA RZ_PP
-  LDA RZ_PP+1
-  ADC #HI(320)
-  STA RZ_PP+1
+  JSR rl_dn
 .lyl_y
+  LDA l_c
+  EOR l_cx
+  STA l_c
   LDA l_e
   CLC
   ADC l_a
@@ -643,21 +644,21 @@
   BCC lyl
   LDA #&11
   STA l_m
-  LDA RZ_PP
-  SEC
+  TYA                     \ (C = 1) the next byte left
   SBC #8
-  STA RZ_PP
-  BCS lyl
-  DEC RZ_PP+1
-  BNE lyl                 \ (always: a screen page)
+  TAY
+  JMP lyl
 .lyl_d
   RTS
 .lyr
-  LDA (RZ_PP),Y
-  EOR rl_lct,Y
+.^rls3
+  LDA &FFFF,Y             \ (the character row's address: rl_base)
+  EOR l_c
   AND l_m
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
+.^rls4
+  EOR &FFFF,Y
+.^rls5
+  STA &FFFF,Y
   LDA l_x
 .^lyr_p0 CMP R_DIRTYL0,X
   BCS lyr_1
@@ -669,18 +670,16 @@
 .lyr_2
   DEC l_n
   BEQ lyr_d
-  INX
+  INX                     \ the next row down
   INY
-  CPY #8
+  TYA
+  AND #7
   BNE lyr_y
-  LDY #0                  \ (C = 1) the next character row: 320 on
-  LDA RZ_PP
-  ADC #LO(320) - 1
-  STA RZ_PP
-  LDA RZ_PP+1
-  ADC #HI(320)
-  STA RZ_PP+1
+  JSR rl_dn
 .lyr_y
+  LDA l_c
+  EOR l_cx
+  STA l_c
   LDA l_e
   CLC
   ADC l_a
@@ -696,20 +695,21 @@
   BCC lyr
   LDA #&88
   STA l_m
-  LDA RZ_PP
+  TYA                     \ (C = 1) the next byte right
   ADC #7
-  STA RZ_PP
-  BCC lyr
-  INC RZ_PP+1
-  BNE lyr                 \ (always: a screen page)
+  TAY
+  JMP lyr
 .lyr_d
   RTS
 .lxu
-  LDA (RZ_PP),Y
-  EOR rl_lct,Y
+.^rls6
+  LDA &FFFF,Y             \ (the character row's address: rl_base)
+  EOR l_c
   AND l_m
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
+.^rls7
+  EOR &FFFF,Y
+.^rls8
+  STA &FFFF,Y
   LDA l_x
 .^lxu_p0 CMP R_DIRTYL0,X
   BCS lxu_1
@@ -728,18 +728,17 @@
   BCC lxu_x
   SBC l_b
   STA l_e
-  DEX
+  DEX                     \ the next row up
   DEY
-  BPL lxu_y
-  LDY #7                  \ the last character row: 320 back
-  LDA RZ_PP
-  SEC
-  SBC #LO(320)
-  STA RZ_PP
-  LDA RZ_PP+1
-  SBC #HI(320)
-  STA RZ_PP+1
+  TYA
+  AND #7
+  CMP #7
+  BNE lxu_y
+  JSR rl_up
 .lxu_y
+  LDA l_c
+  EOR l_cx
+  STA l_c
 .lxu_x
   INC l_x
   LDA l_x                 \ (x even: into the next MODE 5 pixel right)
@@ -749,20 +748,21 @@
   BCC lxu
   LDA #&88
   STA l_m
-  LDA RZ_PP
+  TYA                     \ (C = 1) the next byte right
   ADC #7
-  STA RZ_PP
-  BCC lxu
-  INC RZ_PP+1
-  BNE lxu                 \ (always: a screen page)
+  TAY
+  JMP lxu
 .lxu_d
   RTS
 .lxd
-  LDA (RZ_PP),Y
-  EOR rl_lct,Y
+.^rls9
+  LDA &FFFF,Y             \ (the character row's address: rl_base)
+  EOR l_c
   AND l_m
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
+.^rls10
+  EOR &FFFF,Y
+.^rls11
+  STA &FFFF,Y
   LDA l_x
 .^lxd_p0 CMP R_DIRTYL0,X
   BCS lxd_1
@@ -781,18 +781,16 @@
   BCC lxd_x
   SBC l_b
   STA l_e
-  INX
+  INX                     \ the next row down
   INY
-  CPY #8
+  TYA
+  AND #7
   BNE lxd_y
-  LDY #0                  \ (C = 1) the next character row: 320 on
-  LDA RZ_PP
-  ADC #LO(320) - 1
-  STA RZ_PP
-  LDA RZ_PP+1
-  ADC #HI(320)
-  STA RZ_PP+1
+  JSR rl_dn
 .lxd_y
+  LDA l_c
+  EOR l_cx
+  STA l_c
 .lxd_x
   INC l_x
   LDA l_x                 \ (x even: into the next MODE 5 pixel right)
@@ -802,15 +800,71 @@
   BCC lxd
   LDA #&88
   STA l_m
-  LDA RZ_PP
+  TYA                     \ (C = 1) the next byte right
   ADC #7
-  STA RZ_PP
-  BCC lxd
-  INC RZ_PP+1
-  BNE lxd                 \ (always: a screen page)
+  TAY
+  JMP lxd
 .lxd_d
   RTS
 }
+
+\ rl_dn, rl_up: the line has crossed into the next character row down (Y =
+\ its line 0 + 8) or up (Y = its line 7 - 8, mod 256): Y back into the row,
+\ the loops' operands 320 on or back (rl_base)
+.rl_dn
+  TYA
+  SEC
+  SBC #8
+  TAY
+  LDA rl_bl
+  CLC
+  ADC #LO(320)
+  STA rl_bl
+  LDA rl_bh
+  ADC #HI(320)
+  STA rl_bh
+  JMP rl_base
+.rl_up
+  TYA
+  CLC
+  ADC #8
+  TAY
+  LDA rl_bl
+  SEC
+  SBC #LO(320)
+  STA rl_bl
+  LDA rl_bh
+  SBC #HI(320)
+  STA rl_bh
+\ rl_base: the loops' operands = rl_bh rl_bl (keeps X, Y)
+.rl_base
+  LDA rl_bl
+  STA rls0+1
+  STA rls1+1
+  STA rls2+1
+  STA rls3+1
+  STA rls4+1
+  STA rls5+1
+  STA rls6+1
+  STA rls7+1
+  STA rls8+1
+  STA rls9+1
+  STA rls10+1
+  STA rls11+1
+  LDA rl_bh
+  STA rls0+2
+  STA rls1+2
+  STA rls2+2
+  STA rls3+2
+  STA rls4+2
+  STA rls5+2
+  STA rls6+2
+  STA rls7+2
+  STA rls8+2
+  STA rls9+2
+  STA rls10+2
+  STA rls11+2
+  RTS
 
 .rl_end
 PRINT "raster_line.asm: ", rl_end - rl_start, " bytes"

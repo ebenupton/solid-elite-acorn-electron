@@ -30,9 +30,9 @@
 \     whole MODE 5 pixels) into DB_WL, DB_WR, and emptied (A bit 7 clear: the disc layer's rows), or (A bit 7
 \     set: the second disc's) their written extents.
 
-r_gm = &24              \ (bank 5's zero page, the rasteriser's scratch)
-r_gy = &25
-r_gx = &26
+r_gm = RZB + &24              \ (bank 5's zero page, the rasteriser's scratch)
+r_gy = RZB + &25
+r_gx = RZB + &26
 
 .R_GETW
 {
@@ -127,14 +127,14 @@ r_gx = &26
 .lp
   LDX RZ_T1
   LDA DB_Q+1,X
-  STA R_XL
+  STA r_xl
   LDA DB_Q+2,X
-  STA R_XR
+  STA r_xr
   LDA DB_Q+3,X
   STA RZ_COL
   LDY DB_Q,X
   JSR r_rowset
-  LDX R_XL
+  LDX r_xl
   JSR r_spc
   LDA RZ_T1
   CLC
@@ -211,7 +211,7 @@ QSGIN = 20
   LDA R_WR,Y
   BEQ ln2
   CMP RZ_T1
-  BCC P%+4
+  BCC P%+5
   STA RZ_T1
   LDA R_WL,Y
   CMP RZ_T0
@@ -222,7 +222,7 @@ QSGIN = 20
   LDA R_DIRTYR0,Y         \ (patched: this buffer's)
   BEQ ln3
   CMP RZ_T1
-  BCC P%+4
+  BCC P%+5
   STA RZ_T1
 .dl1
   LDA R_DIRTYL0,Y         \ (patched)

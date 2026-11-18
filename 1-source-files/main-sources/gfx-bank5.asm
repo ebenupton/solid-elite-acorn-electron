@@ -78,6 +78,8 @@
  INCLUDE "3-assembled-output/gfx-raster_dq-bank5.asm"
  INCLUDE "3-assembled-output/gfx-raster-bank5end.asm"
  INCLUDE "3-assembled-output/gfx-raster_init-bank5end.asm"
+ INCLUDE "3-assembled-output/gfx-raster_lcold-bank5end.asm"
+ INCLUDE "3-assembled-output/gfx-raster_reset-bank5end.asm"
 
 .RJT                    \ the entry points, in this order (gfx-glue.asm's T_n:
  JMP R_INIT             \ RJT + 0, through bank5-entry.asm, which bank5.py
@@ -102,9 +104,8 @@
  ASSERT R_HIEND <= &C000
 
  CLEAR r_tfree, r_tables \ (gfx-raster.asm skips it)
- ORG r_tfree             \ R_LINE's cold part and the private state, then
- INCLUDE "3-assembled-output/gfx-raster_lcold-bank5gap.asm"
- INCLUDE "3-assembled-output/gfx-raster_reset-bank5gap.asm"
+ ORG r_tfree             \ R_DOT, r_wq and pf_tilt
+ INCLUDE "3-assembled-output/gfx-raster-bank5gap.asm"
  INCLUDE "3-assembled-output/gfx-raster_dq-bank5gap.asm"
  INCLUDE "3-assembled-output/gfx-planet7-bank5gap.asm"  \ (pf_tilt, which the flight
                         \ code's PF_HOOK calls through T_TILT)
@@ -122,6 +123,6 @@
  INCLUDE "3-assembled-output/gfx-flare-bank5.asm"
 .R_LOEND
 
- PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), R_LINE's cold part, R_RESETBUF, r_wq and pf_tilt to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"
+ PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), R_DOT, r_wq and pf_tilt to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"
 
  SAVE "3-assembled-output/BANK5.bin", R_IMG%, &C000, R_IMG%

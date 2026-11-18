@@ -7,8 +7,8 @@
 .r_setup
 {
   LDA #1
-  STA R_CL
-  STA R_CT
+  STA r_cl
+  STA r_ct
 .ib                       \ buffer 1's state, then buffer 0's (each R_SETBUF
   PHA                     \ patching, as R_PRBUF starts as 0), ending with 0
   JSR R_SETBUF            \ (NMOS: here, with A = 1 from above, and ended by
@@ -20,9 +20,9 @@
   STA R_PN
   STA R_PRWB
   LDA #254
-  STA R_CR
+  STA r_cr
   LDA #191
-  STA R_CB
+  STA r_cb
   LDA #&FF
   STA R_SCOL
   STA R_PRWT
@@ -48,6 +48,8 @@
 \ ============================================================================
 .R_INIT
 {
+  LDA #0                  \ (R_PRBUF, which r_setup's R_SETBUF calls compare, is
+  STA R_PRBUF             \ not in the image)
   LDA #LO(SCREEN% + 40)   \ RZ_T0(1 0) = row 0's first store's address
   STA RZ_T0
   LDA #HI(SCREEN% + 40)
@@ -57,16 +59,31 @@
   LDA #HI(r_run0)
   STA RZ_PP+1
 .pg
+  LDA RZ_PP               \ the run's address into the stores
+  STA sw1+1
+  STA sw2+1
+  STA sw3+1
+  STA sw4+1
+  STA sw5+1
+  LDA RZ_PP+1
+  STA sw1+2
+  STA sw2+2
+  STA sw3+2
+  STA sw4+2
+  STA sw5+2
   LDY #0
 .st
   LDA #r_opSTA            \ STA RZ_T0(1 0),Y
-  STA (RZ_PP),Y
+.sw1
+  STA &FFFF,Y
   INY
   LDA RZ_T0
-  STA (RZ_PP),Y
+.sw2
+  STA &FFFF,Y
   INY
   LDA RZ_T1
-  STA (RZ_PP),Y
+.sw3
+  STA &FFFF,Y
   INY
   LDA RZ_T0               \ the next store's address, 8 on
   CLC
@@ -78,10 +95,12 @@
   CPY #R_RUNSZ - 2
   BNE st
   LDA #r_opRTS            \ the RTS and the spare 0
-  STA (RZ_PP),Y
+.sw4
+  STA &FFFF,Y
   INY
   LDA #0
-  STA (RZ_PP),Y
+.sw5
+  STA &FFFF,Y
   LDA RZ_T0               \ the next row's first store: 312 on from this
   CLC                     \ row's, 256 on already
   ADC #312 - 256
