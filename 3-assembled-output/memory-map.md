@@ -26,8 +26,8 @@
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 944 | 0 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
-| bank 4 (flight) | `&8000-&A7A0` | `S%` and the hot pass | 10145 | 0 |
-| bank 4 (flight) | `&A7A1-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 205 |
+| bank 4 (flight) | `&8000-&A7C3` | `S%` and the hot pass | 10180 | 0 |
+| bank 4 (flight) | `&A7C4-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 170 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 93 | 1 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
@@ -57,4 +57,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 1179, main RAM (flight) 1581, main RAM (docked) 1076, bank 4 (flight) 206, bank 4 (docked) 2696, bank 7 (flight) 171, bank 7 (docked) 5022, bank 5 831, bank 6 135.
+Free, by place: main RAM 1179, main RAM (flight) 1581, main RAM (docked) 1076, bank 4 (flight) 171, bank 4 (docked) 2696, bank 7 (flight) 171, bank 7 (docked) 5022, bank 5 831, bank 6 135.
