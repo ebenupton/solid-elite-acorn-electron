@@ -28750,6 +28750,10 @@ ENDIF
                         \ Port: set the C flag if key X (an internal key number,
                         \ bit 7 clear) is pressed; A, X and Y are changed
 
+ LDA kbkey,X            \ A key of the matrix: test it directly (kbfast)
+ BEQ P%+5
+ JMP kbfast
+
  TXA                    \ KEYV with C set, V clear and bit 7 of X set tests key
  ORA #%10000000         \ X AND &7F, as OSBYTE 121 does, and returns X with
  TAX                    \ bit 7 set if it is pressed
@@ -37368,6 +37372,125 @@ ENDIF
                         \ at the start of each screen refresh)
 
  RTS                    \ Return from the subroutine
+
+\ ******************************************************************************
+\
+\       Name: kbfast
+\       Type: Subroutine
+\   Category: Keyboard
+\    Summary: Port: test one key of the Electron's keyboard matrix directly
+\       Area: low
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: DKS4's key test (kbtest), for a key that kbkey maps: page the keyboard
+\ in (ROM 8, which unmaps sideways RAM: so this is in main RAM), read the key's
+\ column (address &BFFF with the column's address line low) and test its row's
+\ bit, then page the bank back (12 first, as the ULA ignores a write of 0 to 7
+\ while 8 to 11 is paged). It does what the MOS's KEYV does for the test, in a
+\ fifth of the time.
+\
+\ Arguments:
+\
+\   A                   The key's matrix code from kbkey: its column (0 to 13)
+\                       in bits 4-7, its row's bit in bits 0-3
+\
+\ Returns:
+\
+\   C flag              Set if the key is pressed
+\
+\   A, Y                Changed (X is kept)
+\
+\ ******************************************************************************
+
+.kbfast
+
+ TAY                    \ Patch the row's bit into the AND below
+ AND #&0F
+ STA kbfm+1
+
+ TYA                    \ Set Y = the column
+ LSR A
+ LSR A
+ LSR A
+ LSR A
+ TAY
+
+ LDA kbfl,Y             \ Patch the column's address into the LDA below
+ STA kbfa+1
+ LDA kbfh,Y
+ STA kbfa+2
+
+ SEI                    \ Page the keyboard in, with interrupts off (an
+ LDA #8                 \ interrupt handler would page a bank in)
+ STA ROMSEL
+
+.kbfa
+
+ LDA &BFFF              \ Read the column (the address is patched above)
+
+.kbfm
+
+ AND #0                 \ Its row's bit (patched above), and set the C flag if
+ CMP #1                 \ it is set (the key is pressed)
+
+ LDA #12                \ Page the program's bank back in, through bank 12
+ STA ROMSEL
+ LDA &F4
+ STA ROMSEL
+ CLI
+
+ RTS                    \ Return from the subroutine
+
+.kbfl
+
+FOR I%, 0, 13           \ The columns' addresses: &BFFF with address line I%
+ EQUB LO(&BFFF EOR (1 << I%))   \ low
+NEXT
+
+.kbfh
+
+FOR I%, 0, 13
+ EQUB HI(&BFFF EOR (1 << I%))
+NEXT
+
+\ ******************************************************************************
+\
+\       Name: kbkey
+\       Type: Variable
+\   Category: Keyboard
+\    Summary: Port: the Electron's keyboard matrix code of each of the BBC
+\             Micro's internal key numbers, for kbfast
+\       Area: low
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: the matrix codes (column in bits 4-7, row's bit in bits 0-3) of the keys
+\ that the Electron's MOS reports as pressed when KEYV tests each BBC Micro
+\ internal key number, as measured on the MOS (some numbers share a key, as
+\ they do there: &18 and &19 are LEFT, &38, &58 and &69 COPY), or 0 where it
+\ reports no key, for which DKS4 asks KEYV as before.
+\
+\ ******************************************************************************
+
+.kbkey
+
+ EQUB &D8, &D4, &00, &00, &00, &00, &00, &00   \ &00-&07: SHIFT CTRL
+ EQUB &00, &00, &00, &00, &00, &00, &00, &00   \ &08-&0F
+ EQUB &C2, &A1, &91, &81, &00, &51, &00, &21   \ &10-&17: Q 3 4 5 - 8 - MINUS
+ EQUB &11, &11, &00, &00, &00, &00, &00, &00   \ &18-&1F: LEFT LEFT
+ EQUB &00, &B2, &A2, &82, &61, &52, &41, &31   \ &20-&27: - W E T 7 I 9 0
+ EQUB &12, &12, &00, &00, &00, &00, &00, &00   \ &28-&2F: DOWN DOWN
+ EQUB &C1, &B1, &A4, &92, &71, &62, &42, &32   \ &30-&37: 1 2 D R 6 U O P
+ EQUB &02, &22, &00, &00, &00, &00, &00, &00   \ &38-&3F: COPY UP
+ EQUB &D2, &C4, &B8, &94, &72, &64, &54, &31   \ &40-&47: FUNC A X F Y J K 0
+ EQUB &24, &14, &00, &00, &00, &00, &00, &00   \ &48-&4F: COLON RETURN
+ EQUB &00, &B4, &A8, &84, &74, &78, &44, &34   \ &50-&57: - S C G H N L SEMICOLON
+ EQUB &02, &18, &00, &00, &00, &00, &00, &00   \ &58-&5F: COPY DELETE
+ EQUB &00, &C8, &08, &98, &88, &68, &58, &48   \ &60-&67: - Z SPACE V B M COMMA FULLSTOP
+ EQUB &38, &02, &00, &00, &00, &00, &00, &00   \ &68-&6F: SLASH COPY
+ EQUB &D1, &00, &00, &00, &00, &00, &00, &00   \ &70-&77: ESCAPE
+ EQUB &01, &01, &00, &00, &00, &00, &00, &00   \ &78-&7F: RIGHT RIGHT
 
 \ ******************************************************************************
 \

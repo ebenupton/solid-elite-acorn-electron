@@ -12,8 +12,8 @@
 | main RAM | `&0D7A-&0D9D` | `CATD` | 36 | 0 |
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
-| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` and `hotx` | 1107 | 237 |
-| main RAM (docked) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` and `hotx` | 116 | 1228 |
+| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass, then `hotm` | 1312 | 32 |
+| main RAM (docked) | `&1900-&1E3F` | the main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass, then `hotm` | 116 | 1228 |
 | main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
 | main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
 | main RAM | `&1F80-&1F8F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
@@ -24,8 +24,8 @@
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 899 | 45 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
-| bank 4 (flight) | `&8000-&A7F6` | `S%` and the hot pass | 10231 | 0 |
-| bank 4 (flight) | `&A7F7-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 119 |
+| bank 4 (flight) | `&8000-&A7FE` | `S%` and the hot pass | 10239 | 0 |
+| bank 4 (flight) | `&A7FF-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 111 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
@@ -56,4 +56,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 3167, main RAM (flight) 282, main RAM (docked) 1228, bank 4 (flight) 159, bank 4 (docked) 2696, bank 7 (flight) 331, bank 7 (docked) 5022, bank 5 781, bank 6 505.
+Free, by place: main RAM 3167, main RAM (flight) 77, main RAM (docked) 1228, bank 4 (flight) 151, bank 4 (docked) 2696, bank 7 (flight) 331, bank 7 (docked) 5022, bank 5 781, bank 6 505.

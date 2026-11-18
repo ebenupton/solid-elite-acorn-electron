@@ -48,12 +48,14 @@
  PROGIS% = PROGM_END% - PROGM%   \ The size of the main RAM part's image in
                         \ bank 4 (PROGI%)
 
- PROGH% = PROGM_END% - &60   \ Where the main RAM part's first hot container
+ PROGH% = PROGM_END%     \ Where the main RAM part's first hot container
                         \ (hotm, after the low pass) ends: the second (hotx)
                         \ follows hotm's units, to PROGM_END% (as one container,
                         \ the flow, streams.py, would interleave hotx's units
                         \ with hotm's in the source's order, moving hotm's
-                        \ across page boundaries, and their branches' cycles)
+                        \ across page boundaries, and their branches' cycles);
+                        \ now that bank 4 holds every untagged unit, hotm has
+                        \ all the room and hotx none
 
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
  C6SZ = 838             \ (BANK6), before the frame layer, and its room (the

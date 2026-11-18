@@ -74,7 +74,7 @@ row("main RAM", 0x0D7A, 0x0D9E, "`CATD`")
 row("main RAM", 0x0E00, 0x0FD3, "`WP`")
 row("main RAM (flight)", FL["SUNPK"], FL["SUNPF"] + 1, "the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load)")
 for prog, sy in (("flight", FL), ("docked", DK)):
-    row("main RAM (%s)" % prog, progm, progm_end, "the main RAM part: the low pass, then `hotm` and `hotx`", sy["PROGM_USED%"] - progm)
+    row("main RAM (%s)" % prog, progm, progm_end, "the main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass, then `hotm`", sy["PROGM_USED%"] - progm)
 row("main RAM", C["MBOX"], C["MBOX_END"], "the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`)")
 row("main RAM", C["MISSILE_P"], C["GVARS"], "the missile's blueprint")
 row("main RAM", C["GVARS"], C["RESH_P"], "`GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's)", C["PF_CLS"] + 1 - C["GVARS"])

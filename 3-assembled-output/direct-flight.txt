@@ -1,6 +1,12 @@
 DELAY
 OVLCUR
 WSCAN
+kbfa
+kbfast
+kbfh
+kbfl
+kbfm
+kbkey
 ovA
 ovX
 ovY
