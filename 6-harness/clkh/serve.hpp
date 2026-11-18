@@ -52,6 +52,9 @@ struct Server {
 	// what it caches from them: the loader's bank numbers)
 	std::vector<uint8_t> watch = std::vector<uint8_t>(32768, 0);
 	uint32_t watchgen = 0;
+	// wlog: writes to logged addresses, with the writer's PC and slot (a text list)
+	std::vector<uint8_t> wlogm = std::vector<uint8_t>(32768, 0);
+	std::string wlogtxt;
 
 	// write tracking (blib.mjs's runElite)
 	std::vector<uint8_t> region = std::vector<uint8_t>(32768, 0);	// the compared regions
@@ -168,8 +171,9 @@ struct Server {
 		return lpc >= 0x0d00 && lpc < 0x0e00;
 	}
 	bool in_ovload() const { return lpc >= ov_lo && lpc < ov_hi && int(m.active_rom_) == ov_slot; }
-	void on_write(uint16_t a, uint8_t) {
+	void on_write(uint16_t a, uint8_t v) {
 		if(watch[a]) watchgen++;
+		if(wlogm[a] && wlogtxt.size() < 200000) { char b[64]; std::snprintf(b, sizeof b, "%u %04x=%02x pc=%04x slot=%u\n", iter, a, v, lpc, unsigned(lrom)); wlogtxt += b; }
 		const bool sys = sys_writer();
 		if(in_game) {
 			if(region[a]) {
@@ -291,6 +295,8 @@ struct Server {
 		if(c == "shiftbreak") { m.shift_restart_counter_ = int(num(1) > 0 ? num(1) : 1); return false; }
 		if(c == "cyc") { send(std::to_string(m.total_cycles)); return false; }
 		if(c == "fields") { send(std::to_string(m.video_.fields_completed)); return false; }
+		if(c == "wlog") { for(size_t i = 1; i < a.size(); i++) wlogm[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
+		if(c == "wlogget") { send(wlogtxt); wlogtxt.clear(); return false; }
 		if(c == "watch") { for(size_t i = 1; i < a.size(); i++) watch[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
 		if(c == "dump") { dump(m, a.size() > 1 ? a[1] : "dump"); send("ok"); return false; }
 		if(c == "shot") { send(png()); return false; }

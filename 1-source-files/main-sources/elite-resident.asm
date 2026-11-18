@@ -79,9 +79,6 @@
  STA GSTASH             \ been used (the staging area and DFS's workspace are
                         \ in buffer 0), so that its next frame blanks both
 
- JSR dfsin              \ Put DFS's workspace back at &1000-&10FF, where the
-                        \ renderer's second screen buffer may have drawn over
-                        \ it since the last disc command (dfsin, below)
 
  LDX #0                 \ Copy the command into pcbuf, up to and including its
                         \ carriage return
@@ -112,10 +109,8 @@
 
  LDX #LO(pcbuf)         \ Pass the command to the MOS's OSCLI, from main RAM
  LDY #HI(pcbuf)         \ (which pages the caller's bank back in from &F4 when
- JSR &FFF7              \ it has finished)
-
- JMP dfsout             \ Keep DFS's workspace (and return; a command that
-                        \ fails ends at BRKV instead, leaving the last copy)
+ JMP &FFF7              \ it has finished, and returns: Port, DFS's workspace
+                        \ is below the screens, so nothing is kept, dfsin)
 
 .pbp
 
@@ -195,15 +190,12 @@
  CMP #'R'               \ that was paged, which now holds the new program)
  BNE prest
 
- JSR dfsout             \ Otherwise keep DFS's workspace and run the program at
- LDA BANK4              \ S% in its home bank
+ LDA BANK4              \ Otherwise run the program at S% in its home bank
  STA &F4
  STA ROMSEL
  JMP HOME%
 
 .prest
-
- JSR dfsout             \ Keep DFS's workspace
 
  LDA pbank              \ Page the caller's bank back in and return
  STA &F4
@@ -718,8 +710,11 @@ ENDIF
 \ the field's start, so the buffer that was on show is not read again), but
 \ not in the field after a flip (rflip), so that a frame is on show for two
 \ fields at least: 25 frames a second at most, as the BBC Master port's.
-\ Every interrupt, this one too, then goes on to the MOS's handler, which
-\ clears it. The loader's LOAD routine installs it.
+\ The handler clears the display end itself and returns: the MOS's handler
+\ for it would write the game's workspace in page 3 (the MOS's VDU variables
+\ there) and the screen start address. Every other interrupt (the MOS's 100
+\ Hz clock among them) goes on to the MOS. The loader's LOAD routine installs
+\ it.
 \
 \ ******************************************************************************
 
@@ -766,12 +761,23 @@ ENDIF
  LDA ssa,X              \ for BUF0, 1 for SCREEN%)
  STA &FE03
 
+ LDA &F4                \ Clear the display-end interrupt (bit 4 of &FE05),
+ ORA #%00010000         \ writing the paged bank's number with it, so that the
+ STA &FE05              \ paging is unchanged (&F4, below 16, always matches
+                        \ the paged bank, and is written first)
+
  PLA                    \ Restore X from the stack
  TAX
 
+ LDA &FC                \ Restore A from the MOS's save register and return:
+ RTI                    \ the display end is not passed to the MOS, whose
+                        \ handler for it would write the game's workspace
+                        \ (DLY, at &034A, is its VDU workspace there) and the
+                        \ screen start address
+
 .irqm
 
- JMP (IRQMOS)           \ Go on to the MOS's handler
+ JMP (IRQMOS)           \ Every other interrupt goes on to the MOS's handler
 
 .ssa
 
