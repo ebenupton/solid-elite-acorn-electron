@@ -52,16 +52,16 @@
 
  CPU 0                  \ NMOS 6502: no 65C02 instructions in this file
 
-d_a1 = &20              \ the row: new span a1..b1, old a0..b0, the layer's
-d_b1 = &21              \ L..R (no layer: L = R = 255), in zero page that
-d_a0 = &24              \ r_sw does not use
-d_b0 = &25
-d_L  = &1D
-d_R  = &1F
-d_p  = &26              \ d2put's first pixel
-d_q  = &1A
-d_mn = &23              \ this row's writes: pixels d_mn .. d_mx (none: d_mx = 0)
-d_mx = &1E
+d_a1 = RZB7 + &20              \ the row: new span a1..b1, old a0..b0, the layer's
+d_b1 = RZB7 + &21              \ L..R (no layer: L = R = 255), in zero page that
+d_a0 = RZB7 + &24              \ r_sw does not use
+d_b0 = RZB7 + &25
+d_L  = RZB7 + &1D
+d_R  = RZB7 + &1F
+d_p  = RZB7 + &26              \ d2put's first pixel
+d_q  = RZB7 + &1A
+d_mn = RZB7 + &23              \ this row's writes: pixels d_mn .. d_mx (none: d_mx = 0)
+d_mx = RZB7 + &1E
 
 \ DP_DISC2: Y = the first row, X = the rows (1 to 16), A = &FF if its colour
 \ changed (d_fl), else 0: the second disc's batch (gfx-raster_disc.asm's

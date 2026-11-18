@@ -129,7 +129,7 @@ row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: c
 row("bank 6", B6["F_START"], B6["F_CODEEND"], "the frame layer's code (bank 6 passes)")
 row("bank 6", B6["F_CODEEND"], B6["F_TABEND"], "the faces' and the lighting's tables")
 row("bank 6", B6["F_TABEND"], B6["f_plm"] + 1, "the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept")
-row("bank 6", B6["f_plm"] + 1, B6["F_HW"], "(the page alignment of the state that follows)", 0)
+row("bank 6", B6["f_plm"] + 1, B6["F_HW"], "(free: the page-aligned state that follows is placed as high as it goes)", 0)
 row("bank 6", B6["F_HW"], fcslot, "the state, page aligned: the discs' half-widths, the text map, the discs' rows", B6["F_END"] - B6["F_HW"])
 row("bank 6", fcslot, fjt, "`FCSLOT`: the face lists of the set loaded")
 row("bank 6", fjt, 0xC000, "`FJT`, the dispatcher", B6["FJT_END"] - fjt)

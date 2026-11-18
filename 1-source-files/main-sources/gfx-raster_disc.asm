@@ -64,6 +64,10 @@
 
  CPU 0                  \ NMOS 6502: no 65C02 instructions in this file
 
+.P7Z SKIP &22           \ the painter's scratch, in this bank: at RZB7 + the
+RZB7 = P7Z - &06        \ zero page address each once had (the rasteriser's
+                        \ names), first, as the code takes it as absolute
+
 DPST% = DFSSAVE% - &C00 \ the disc state, to DFSSAVE%
  ASSERT LO(DPST%) = 0
  ASSERT OVSTASH = DPST% AND OVSTASH + &2E2 <= DPST% + &300   \ (ovload's stash:
@@ -97,21 +101,23 @@ R_CT    = &0C
 R_CB    = &0D
 R_DCE   = &0E
 R_DCO   = &0F
-RZ_PP   = &14           \ ... and this code's scratch: the row's address
+DPB_E   = &20           \ DP_BEGIN's colour B pair, from the frame layer (in
+DPB_O   = &21           \ transit: its RZ_T0, RZ_T1)
+RZ_PP   = RZB7 + &14           \ ... and this code's scratch: the row's address
                         \ (its byte in column 0, r_rowp)
-RZ_COL  = &16           \ this row's colour byte
-RZ_Y    = &17           \ current row
-RZ_SA   = &18
-RZ_TA   = &1A
-RZ_SB   = &1C
-RZ_T0   = &20
-RZ_T1   = &21
-RZ_T2   = &22
-RZ_T3   = &23
-RZ_T4   = &24
-RZ_T5   = &25
-RZ_T6   = &26
-RZ_T7   = &27
+RZ_COL  = RZB7 + &16           \ this row's colour byte
+RZ_Y    = RZB7 + &17           \ current row
+RZ_SA   = RZB7 + &18
+RZ_TA   = RZB7 + &1A
+RZ_SB   = RZB7 + &1C
+RZ_T0   = RZB7 + &20
+RZ_T1   = RZB7 + &21
+RZ_T2   = RZB7 + &22
+RZ_T3   = RZB7 + &23
+RZ_T4   = RZB7 + &24
+RZ_T5   = RZB7 + &25
+RZ_T6   = RZB7 + &26
+RZ_T7   = RZB7 + &27
 rs_t0 = RZ_T0           \ raster_strips.asm: the boundaries, old, then new
 rs_t1 = RZ_T1
 rs_t2 = RZ_T2
@@ -130,8 +136,8 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 
 \ ******************************************************************************
 \
-\ DP_BEGIN: A = the buffer, X = the flags (PB_*), RZ_T0 and RZ_T1 the
-\ colour B pair (R_DBE, R_DBO). PB_RESET forgets the second disc's spans
+\ DP_BEGIN: A = the buffer, X = the flags (PB_*), DPB_E and DPB_O (zero
+\ page) the colour B pair (R_DBE, R_DBO). PB_RESET forgets the second disc's spans
 \ too (as R_RESETBUF and R_DISC2's colour 0 do in the Master port)
 \
 \ ******************************************************************************
@@ -140,9 +146,9 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 {
   STA dp_buf
   STX dp_fl
-  LDA RZ_T0
+  LDA DPB_E               \ (in transit, in zero page)
   STA R_DBE
-  LDA RZ_T1
+  LDA DPB_O
   STA R_DBO
   LDX dp_buf
   JSR dp_patch            \ the buffer's arrays into the operands
@@ -597,9 +603,8 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   STY RZ_SA
   TXA
   EOR RZ_SA
-  CMP #8
-  BCC one                 \ one byte (the rarer case: the commoner multi-byte
-                          \ case falls through)
+  CMP #8                  \ C clear: one byte, whose mask is both ends'
+  BCC one
   BIT r_qok               \ long and queued?
   BPL m1
   JSR r_sql
@@ -608,20 +613,42 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   LDA RZ_SA               \ the last byte's offset
   AND #&F8
   STA RZ_SA+1
-  TXA                     \ the first byte
+  TXA                     \ the first byte's mask
   LSR A
   AND #3
+  TAY
+  LDA r_lm4,Y
   STA RZ_T7
+  SEC                     \ (more than one byte)
+  BCS m2
+.one
+  LDA RZ_SA               \ one byte: both ends' mask
+  LSR A
+  AND #3
+  TAY
   TXA
+  LSR A
+  AND #3
+  TAX
+  LDA r_lm4,X
+  AND r_rm4,Y
+  STA RZ_T7
+  LDX RZ_SA               \ (its byte: the same as X's)
+  CLC
+.m2
+  TXA                     \ the first byte (C kept)
   AND #&F8
   TAY
-  LDX RZ_T7
   LDA RZ_COL
-  EOR (RZ_PP),Y
-  AND r_lm4,X
+.^r_swa
+  EOR &FFFF,Y             \ (the row's address: r_rowp)
+  AND RZ_T7
+.^r_swb
+  EOR &FFFF,Y
+.^r_swc
+  STA &FFFF,Y
+  BCC c9                  \ (one byte: done)
   LDX RZ_COL              \ X = colour from here to .ls
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
   TYA
   CLC
   ADC #8
@@ -630,7 +657,8 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   CPY RZ_SA+1
   BCS ls
 .la                       \ the whole bytes between
-  STA (RZ_PP),Y
+.^r_swd
+  STA &FFFF,Y
   TYA
   ADC #8                  \ (C = 0 from the CPY)
   TAY
@@ -643,35 +671,14 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   AND #3
   TAX
   LDA RZ_COL
-  EOR (RZ_PP),Y
+.^r_swe
+  EOR &FFFF,Y
   AND r_rm4,X
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
+.^r_swf
+  EOR &FFFF,Y
+.^r_swg
+  STA &FFFF,Y
 .c9
-  RTS
-
-.one
-  LDA RZ_SA               \ one byte: both masks
-  LSR A
-  AND #3
-  TAY
-  LDA r_rm4,Y
-  STA RZ_T7
-  TXA
-  LSR A
-  AND #3
-  TAY
-  LDA r_lm4,Y
-  AND RZ_T7
-  STA RZ_T7
-  TXA
-  AND #&F8
-  TAY
-  LDA RZ_COL
-  EOR (RZ_PP),Y
-  AND RZ_T7
-  EOR (RZ_PP),Y
-  STA (RZ_PP),Y
   RTS
 }
 
@@ -728,10 +735,10 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 .r_lm4  EQUB &FF, &77, &33, &11   \ MODE 5 pixels p .. 3 of a byte
 .r_rm4  EQUB &88, &CC, &EE, &FF   \ pixels 0 .. p
 
-\ r_rowp: X = row: RZ_Y, and RZ_PP its screen address in the buffer, its
-\ byte in column 0: the buffer + 320 (row DIV 8) + 32 + (row AND 7), the low
-\ byte 64 ((row DIV 8) AND 3) + 32 + (row AND 7) (no carry), the high byte
-\ the buffer's + row DIV 8 + row DIV 32.  Keeps X and Y.
+\ r_rowp: X = row: RZ_Y, and its screen address in the buffer, its byte in
+\ column 0, into r_sw's operands: the buffer + 320 (row DIV 8) + 32 + (row
+\ AND 7), the low byte 64 ((row DIV 8) AND 3) + 32 + (row AND 7) (no carry),
+\ the high byte the buffer's + row DIV 8 + row DIV 32.  Keeps X and Y.
 .r_rowp
   STX RZ_Y
   TXA
@@ -744,7 +751,13 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   TXA
   AND #7
   ORA RZ_PP
-  STA RZ_PP
+  STA r_swa+1
+  STA r_swb+1
+  STA r_swc+1
+  STA r_swd+1
+  STA r_swe+1
+  STA r_swf+1
+  STA r_swg+1
   TXA
   LSR A
   LSR A
@@ -756,7 +769,13 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
   ADC RZ_PP+1
 .^dp_scr
   ADC #HI(SCREEN%)        \ (patched: the buffer's screen)
-  STA RZ_PP+1
+  STA r_swa+2
+  STA r_swb+2
+  STA r_swc+2
+  STA r_swd+2
+  STA r_swe+2
+  STA r_swf+2
+  STA r_swg+2
   RTS
 
 \ ============================================================================

@@ -85,7 +85,11 @@ F_SRN = MAXSH * 15      \ (the most faces is 15)
 .f_plt  SKIP 1
 .f_plv  SKIP 1
 .f_plm  SKIP 1
- ALIGN &100
+.F_SMEND                \ (the end of the state that need not be aligned)
+F_ALSZ = 2 * 256 + 768 + 7 * 192 + 24 + 1   \ the aligned state's size (from F_HW
+F_AL = (FCSLOT - F_ALSZ) AND &FF00          \ to F_END), as high as it goes
+ ASSERT P% <= F_AL
+ SKIP F_AL - P%
 .F_HW   SKIP 256        \ the planet's half-widths (f_hwbuild)
 .F_HW2  SKIP 256        \ the sun's
 .F_TM   SKIP 768        \ the text map: desired characters, 24 rows of 32
@@ -103,6 +107,7 @@ ENDIF
 .F_TMR  SKIP 24         \ the text map's non-empty cells per row
 .f_tcol SKIP 1          \ (f_char1's column)
 .F_END
+ ASSERT F_END - F_HW = F_ALSZ
  ASSERT F_END <= FCSLOT \ the face lists of the blueprint set loaded, to FJT
                         \ (FCSLOT and its size: gfx-faces.asm; F_SETLD)
 
@@ -130,7 +135,7 @@ ENDIF
  ASSERT fjt_hi - fjt_lo = FG_N AND FJT_END <= &C000
 
 
-PRINT "Bank 6: the flight code's cold 6 pass &8000-", ~F_START-1, ", the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_END-1, ", free ", FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
+PRINT "Bank 6: the flight code's cold 6 pass &8000-", ~F_START-1, ", the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_SMEND-1, " and ", ~F_HW, "-", ~F_END-1, ", free ", F_AL-F_SMEND+FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
 PRINT "Glue (main RAM): ", ~GLUE%, "-", ~GLUE_TOP-1, " (", GLUE_TOP-GLUE%, " bytes: trampolines ", rtramp_end-GLUE%, ", GCALL ", GLUE_END-GCALL, ", pcb_o ", GLUE_TOP-GLUE_END, ")"
  ASSERT F_END <= FCSLOT
 

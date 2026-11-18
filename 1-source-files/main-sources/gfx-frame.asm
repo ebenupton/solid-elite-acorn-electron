@@ -656,13 +656,15 @@ RPN = 4
                         \ next iteration's ships, in bank 4)
 
  \ keep the zero page the renderer uses (&06-&27: the rasteriser's inputs,
- \ and the disc painter's scratch), unrolled, in f_zsv, not on the stack:
- \ the frame's ship projection puts the vertices in XX3, page 1 from &0100,
- \ under the stack
- FOR z, &06, &27
-  LDA z
-  STA f_zsv + z - &06
- NEXT
+ \ and the disc painter's scratch) in f_zsv, not on the stack: the frame's
+ \ ship projection puts the vertices in XX3, page 1 from &0100, under the
+ \ stack
+ LDX #&21
+.ffz1
+ LDA &06,X
+ STA f_zsv,X
+ DEX
+ BPL ffz1
 
  BIT GMODE              \ the first space-mode frame since the screen was
  BPL ff0                \ cleared, or a disc command has used buffer 0 (the
@@ -717,10 +719,12 @@ RPN = 4
  BPL P%+5               \ code (f_gkeep)
  JSR f_gback
 
- FOR z, &06, &27         \ restore the zero page (kept at ff1)
-  LDA f_zsv + z - &06
-  STA z
- NEXT
+ LDX #&21               \ restore the zero page (kept at ff1)
+.ffz2
+ LDA f_zsv,X
+ STA &06,X
+ DEX
+ BPL ffz2
 
  LDA F_BACK             \ show it at the next vertical sync (the interrupt
  STA GPEND              \ reads GPEND once GFLIP is set)
@@ -2548,8 +2552,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  CPY f_nf
  BCC P%+5
  JMP fsh_done
-.^fsh_d1
- LDA &FFFF,Y            \ visibility (the levels: f_shpat)
+ LDA f_lv,Y            \ visibility (the levels: f_shpat)
  BEQ fsh_skip
  STA fz_t
  LDY f_fo
@@ -2653,8 +2656,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LDA &FFFF,Y            \ face1 + 16 * face2 (the list + 1)
  AND #15
  TAY
-.^fit_d1
- LDA &FFFF,Y            \ (the levels)
+ LDA f_lv,Y            \ (the levels)
  BNE fit1
  LDY fz_q
 .^fit_q2
@@ -2664,8 +2666,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LSR A
  LSR A
  TAY
-.^fit_d2
- LDA &FFFF,Y
+ LDA f_lv,Y
  BEQ fit8
 .fit1
  STA fz_t
@@ -2719,8 +2720,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  PHA                    \ keep the byte for face2
  AND #15
  TAY
-.^fiv_d1
- LDA &FFFF,Y            \ (the levels)
+ LDA f_lv,Y            \ (the levels)
  AND #31
  STA fz_u
  PLA                    \ face1 + 16 * face2 again
@@ -2729,11 +2729,10 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LSR A
  LSR A
  TAY
-.^fiv_d2
- LDA &FFFF,Y
+ LDA f_lv,Y
  AND #31
  CMP fz_u
- BCS P%+4
+ BCS P%+5
  LDA fz_u
  TAX
  LDY fz_q
@@ -2789,8 +2788,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LDA &FFFF,Y            \ (the list + 1)
  AND #15
  TAY
-.^ffi_d1
- LDA &FFFF,Y            \ (the levels)
+ LDA f_lv,Y            \ (the levels)
  BEQ P%+3
  INX
  LDY fz_q
@@ -2801,8 +2799,7 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LSR A
  LSR A
  TAY
-.^ffi_d2
- LDA &FFFF,Y
+ LDA f_lv,Y
  BEQ P%+3
  INX
  CPX f_k
@@ -2820,106 +2817,72 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  BNE ffi1
  RTS
 
-\ f_shpat: the ship's face list (fz_ft), fins and details (fz_dt) and
-\ levels (fz_dl) into the operands that read them (each list is shorter than
-\ 256 bytes, faces.py: they are read at an offset in Y, f_fo for the faces,
-\ fz_q for the details; a detail's byte k through an operand of the list +
-\ k)
+\ f_shpat: the ship's faces' levels (fz_dl, in F_SR) into f_lv, and its
+\ face list (fz_ft) and fins and details (fz_dt) into the operands that read
+\ them (each list is shorter than 256 bytes, faces.py: they are read at an
+\ offset in Y, f_fo for the faces, fz_q for the details; a list's byte k
+\ through an operand of the list + k): the operands' values (fsp_vl, fsp_vh,
+\ by kind) then each operand (fsp_al, fsp_ah: its address; fsp_c: its kind)
 
 .f_shpat
  LDA fz_dl
- STA fsh_d1+1
- STA fit_d1+1
- STA fit_d2+1
- STA fiv_d1+1
- STA fiv_d2+1
- STA ffi_d1+1
- STA ffi_d2+1
- STA fbh_d1+1
+ STA fsl1+1
  LDA fz_dl+1
- STA fsh_d1+2
- STA fit_d1+2
- STA fit_d2+2
- STA fiv_d1+2
- STA fiv_d2+2
- STA ffi_d1+2
- STA ffi_d2+2
- STA fbh_d1+2
- LDA fz_ft
- STA fsh_l1+1
- STA fsh_l2+1
- STA fsh_l3+1
- STA fbh_l1+1
+ STA fsl1+2
+ LDY #15 - 1                \ (the most faces: F_SRN = MAXSH * 15)
+.fsl1
+ LDA &FFFF,Y
+ STA f_lv,Y
+ DEY
+ BPL fsl1
+ LDX #6                 \ the kinds' values: the face list + 0, 1; the fins
+.fsp1                   \ and details + 0 .. 4
+ LDY fsp_kb,X
+ LDA fz_ft,Y
  CLC
- ADC #1
- STA fbh_l2+1
- LDA fz_ft+1
- STA fsh_l1+2
- STA fsh_l2+2
- STA fsh_l3+2
- STA fbh_l1+2
+ ADC fsp_ka,X
+ STA fsp_vl,X
+ LDA fz_ft+1,Y
  ADC #0
- STA fbh_l2+2
- LDA fz_dt
- STA fsh_t1+1
- STA fsh_t2+1
- STA ffi_t1+1
- LDA fz_dt+1
- STA fsh_t1+2
- STA fsh_t2+2
- STA ffi_t1+2
- LDA fz_dt              \ (the list + 0)
- CLC
- ADC #0
- STA fsh_q0+1
- STA fit_q0+1
- STA ffi_q0+1
- LDA fz_dt+1
- ADC #0
- STA fsh_q0+2
- STA fit_q0+2
- STA ffi_q0+2
- LDA fz_dt              \ (the list + 1)
- CLC
- ADC #1
- STA fit_q1+1
- STA fit_q2+1
- STA fiv_q1+1
- STA ffi_q1+1
- STA ffi_q2+1
- LDA fz_dt+1
- ADC #0
- STA fit_q1+2
- STA fit_q2+2
- STA fiv_q1+2
- STA ffi_q1+2
- STA ffi_q2+2
- LDA fz_dt              \ (the list + 2)
- CLC
- ADC #2
- STA fiv_q2+1
- STA fpo_q2+1
- LDA fz_dt+1
- ADC #0
- STA fiv_q2+2
- STA fpo_q2+2
- LDA fz_dt              \ (the list + 3)
- CLC
- ADC #3
- STA fit_q3+1
- STA fiv_q3+1
- LDA fz_dt+1
- ADC #0
- STA fit_q3+2
- STA fiv_q3+2
- LDA fz_dt              \ (the list + 4)
- CLC
- ADC #4
- STA fiv_q4+1
- LDA fz_dt+1
- ADC #0
- STA fiv_q4+2
+ STA fsp_vh,X
+ DEX
+ BPL fsp1
+ ASSERT fz_dt = fz_ft + 2
+ LDX #FSPN - 1          \ each operand
+.fsp2
+ LDA fsp_al,X
+ STA fsp3+1
+ STA fsp4+1
+ LDA fsp_ah,X
+ STA fsp3+2
+ STA fsp4+2
+ LDY fsp_c,X
+ LDA fsp_vh,Y
+ STA fz_t
+ LDA fsp_vl,Y
+ LDY #0
+.fsp3
+ STA &FFFF,Y            \ (its low byte)
+ INY
+ LDA fz_t
+.fsp4
+ STA &FFFF,Y            \ (its high byte)
+ DEX
+ BPL fsp2
  RTS
+
+.fsp_kb EQUB 0, 0, 2, 2, 2, 2, 2  \ by kind: the list (0 faces, 2 fins and
+.fsp_ka EQUB 0, 1, 0, 1, 2, 3, 4  \ details) and k
+.fsp_vl SKIP 7
+.fsp_vh SKIP 7
+FSPN = 21
+.fsp_al
+ EQUB LO(fsh_l1+1), LO(fsh_l2+1), LO(fsh_l3+1), LO(fbh_l1+1), LO(fbh_l2+1), LO(fsh_t1+1), LO(fsh_t2+1), LO(ffi_t1+1), LO(fsh_q0+1), LO(fit_q0+1), LO(ffi_q0+1), LO(fit_q1+1), LO(fit_q2+1), LO(fiv_q1+1), LO(ffi_q1+1), LO(ffi_q2+1), LO(fiv_q2+1), LO(fpo_q2+1), LO(fit_q3+1), LO(fiv_q3+1), LO(fiv_q4+1)
+.fsp_ah
+ EQUB HI(fsh_l1+1), HI(fsh_l2+1), HI(fsh_l3+1), HI(fbh_l1+1), HI(fbh_l2+1), HI(fsh_t1+1), HI(fsh_t2+1), HI(ffi_t1+1), HI(fsh_q0+1), HI(fit_q0+1), HI(ffi_q0+1), HI(fit_q1+1), HI(fit_q2+1), HI(fiv_q1+1), HI(ffi_q1+1), HI(ffi_q2+1), HI(fiv_q2+1), HI(fpo_q2+1), HI(fit_q3+1), HI(fiv_q3+1), HI(fiv_q4+1)
+.fsp_c
+ EQUB 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 5, 5, 6
+.f_lv   SKIP 15            \ the ship's faces' levels
 
 \ f_col: A = a face's or item's colour byte, X = the level (0..31): the
 \ colour R_COLE, R_COLO, R_COL2, R_COL3 (rows y AND 3 = 0..3). A = 0..8: entry
@@ -3711,8 +3674,7 @@ SGOUT = 20
  LDY f_f
  CPY f_nf
  BCS fbh8
-.^fbh_d1
- LDA &FFFF,Y            \ (the levels: f_shpat)
+ LDA f_lv,Y            \ (the levels: f_shpat)
  BNE fbh2
  LDY fz_p               \ skip this face's list entry (n + 16 * its hue ramp,
 .^fbh_l1
