@@ -457,9 +457,12 @@
 }
 \ ============================================================================
 \ The line loops: Bresenham along the major axis from the left / top end, a
-\ pixel per step.  The character row's address in the loops' operands
-\ (rl_base), + Y = 8 * column + line, pixel mask l_m, the row's colour l_c;
-\ X = row; DIRTY[b][row] extended per pixel (the
+\ pixel per step.  A y-major line has its byte's column's address in the
+\ character row in the loops' operands (rl_basey) + Y = the line, and the
+\ rows' colours by line (rl_lct); an x-major line the character row's
+\ address (rl_basex) + Y = 8 * column + line, and the row's colour l_c,
+\ toggled at each row; pixel mask l_m; X = row; DIRTY[b][row] extended per
+\ pixel (the
 \ buffer's row range is the caller's).  l_n pixels (0: 256), all inside the
 \ window.
 \ ============================================================================
@@ -470,8 +473,6 @@
   LDA r_sbh_dl,X
   STA lyl_p0+2
   STA lyl_p1+2
-  STA lyr_p0+2
-  STA lyr_p1+2
   STA lxu_p0+2
   STA lxu_p1+2
   STA lxd_p0+2
@@ -479,8 +480,6 @@
   LDA r_sbh_dr,X
   STA lyl_p2+2
   STA lyl_p3+2
-  STA lyr_p2+2
-  STA lyr_p3+2
   STA lxu_p2+2
   STA lxu_p3+2
   STA lxd_p2+2
@@ -558,8 +557,16 @@
 }
 .rl_lgo
 {
-  LDA r_cole              \ the row's colour, l_c (y0 odd: r_colo), toggled by
-  EOR r_colo              \ l_cx at each row
+  LDY #6                  \ the rows' colours by line (y-major), and the row's
+.ct                       \ colour, l_c (y0 odd: r_colo), toggled by l_cx at
+  LDA r_cole              \ each row (x-major)
+  STA rl_lct,Y
+  LDA r_colo
+  STA rl_lct+1,Y
+  DEY
+  DEY
+  BPL ct
+  EOR r_cole
   STA l_cx
   LDX l_y0                \ X = row, l_x = x
   TXA
@@ -568,15 +575,27 @@
   BCC P%+5
   LDA r_colo
   STA l_c
-  TXA                     \ the character row's address into the loops'
-  AND #&F8                \ operands (the byte of (l_x, row X) is that + Y, Y
-  TAY                     \ = 8 * column + line)
+  TXA                     \ the character row's address (in its column, for a
+  AND #&F8                \ y-major line), into rl_bl, rl_bh
+  TAY
+  LDA l_x
+  AND #&F8
+  STA RZ_T3               \ (not RZ_T0: l_b)
+  LDA l_k
+  AND #2                  \ (x-major: no column)
+  BEQ rlg0
+  LDA #0
+  BEQ rlg1                \ (always)
+.rlg0
+  LDA RZ_T3
+.rlg1
+  CLC
+  ADC r_ylo,Y
+  STA rl_bl
 .^r_yp5
   LDA r_ypg,Y
+  ADC #0
   STA rl_bh
-  LDA r_ylo,Y
-  STA rl_bl
-  JSR rl_base
   LDY l_x
   LDA r_lm,Y              \ pixels x..3 AND pixels 0..x of its byte = pixel x
   AND r_rm,Y
@@ -588,21 +607,45 @@
   STA jp+1
   LDA tab+1,Y
   STA jp+2
-  LDA l_x
-  AND #&F8
-  STA RZ_T3               \ (not RZ_T0: l_b)
-  TXA
-  AND #7
-  ORA RZ_T3
+  TXA                     \ Y = the line (y-major) or 8 * column + the line
+  AND #7                  \ (x-major)
+  STA RZ_T4
+  LDA l_k
+  AND #2
+  BEQ rlg2
+  JSR rl_basex
+  LDA RZ_T3
+  ORA RZ_T4
   TAY
+  JMP jp
+.rlg2
+  JSR rl_basey
+  LDA l_k                 \ the y-major loop for x decreasing (0) or
+  AND #1                  \ increasing (1)
+  TAX
+  LDA ly_tab,X
+  STA ly_x
+  LDA ly_tab+2,X
+  STA ly_b
+  LDA ly_tab+4,X
+  STA ly_m
+  LDA ly_tab+6,X
+  STA ly_w+1
+  LDA ly_tab+8,X
+  STA ly_j+1
+  LDA ly_tab+10,X
+  STA ly_j+2
+  LDX l_y0
+  LDY RZ_T4
 .jp
   JMP &FFFF
 .tab
-  EQUW lyl, lyr, lxu, lxd
+  EQUW lyl, lyl, lxu, lxd
 .lyl
+.lyr
 .^rls0
-  LDA &FFFF,Y             \ (the character row's address: rl_base)
-  EOR l_c
+  LDA &FFFF,Y             \ (the byte's column in the character row: rl_basey)
+  EOR rl_lct,Y
   AND l_m
 .^rls1
   EOR &FFFF,Y
@@ -621,14 +664,10 @@
   BEQ lyl_d
   INX                     \ the next row down
   INY
-  TYA
-  AND #7
+  CPY #8
   BNE lyl_y
-  JSR rl_dn
+  JSR rl_dny
 .lyl_y
-  LDA l_c
-  EOR l_cx
-  STA l_c
   LDA l_e
   CLC
   ADC l_a
@@ -636,74 +675,33 @@
   BCC lyl
   SBC l_b
   STA l_e
-  DEC l_x
-  LDA l_x                 \ (x odd: into the next MODE 5 pixel left)
-  LSR A
+.ly_x
+  DEC l_x                 \ (patched: DEC, or INC for x increasing)
+  LDA l_x                 \ (into the next MODE 5 pixel: x odd going left,
+  LSR A                   \ even going right)
+.ly_b
+  BCC lyl                 \ (patched: BCC, or BCS)
+.ly_m
+  ASL l_m                 \ (patched: ASL, or LSR)
   BCC lyl
-  ASL l_m
-  BCC lyl
-  LDA #&11
+.ly_w
+  LDA #&11                \ (patched: &11, or &88)
   STA l_m
-  TYA                     \ (C = 1) the next byte left
-  SBC #8
-  TAY
+.ly_j
+  JSR rl_lft              \ the next byte (patched: left, or rl_rgt)
   JMP lyl
 .lyl_d
   RTS
-.lyr
-.^rls3
-  LDA &FFFF,Y             \ (the character row's address: rl_base)
-  EOR l_c
-  AND l_m
-.^rls4
-  EOR &FFFF,Y
-.^rls5
-  STA &FFFF,Y
-  LDA l_x
-.^lyr_p0 CMP R_DIRTYL0,X
-  BCS lyr_1
-.^lyr_p1 STA R_DIRTYL0,X
-.lyr_1
-.^lyr_p2 CMP R_DIRTYR0,X
-  BCC lyr_2
-.^lyr_p3 STA R_DIRTYR0,X
-.lyr_2
-  DEC l_n
-  BEQ lyr_d
-  INX                     \ the next row down
-  INY
-  TYA
-  AND #7
-  BNE lyr_y
-  JSR rl_dn
-.lyr_y
-  LDA l_c
-  EOR l_cx
-  STA l_c
-  LDA l_e
-  CLC
-  ADC l_a
-  STA l_e
-  BCC lyr
-  SBC l_b
-  STA l_e
-  INC l_x
-  LDA l_x                 \ (x even: into the next MODE 5 pixel right)
-  LSR A
-  BCS lyr
-  LSR l_m
-  BCC lyr
-  LDA #&88
-  STA l_m
-  TYA                     \ (C = 1) the next byte right
-  ADC #7
-  TAY
-  JMP lyr
-.lyr_d
-  RTS
+.ly_tab                   \ (the y-major loop's patches: x decreasing, increasing)
+ EQUB &CE, &EE            \ DEC, INC abs
+ EQUB &90, &B0            \ BCC, BCS
+ EQUB &0E, &4E            \ ASL, LSR abs
+ EQUB &11, &88
+ EQUB LO(rl_lft), LO(rl_rgt)
+ EQUB HI(rl_lft), HI(rl_rgt)
 .lxu
 .^rls6
-  LDA &FFFF,Y             \ (the character row's address: rl_base)
+  LDA &FFFF,Y             \ (the character row's address: rl_basex)
   EOR l_c
   AND l_m
 .^rls7
@@ -756,7 +754,7 @@
   RTS
 .lxd
 .^rls9
-  LDA &FFFF,Y             \ (the character row's address: rl_base)
+  LDA &FFFF,Y             \ (the character row's address: rl_basex)
   EOR l_c
   AND l_m
 .^rls10
@@ -808,9 +806,59 @@
   RTS
 }
 
-\ rl_dn, rl_up: the line has crossed into the next character row down (Y =
-\ its line 0 + 8) or up (Y = its line 7 - 8, mod 256): Y back into the row,
-\ the loops' operands 320 on or back (rl_base)
+.rl_end
+PRINT "raster_line.asm: ", rl_end - rl_start, " bytes"
+
+\ ============================================================================
+\ The line loops' operands' updates
+\
+\       Area: bank 5
+\ ============================================================================
+
+\ rl_dny: a y-major line has crossed into the next character row down (Y =
+\ 8): Y = 0, the loops' operands 320 on. rl_lft, rl_rgt: a y-major line's
+\ next byte left or right: the operands 8 back or on
+.rl_dny
+  LDY #0
+  LDA rl_bl
+  CLC
+  ADC #LO(320)
+  STA rl_bl
+  LDA rl_bh
+  ADC #HI(320)
+  JMP rlb1
+.rl_lft
+  LDA rl_bl
+  SEC
+  SBC #8
+  STA rl_bl
+  LDA rl_bh
+  SBC #0
+  JMP rlb1
+.rl_rgt
+  LDA rl_bl
+  CLC
+  ADC #8
+  STA rl_bl
+  LDA rl_bh
+  ADC #0
+.rlb1
+  STA rl_bh
+\ rl_basey: the y-major loops' operands = rl_bh rl_bl (keeps X, Y)
+.rl_basey
+  LDA rl_bl
+  STA rls0+1
+  STA rls1+1
+  STA rls2+1
+  LDA rl_bh
+  STA rls0+2
+  STA rls1+2
+  STA rls2+2
+  RTS
+
+\ rl_dn, rl_up: an x-major line has crossed into the next character row
+\ down (Y = its line 0 + 8) or up (Y = its line 7 - 8, mod 256): Y back into
+\ the row, the loops' operands 320 on or back (rl_basex)
 .rl_dn
   TYA
   SEC
@@ -823,7 +871,7 @@
   LDA rl_bh
   ADC #HI(320)
   STA rl_bh
-  JMP rl_base
+  JMP rl_basex
 .rl_up
   TYA
   CLC
@@ -836,15 +884,9 @@
   LDA rl_bh
   SBC #HI(320)
   STA rl_bh
-\ rl_base: the loops' operands = rl_bh rl_bl (keeps X, Y)
-.rl_base
+\ rl_basex: the x-major loops' operands = rl_bh rl_bl (keeps X, Y)
+.rl_basex
   LDA rl_bl
-  STA rls0+1
-  STA rls1+1
-  STA rls2+1
-  STA rls3+1
-  STA rls4+1
-  STA rls5+1
   STA rls6+1
   STA rls7+1
   STA rls8+1
@@ -852,12 +894,6 @@
   STA rls10+1
   STA rls11+1
   LDA rl_bh
-  STA rls0+2
-  STA rls1+2
-  STA rls2+2
-  STA rls3+2
-  STA rls4+2
-  STA rls5+2
   STA rls6+2
   STA rls7+2
   STA rls8+2
@@ -865,7 +901,4 @@
   STA rls10+2
   STA rls11+2
   RTS
-
-.rl_end
-PRINT "raster_line.asm: ", rl_end - rl_start, " bytes"
 

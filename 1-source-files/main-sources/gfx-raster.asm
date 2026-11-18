@@ -394,7 +394,7 @@ r_dr1 = R_DIRTYR1
 \ buffer 1 (SCREEN%); buffer 0's screen (BUF0) is &2800 lower.  If this
 \ bank's copy of the row's run is not for the buffer R_SETBUF chose, the
 \ high byte of each of its 32 stores' addresses has &28 taken off or added,
-\ eight stores a pass, by SBC or ADC #&28 with the carry left as it was set
+\ four stores a pass, by SBC or ADC #&28 with the carry left as it was set
 \ (the high bytes are &30-&57 or &58-&7F: nothing carries out), X counting
 \ the passes (about 12 cycles a store).  The row last checked for the buffer
 \ is noted, so a run of rows in one character row costs one test.  Keeps X
@@ -421,7 +421,7 @@ r_dr1 = R_DIRTYR1
   TXA                     \ its page into the loop's loads and stores, its
   LSR A                   \ base into the passes' offsets
   ORA #HI(r_run0)
-FOR k, 0, 7
+FOR k, 0, 3
   STA lp + 9 + 8 * k
   STA lp + 14 + 8 * k
 NEXT
@@ -430,18 +430,18 @@ NEXT
   STA pfb
   LDX R_PRBUF
   LDA r_pgop,X            \ buffer 0: SBC #&28, carry set; buffer 1: ADC #&28,
-FOR k, 0, 7               \ carry clear
+FOR k, 0, 3               \ carry clear
   STA lp + 10 + 8 * k
 NEXT
   TXA                     \ (the carry: set for SBC, clear for ADC)
   EOR #1
   LSR A
-  LDX #3                  \ the stores' high bytes: offsets 2, 5, .. 95, eight
-.lp                       \ a pass, 24 apart
+  LDX #7                  \ the stores' high bytes: offsets 2, 5, .. 95, four
+.lp                       \ a pass, 12 apart
   LDA r_pgy,X
   ORA pfb
   TAY
-FOR k, 0, 7
+FOR k, 0, 3
   LDA &FF02 + 3 * k,Y
   ADC #&28
   STA &FF02 + 3 * k,Y
@@ -461,8 +461,8 @@ FOR i, 0, 23              \ assembled: 1)
 NEXT
 .r_pgop EQUB &E9, &69     \ to buffer 0: SBC #; to buffer 1: ADC #
 .r_pgy                    \ the loop's passes' Y
-FOR i, 0, 3
-  EQUB 24 * i
+FOR i, 0, 7
+  EQUB 12 * i
 NEXT
 ASSERT HI(SCREEN%) - HI(BUF0) = &28
 
@@ -856,7 +856,8 @@ ALIGN &100
 .r_s0a   SKIP 48          \ buffer 0: the inverse mask in the byte
 .r_s0b   SKIP 48          \ buffer 0: the inverse mask in the next byte
 \ R_LINE's variables (gfx-raster_line.asm, gfx-raster_lcold.asm)
-.l_c    SKIP 1          \ R_LINE: the row's colour byte, and the other row's EOR it
+.rl_lct SKIP 8          \ R_LINE: colour byte by row AND 7 (y-major), the row's
+.l_c    SKIP 1          \ colour byte, and the other row's EOR it (x-major)
 .l_cx   SKIP 1
 .rl_bl  SKIP 1          \ R_LINE's loops: the character row's address
 .rl_bh  SKIP 1

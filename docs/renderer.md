@@ -193,13 +193,23 @@ What differs from the Master port's frame layer:
   dirty extents comes from one query (`f_wq`: `R_GETW` with A = `&40`,
   `gfx-raster_dq.asm`), the union over each text row's eight lines for the
   rows asked for, and whether anything covers the sights.
-* **The game's zero page overlaps the rasteriser's** (`XX16` is `&09-&1A`,
-  `XX0` `&1E`) and this layer's (`XX2`, which part 6 reads, is `FZ` at
-  `&D2`): the frame's runs of game code go through `f_gproj` and `f_gcloud`
-  (the far call `farH` to the program's `S% + 16` and `S% + 19`, bank 4),
-  after which the clip window is put back (`f_clip`), and nothing of `FZ`
-  is kept across them (`f_ship` projects first and sets up its pointers
-  after; the loops that run game code count in bank 6, `f_ii`, `f_di`).
+* **The renderer's state is off the zero page** (main RAM, 1 MHz on the
+  Electron, and stalled behind the ULA: a main RAM access takes two or three
+  2 MHz cycles, a sideways RAM one one). Only what is in transit between
+  banks stays in main RAM: the rasteriser's inputs (`&06-&0F`, which the
+  frame layer writes and banks 5 and 7 read), `DP_BEGIN`'s colour B pair
+  (`&20-&21`), the mailbox, the shared variables and the glue. The frame
+  layer's scratch (`fz_*`, once `&D2-&E1`, the game's `XX2`, `K3`, `K4`) is
+  in bank 6 (`FZB`), `PC_ROWS`' in bank 6 too (`PZB`), the rasteriser's in
+  bank 5 (`r_zb`) and the painter's in bank 7 (`P7Z`), each at its bank's
+  base + its old zero page address; their `(zp),Y` pointers are
+  self-modified `abs,Y` operands (a ship's face lists, `f_shpat`, read at an
+  offset in Y; the text map's row, `f_rowptr`; the painter's row, `r_rowp`,
+  once a character row). The game's zero page overlaps the rasteriser's
+  inputs (`XX16` is `&09-&1A`): the frame's runs of game code go through
+  `f_gproj` and `f_gcloud` (the far call `farH` to the program's `S% + 16`
+  and `S% + 19`, bank 4), after which the clip window is put back
+  (`f_clip`); the loops that run game code count in bank 6, `f_ii`, `f_di`.
 * **The discs** are the Master port's, with the disc layer's row code (the
   painter) and each buffer's disc state in the flight code's bank 7, driven
   a batch of rows at a time through the mailbox (below: "The discs"). The
@@ -237,7 +247,7 @@ What differs from the Master port's frame layer:
 | main `&0724-&07B5` | the glue, `GLUE%` (`gfx-glue.asm`): bank 5's trampolines and `GCALL`, at a fixed address at the end of the resident block A, which includes it |
 | main `&7E60-&7EFF` | the mailbox (the rasteriser's inputs; the stars, which the game's hooks write; `f_wq`'s query and answer) |
 | main `&7FA0-&7FAF` | the shared variables, `GVARS` (`elite-map.asm`), after the missile's blueprint |
-| zero page `&06-&27`, `&D2-&E1` | the rasteriser's, and the frame layer's pointers (`FZ`: the game's `XX2`, `K3` and `K4`, dead between iterations): `F_FRAME` keeps the game's bytes in bank 6 (`f_zsv`) and puts them back |
+| zero page `&06-&0F`, `&20-&21` | the rasteriser's inputs and `DP_BEGIN`'s colour B pair, in transit: `F_FRAME` keeps the game's bytes at `&06-&27` (where game code it runs also writes) in bank 6 (`f_zsv`) and puts them back |
 | bank 6 `&8000` on | the code: the frame layer, the lens flare, the screens drawn directly (`gfx-frame_cold.asm`), the hangar, `F_INIT`; then the faces' and the lighting's tables (`gfx-faces.asm`, `gfx-light6.asm`) |
 | then | the state: the ship records `F_RP` (29 bytes a ship, a field to an array of `MAXSH` = `NOSH`), the text map's row counts `F_TMR` (whole in a page), `f_zsv`, the faces' levels `F_SR`, the docking slot `F_SLV`, then page-aligned the discs' half-widths `F_HW` (the planet's) and `F_HW2` (the sun's), the text map `F_TM` (24 x 32), and the discs' rows this frame: `R_NDISCR`, `R_NDISCL` (the spans), `R_NDN`, `R_NDX0` to `R_NDX3` (the planet's boundaries) |
 | bank 6 `&BFC0` | `FJT`, the dispatcher |
@@ -678,7 +688,7 @@ back and calls `LL42F` (`S% + 16`), which runs part 6 on with `GPRJ` set, so
 that `H_EE31` returns at once; part 6 on changes nothing the game reads but
 `XX3`, and the frame keeps and puts back the game's zero page it changes
 (`f_gkeep`, `f_gback`; `RAND`, `Q`, `TGT`, `INWK` 0-8 and 31, `XX19`, with
-`&06-&27` and `&D2-&E1` in `f_zsv`). `XX3` is page 1, under the stack: the
+`&06-&27` in `f_zsv`). `XX3` is page 1, under the stack: the
 frame keeps the zero page in bank 6, not on the stack.
 
 **Explosion clouds.** A cloud's record is the exploding ship's line heap,
