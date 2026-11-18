@@ -57,14 +57,14 @@ def main_part(home, mc):
     at = home[14] + 256 * home[15] - mc["STAGE%"]
     n = mc["PROGM_END%"] - mc["PROGM%"]
     out = [(mc["PROGM%"], home[at:at + n])]
-    # (the flight code's second and third main RAM parts, as LOWLD loads
-    # D.LOW: the third part's image first, copied down to PROGK%, then the
-    # second at PROGL%)
+    # (the flight code's second, third and fourth main RAM parts, as LOWLD
+    # loads D.LOW: the fourth and second in their places from PROGS%, then
+    # the third part's image, copied down to PROGK%)
     low = os.path.join(REPO, "3-assembled-output/D.LOW.bin")
     if "PROGK%" in mc and os.path.exists(low):
         d = open(low, "rb").read()
-        k = mc["PROGK_END%"] - mc["PROGK%"]
-        out += [(mc["PROGK%"], d[:k]), (mc["PROGL%"], d[k:])]
+        k = mc["PROGKI%"] - mc["PROGS%"]
+        out += [(mc["PROGS%"], d[:k]), (mc["PROGK%"], d[k:k + mc["PROGK_END%"] - mc["PROGK%"]])]
     return out
 
 

@@ -78,9 +78,7 @@
                         \ main", which run too rarely to earn their place in bank
                         \ 4 (2-build-files/streams.py, hotl), loaded by DEEOR
                         \ whenever the flight code starts (LOWLD), as each
-                        \ program's load stages over it; the staging of the
-                        \ files loaded in flight (the blueprint sets, the
-                        \ overlays) ends below it (elite-shipset.asm checks)
+                        \ program's load stages over it
 
  PROGK% = &1100         \ The flight code's third main RAM part (hotx), to
  PROGK_END% = &1900     \ PROGK_END%: more of its hot pass's blocks tagged
@@ -90,18 +88,29 @@
                         \ command of the game's touches, as the game opens no
                         \ file: it loads and saves whole files, and reads
                         \ sectors (ELECTRON-REPORT.md, "Memory map"). D.LOW
-                        \ carries the part before the second (PROGL%), and
+                        \ carries the part after the second (PROGL%), and
                         \ LOWLD copies it down from PROGKI%
 
- PROGKI% = PROGL% - (PROGK_END% - PROGK%)   \ Where D.LOW loads: the third
-                        \ main RAM part's image, in the staging area just
-                        \ below the second part (which loads in its place)
+ PROGS% = &2450         \ The flight code's fourth main RAM part (hots), to
+ PROGS_END% = PROGL%    \ PROGS_END%: more of its hot pass's blocks tagged
+                        \ "Area: hot, main" (streams.py), in the top of the
+                        \ staging area, just below the second part, with
+                        \ which D.LOW loads it in its place: in flight
+                        \ nothing stages there, as the overlays end below it
+                        \ (elite-layout-flight.asm checks) and a blueprint
+                        \ file stages over buffer 0 (BPSTAGE%)
+
+ PROGKI% = PROGL_END%   \ The third main RAM part's image in D.LOW, which
+                        \ loads at PROGS%: after the fourth and second parts,
+                        \ in buffer 0's first pages, which the program's load
+                        \ has just staged over (the next frame starts the
+                        \ buffer afresh, as after every disc command: GSTASH)
 
  STAGE% = &2000         \ Where files are loaded before they are copied into
                         \ their bank (main RAM &2000 to &57FF, over buffer 0
                         \ for a program's images, which F_DIRECT has taken off
-                        \ the screen, with buffer 1 on show; the overlays and
-                        \ blueprint files, loaded in flight, end below &3000)
+                        \ the screen, with buffer 1 on show; the overlays,
+                        \ loaded in flight, end below PROGS%)
 
  QSL = BPSLOT% + &900   \ The quarter squares, QS(n) = INT(n * n / 4) for n = 0
  QSH = QSL + &200       \ to 511: their low bytes at QSL and high bytes at QSH,
@@ -137,6 +146,14 @@
 
  BUFD = &2800           \ The distance between the two buffers (whole pages)
  ASSERT BUF0 + BUFD = SCREEN% AND SCREEN% + BUFD = &8000
+
+ BPSTAGE% = BUF0        \ Where a blueprint file (D.MOx) is loaded in flight
+                        \ before PCLI copies it into the home bank's slot, and
+                        \ the frame layer its face lists into bank 6's (LOMOD):
+                        \ buffer 0's first rows, with buffer 1 on show, as the
+                        \ game loads a set in direct mode only (LOMOD); the
+                        \ next frame starts the buffer afresh (GSTASH)
+ ASSERT PROGKI% = BUF0
 
  SCRROW = 320           \ The bytes in a character row
  SCRX = 32              \ Where the 128 pixels start in a pixel row (the

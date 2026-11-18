@@ -2102,8 +2102,8 @@ IF _STH_DISC OR _IB_DISC
                         \ there is nothing to decrypt, as in the sideways RAM
                         \ variant
 
- JSR deeo1              \ Port: load the second and third main RAM parts,
-                        \ D.LOW, which the program's load has staged over
+ JSR deeo1              \ Port: load the second, third and fourth main RAM
+                        \ parts, D.LOW, which the program's load has staged over
                         \ (elite-map.asm)
 
  JMP RSHIPS             \ Jump to RSHIPS
@@ -27254,6 +27254,15 @@ ENDIF
                         \ it overwrites the "0" in "D.MO0" with the file letter
                         \ to load, from D.MOA to D.MOP
 
+ BIT GMODE              \ Port: the file stages over buffer 0 (BPSTAGE%,
+ BPL lomo1              \ elite-map.asm), so buffer 1 must be the one on show:
+ LDX #FG_DIRECT         \ it is in direct mode (GMODE bit 7 clear), where both
+ JSR GCALL              \ callers stand (RSHIPS after the program's load, TT18
+                        \ after its TT66, or on a screen that is not a space
+.lomo1                  \ view), and each clears the screen afterwards; were
+                        \ the frames running, F_DIRECT would end them first,
+                        \ as it does for a program's load (PCLI)
+
  JSR dfsin              \ Port: with DFS's workspace put back at &1000 (where
  JSR CATD               \ the renderer's buffer 0 may have drawn over it) and
  JSR dfsout             \ kept afterwards, as PCLI does (elite-resident.asm),
@@ -27265,8 +27274,8 @@ ENDIF
  JSR OSCLI              \ Call OSCLI to execute the OS command at (Y X), which
                         \ loads the relevant ship blueprints file
 
- LDA #HI(STAGE% + SETF% - BPSLOT%)   \ Port: the file carries its ships' face
- LDX #FG_SETLD          \ lists after the slot's pages, still at STAGE% after
+ LDA #HI(BPSTAGE% + SETF% - BPSLOT%)   \ Port: the file carries its ships' face
+ LDX #FG_SETLD          \ lists after the slot's pages, still at BPSTAGE% after
  JMP GCALL              \ PCLI's copy: have the frame layer copy them into its
                         \ slot (F_SETLD, elite-shipset.asm), and return from the
                         \ subroutine using a tail call
@@ -27291,16 +27300,18 @@ ENDIF
 \       Name: LOWLD
 \       Type: Subroutine
 \   Category: Loader
-\    Summary: Port: load the flight code's second main RAM part, D.LOW
+\    Summary: Port: load the flight code's second, third and fourth main RAM
+\             parts, D.LOW
 \       Area: cold
 \
 \ ------------------------------------------------------------------------------
 \
 \ Port: called by DEEOR each time the flight code starts, as the program's load
-\ stages its images over the second part (elite-map.asm, PROGL%): the file
-\ loads at PROGKI%, after CATD has reloaded the catalogue, as LOMOD does, which
-\ puts the second part in its place; the third part's image, before it, is
-\ then copied down to PROGK%.
+\ stages its images over the fourth and second parts (elite-map.asm, PROGS%
+\ and PROGL%): the file loads at PROGS%, after CATD has reloaded the
+\ catalogue, as LOMOD does, which puts the fourth and second parts in their
+\ places; the third part's image, after them (in buffer 0, which the
+\ program's load has left off the screen), is then copied down to PROGK%.
 \
 \ ******************************************************************************
 
@@ -27310,7 +27321,7 @@ ENDIF
  JSR CATD
  JSR dfsout
 
- LDX #LO(LOWI)          \ Load D.LOW (to its own address, PROGKI%, through
+ LDX #LO(LOWI)          \ Load D.LOW (to its own address, PROGS%, through
  LDY #HI(LOWI)          \ the MOS: PCLI passes it on)
  JSR OSCLI
 
@@ -27432,7 +27443,8 @@ ENDIF
 \ zero page that the filing system uses are copied into bank 7's workspace
 \ (OVSTASH: buffer 0's disc state, which the load makes dead) and put back
 \ afterwards, and the next frame starts buffer 0 afresh (GSTASH). The file
-\ is loaded to STAGE% and copied into the region.
+\ is loaded to STAGE% (it ends below the fourth main RAM part, PROGS%:
+\ elite-layout-flight.asm checks) and copied into the region.
 \
 \ ******************************************************************************
 

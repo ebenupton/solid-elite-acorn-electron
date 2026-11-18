@@ -73,7 +73,7 @@ row("main RAM", 0x0900, 0x0D00, "`K%` and the line heaps (the loader's `LOAD` at
 row("main RAM", 0x0D7A, 0x0D9E, "`CATD`")
 row("main RAM", 0x0E00, 0x0FD3, "`WP`")
 row("main RAM (flight)", FL["SUNPK"], FL["SUNPF"] + 1, "the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load)")
-row("main RAM (flight)", C["PROGK_P"], C["PROGK_END_P"], "the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it and `LOWLD` copies it down", FL["PROGK_USED%"] - C["PROGK_P"])
+row("main RAM (flight)", C["PROGK_P"], C["PROGK_END_P"], "the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it (after the fourth and second parts, over buffer 0) and `LOWLD` copies it down", FL["PROGK_USED%"] - C["PROGK_P"])
 for prog, sy in (("flight", FL), ("docked", DK)):
     row("main RAM (%s)" % prog, progm, progm_end, "the main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass, then `hotm`", sy["PROGM_USED%"] - progm)
 row("main RAM", C["MBOX"], C["MBOX_END"], "the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`)")
@@ -83,7 +83,8 @@ row("main RAM", C["RESH_P"], C["PFVH_P"], "`SNDH`, the interrupt's hook into the
 pfvh_used = FL.get("PFVH_END%", C["PFVH_P"]) - C["PFVH_P"]
 row("main RAM", C["PFVH_P"], C["VEC"], "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
 row("main RAM", C["VEC"], C["VEC"] + 2, "`VEC`")
-row("main RAM", C["STAGE_P"], C["PROGL_P"], "the staging area (`STAGE%`, on over buffer 0 for a program's images; the files loaded in flight end here)", 0)
+row("main RAM", C["STAGE_P"], C["PROGS_P"], "the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`)", 0)
+row("main RAM (flight)", C["PROGS_P"], C["PROGS_END_P"], "the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place", FL["PROGS_USED%"] - C["PROGS_P"])
 row("main RAM (flight)", C["PROGL_P"], C["PROGL_END_P"], "the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`)", FL["PROGL_USED%"] - C["PROGL_P"])
 row("main RAM", C["BUF0"], C["SCREEN_P"], "buffer 0: a MODE 5 screen, the space view and the dashboard")
 row("main RAM", C["SCREEN_P"], 0x8000, "buffer 1, the direct-mode screen: the same")

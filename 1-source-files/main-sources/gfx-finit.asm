@@ -40,8 +40,8 @@
 \ ============================================================================
 \ F_SETLD (FG_SETLD): copy a blueprint set's face lists (FC_FACETAB,
 \ FC_DETTAB and their lists, FCSLOT_SIZE bytes) into their slot, FCSLOT,
-\ from main RAM page A (STAGE%, where PCLI has just loaded the set's file or
-\ the docked code's cold image: LOMOD and DEEOR call it). Keeps Y.
+\ from main RAM page A (where PCLI has just loaded the set's file, BPSTAGE%,
+\ or the docked code's cold image, STAGE%: LOMOD and DEEOR call it). Keeps Y.
 \ ============================================================================
 .F_SETLD
 {

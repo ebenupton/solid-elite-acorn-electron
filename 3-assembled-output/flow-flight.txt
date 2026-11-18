@@ -72,27 +72,7 @@ hot &8000-&A86D: 73 units, 9869 bytes, 481 free
   &A4C0    53 MVT6
   &A4F5   200 MV40
   &A5BD   208 LYN..SCAN
-hotm &1A94-&1E3F: 20 units, 916 bytes, 24 free
-  &1A94    41 SUNSC
-  &1ABD    38 MAS3
-  &1AE3    24 TAS6
-  &1AFB    85 HITCH
-  &1B50   123 BUMP2..REDU2
-  &1BCB   113 SUNLAU
-  &1C3C     3 DET1
-  &1C3F    16 SHD..DENGY
-  &1C4F    17 SUNUP
-  &1C60    12 SUNE
-  &1C6C    78 TT17
-  &1CBA    14 DPLT
-  &1CC8    91 RDKEY
-  &1D23   109 EXNO3..KYTB
-  &1D90    23 DKS3
-  &1DA7    73 SHPPT
-  &1DF0    11 LL9F
-  &1DFB    14 H_PTCLS
-  &1E09    14 H_PTCLSE
-  &1E17    17 H_DOT
+hotm &1A94-&1E3F: 0 units, 0 bytes, 940 free
 hotx &1100-&18FF: 12 units, 2048 bytes, 0 free
   &1100    15 HLOIN2
   &110F   146 BLINE
@@ -110,3 +90,24 @@ hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free
   &2C50    14 MAS2
   &2C5E   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
   &2EA1   351 KS3..SFX
+hots &2450-&2C4F: 20 units, 916 bytes, 1132 free
+  &2450    41 SUNSC
+  &2479    38 MAS3
+  &249F    24 TAS6
+  &24B7    85 HITCH
+  &250C   123 BUMP2..REDU2
+  &2587   113 SUNLAU
+  &25F8     3 DET1
+  &25FB    16 SHD..DENGY
+  &260B    17 SUNUP
+  &261C    12 SUNE
+  &2628    78 TT17
+  &2676    14 DPLT
+  &2684    91 RDKEY
+  &26DF   109 EXNO3..KYTB
+  &274C    23 DKS3
+  &2763    73 SHPPT
+  &27AC    11 LL9F
+  &27B7    14 H_PTCLS
+  &27C5    14 H_PTCLSE
+  &27D3    17 H_DOT

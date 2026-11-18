@@ -60,8 +60,10 @@
 .M_HOTM
  ORG HOTM_END%
 .M_HOTM_END
- ORG PROGL%             \ (the docked code has no second or third main RAM
-.M_HOTX                 \ part)
+ ORG PROGL%             \ (the docked code has no second, third or fourth
+.M_HOTX                 \ main RAM part)
 .M_HOTX_END
 .M_HOTL
 .M_HOTL_END
+.M_HOTS
+.M_HOTS_END

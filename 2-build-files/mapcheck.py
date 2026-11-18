@@ -11,7 +11,7 @@
 #     or ends past its room;
 #   * a label that a pass copy defines lies outside the place that the copy
 #     is for (each copy's labels against its place's bounds: the programs'
-#     low, hot, hotm, hotx, cold, overlay and blueprint copies, the
+#     low, hot, hotm, hotx, hotl, hots, cold, overlay and blueprint copies, the
 #     renderer's bank 4, bank 5, bank 5 gap, bank 6, bank 7 and main passes);
 #   * a pass copy that defines a label is INCLUDEd by no assembly;
 #   * an instruction of any assembly's listing addresses page &0D outside
@@ -120,7 +120,9 @@ order("main RAM", [
     ("the interrupt's sound hook", C["RESH_P"], C["PFVH_P"]),
     ("the circle engine's variables (main high)", C["PFVH_P"], FL.get("PFVH_END%", C["PFVH_P"])),
     ("VEC", C["VEC"], C["VEC"] + 2),
-    ("the staging area", C["STAGE_P"], C["BUF0"]),
+    ("the staging area", C["STAGE_P"], C["PROGS_P"]),
+    ("the flight code's fourth main RAM part", C["PROGS_P"], C["PROGS_END_P"]),
+    ("the flight code's second main RAM part", C["PROGL_P"], C["PROGL_END_P"]),
     ("buffer 0", C["BUF0"], C["SCREEN_P"]),
     ("buffer 1", C["SCREEN_P"], 0x8000)])
 nlab += inside(LD, OUT + "gfx-glue-main.asm", C["GLUE_P"], 0x07C0, "the glue")
@@ -130,6 +132,8 @@ for prog, sy in (("flight", FL), ("docked", DK)):
     nlab += inside(sy, OUT + "elite-%s-low.asm" % prog, progm, lo, "the low pass")
     nlab += inside(sy, OUT + "elite-%s-hotm.asm" % prog, lo, progm_end, "hotm")
     nlab += inside(sy, OUT + "elite-%s-hotx.asm" % prog, C["PROGK_P"], C["PROGK_END_P"], "hotx")
+    nlab += inside(sy, OUT + "elite-%s-hotl.asm" % prog, C["PROGL_P"], C["PROGL_END_P"], "hotl")
+    nlab += inside(sy, OUT + "elite-%s-hots.asm" % prog, C["PROGS_P"], C["PROGS_END_P"], "hots")
 
 # banks 4 and 7, each program's
 qsl, bp, bp_end = C["QSL"], C["BPSLOT_P"], C["BPSLOT_END_P"]

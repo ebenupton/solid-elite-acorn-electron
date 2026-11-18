@@ -15,7 +15,7 @@
 \
 \   * the face lists with their tables (part 3), assembled at bank 6's
 \     FCSLOT and moved to SETF% here, after the slot's last page (in the
-\     ship files: the file's ninth page on, which PCLI leaves at STAGE% after
+\     ship files: the file's ninth page on, which PCLI leaves at BPSTAGE% after
 \     it copies the slot's pages into bank 4; LOMOD then has the frame layer
 \     copy them to FCSLOT, F_SETLD). The docked code's layout moves its part
 \     3 to the start of its cold image instead.
@@ -43,8 +43,9 @@
  ASSERT P% <= FCSLOT + FCSLOT_SIZE
  COPYBLOCK FCSLOT, P%, SETF%
  SETF_END% = SETF% + P% - FCSLOT
- ASSERT STAGE% + SETF_END% - BPSLOT% <= PROGL%   \ (as staged in flight, the file
-                        \ ends below the flight code's second main RAM part)
+ ASSERT BPSTAGE% + SETF_END% - BPSLOT% <= BUF0 + 24 * SCRROW   \ (as staged in
+                        \ flight, the file ends in buffer 0's space view, which
+                        \ the next frame clears: below its dashboard's rows)
  COPYBLOCK &3000, &3000 + SETF% - BPSLOT%, BPSLOT%
 
  PRINT "Set ", SETN, ": slot free ", SETFREE%, ", face lists ", P% - FCSLOT, " of ", FCSLOT_SIZE

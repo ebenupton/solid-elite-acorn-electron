@@ -50,10 +50,10 @@
 #   * ", main" after "hot" ("Area: hot, main"): a hot block that runs too
 #     rarely in flight to earn its place in bank 4, by measurement
 #     (ELECTRON-REPORT.md, "Memory map"): its unit goes in main RAM, in the
-#     flight code's second or third main RAM part (hotl, then hotx: both in
-#     D.LOW, which DEEOR loads, so no such block may run before DEEOR) or
-#     else in hotm, leaving bank 4's room to the hot code. Untagged units
-#     never go in hotl or hotx.
+#     flight code's second, third or fourth main RAM part (hotl, then hotx,
+#     then hots: all in D.LOW, which DEEOR loads, so no such block may run
+#     before DEEOR) or else in hotm, leaving bank 4's room to the hot code.
+#     Untagged units never go in hotl, hotx or hots.
 #
 # A block runs from its header to the next header (or to a separator line of
 # stars, which starts an untagged block: the original's PRINT and SAVE
@@ -161,11 +161,11 @@ HOTSIDE = ("low", "hot", "blueprints")
 # them): (copy, start, end); each unit goes in the first with room for it,
 # the largest units first
 CONTAINERS = (("hot", "M_HOT", "M_HOT_END"), ("hotm", "M_HOTM", "M_HOTM_END"), ("hotx", "M_HOTX", "M_HOTX_END"),
-              ("hotl", "M_HOTL", "M_HOTL_END"))
-LOWER = (3, 2)  # (hotl and hotx: the second and third main RAM parts, both in
-                # D.LOW, which the flight code loads at its start, DEEOR:
-                # only blocks tagged ", main" go there, which never run
-                # before it is loaded, and they go there first)
+              ("hotl", "M_HOTL", "M_HOTL_END"), ("hots", "M_HOTS", "M_HOTS_END"))
+LOWER = (3, 2, 4)   # (hotl, hotx and hots: the second, third and fourth main
+                # RAM parts, all in D.LOW, which the flight code loads at its
+                # start, DEEOR: only blocks tagged ", main" go there, which
+                # never run before it is loaded, and they go there first)
 
 # NORETURN: the targets that never return to their caller, so that their
 # stubs jump (farCj, farHj) and leave no far-call frame on the stack: the

@@ -81,28 +81,41 @@ ENDIF
 
  ASSERT PROGM_USED% <= PROGM_END%
 
+ ORG PROGS%             \ The fourth main RAM part, hots (elite-map.asm),
+                        \ where D.LOW starts, which DEEOR loads (LOWLD)
+
+ INCLUDE "3-assembled-output/elite-flight-hots.asm"
+
+.PROGS_USED%
+
+ ASSERT PROGS_USED% <= PROGS_END%
+
  ORG PROGL%             \ The second main RAM part, hotl (elite-map.asm),
-                        \ saved as D.LOW, which DEEOR loads (LOWLD)
+                        \ which follows it in memory and in D.LOW
 
  INCLUDE "3-assembled-output/elite-flight-hotl.asm"
 
 .PROGL_USED%
 
- ASSERT PROGL_USED% <= PROGL_END%
+ ASSERT PROGL_USED% <= PROGL_END% AND PROGS_END% = PROGL%
 
  ORG PROGK%             \ The third main RAM part, hotx (elite-map.asm), which
-                        \ D.LOW carries before the second: LOWLD copies it
+                        \ D.LOW carries after the second: LOWLD copies it
                         \ down from PROGKI%
 
  INCLUDE "3-assembled-output/elite-flight-hotx.asm"
 
 .PROGK_USED%
 
- ASSERT PROGK_USED% <= PROGK_END%
+ ASSERT PROGK_USED% <= PROGK_END% AND PROGKI% = PROGL_END%
 
  COPYBLOCK PROGK%, PROGK_END%, PROGKI%
 
- SAVE "3-assembled-output/D.LOW.bin", PROGKI%, PROGL_USED%, PROGKI%
+ ASSERT PROGKI% + PROGK_END% - PROGK% <= BUF0 + 24 * SCRROW   \ (the image ends
+                        \ in buffer 0's space view, which the next frame
+                        \ clears: below its dashboard's rows)
+
+ SAVE "3-assembled-output/D.LOW.bin", PROGS%, PROGKI% + PROGK_END% - PROGK%, PROGS%
  SAVE "3-assembled-output/D.LOWK.bin", PROGK%, PROGK_END%, PROGK%   \ (the third
                         \ part where it runs, for the harness)
 
@@ -148,6 +161,7 @@ ENDIF
  PRINT "Flight main RAM part: low pass ", ~PROGM%, "-", ~LOW_END%-1, ", hot pass to ", ~PROGM_USED%-1, ", free ", PROGM_END%-PROGM_USED%
  PRINT "Flight second main RAM part (D.LOW): ", ~PROGL%, "-", ~PROGL_USED%-1, ", free ", PROGL_END%-PROGL_USED%
  PRINT "Flight third main RAM part (D.LOW, copied down): ", ~PROGK%, "-", ~PROGK_USED%-1, ", free ", PROGK_END%-PROGK_USED%
+ PRINT "Flight fourth main RAM part (D.LOW): ", ~PROGS%, "-", ~PROGS_USED%-1, ", free ", PROGS_END%-PROGS_USED%
  ASSERT HOME_END% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
 
  ORG PROGI%             \ the main RAM part's image, at the start of the
@@ -194,6 +208,9 @@ ENDIF
 
  OVL_END% = OVL% + (OVL1_END% - OVL% + OVL2_END% - OVL% + ABS(OVL1_END% - OVL2_END%)) DIV 2
  SKIP OVL_END% - P%     \ (the region: the bigger of the overlays)
+
+ ASSERT STAGE% + OVL_END% - OVL% <= PROGS%   \ (as staged in flight, ovload, an
+                        \ overlay ends below the fourth main RAM part)
 
  PRINT "Flight overlays: ", ~OVL%, "-", ~OVL_END%-1, " (1: ", OVL1_END%-OVL%, " bytes, 2: ", OVL2_END%-OVL%, ")"
 

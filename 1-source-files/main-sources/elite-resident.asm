@@ -39,8 +39,9 @@
 \ sources). The original's commands that load the programs ("L.T.CODE",
 \ "R.T.CODE", "R.D.CODE") and the ship blueprints ("L.D.MOx") now load the
 \ port's images instead, which DFS cannot load into sideways RAM itself (it
-\ is paged in at &8000 while it loads): each is loaded into main RAM at
-\ STAGE% and copied into its bank:
+\ is paged in at &8000 while it loads): each is loaded into main RAM (a
+\ program's images at STAGE%, a blueprint file at BPSTAGE%: elite-map.asm)
+\ and copied into its bank:
 \
 \   * "L.x.CODE" loads program x's home image (x.CODEH) into the home bank
 \     and its cold image (x.CODEC) into the cold bank, and returns to the
@@ -112,19 +113,6 @@
  JMP &FFF7              \ it has finished, and returns: Port, DFS's workspace
                         \ is below the screens, so nothing is kept, dfsin)
 
-.pbp
-
- JSR pload              \ Load the blueprint file to STAGE%
-
- LDA BANK4              \ Copy it to the home bank's blueprint slot (its pages,
- LDX #HI(BPSLOT_END% - BPSLOT% + &FF)   \ up to the quarter squares)
- LDY #HI(BPSLOT%)
- JSR bcopy
-
- ASSERT BPSLOT% + (BPSLOT_END% - BPSLOT% + &FF) DIV 256 * 256 = QSL
-
- JMP prest              \ Page the caller's bank back in and return
-
 .pprog
 
  LDX #FG_DIRECT         \ The new program starts on the screen as the docked code
@@ -145,34 +133,33 @@
  LDA STAGE%+14          \ Copy the program's main RAM part, PROGM% to
  STA pcm1+1             \ PROGM_END%, from its image in the home image, which
  LDA STAGE%+15          \ S%+14 gives as staged (its address in bank 4, less
- STA pcm1+2             \ HOME%, plus STAGE%: the home image is still there):
- LDA #HI(PROGM%)        \ its whole pages, then the rest
+ CLC                    \ HOME%, plus STAGE%: the home image is still there),
+ ADC #HI(PROGM_END% - PROGM%)   \ from its last page down: the bytes past
+ STA pcm1+2             \ its whole pages, then those
+ LDA #HI(PROGM_END%)
  STA pcm2+2
- LDY #HI(PROGM_END% - PROGM%)
- LDX #0
+ LDY #HI(PROGM_END% - PROGM%) + 1
+ LDX #LO(PROGM_END% - PROGM%)
+
+.pcm0
+
+ DEX
 
 .pcm1
 
- LDA &FFFF,X            \ (the addresses are set above, and moved on a page at
-                        \ a time)
+ LDA &FFFF,X            \ (the addresses are set above, and moved down a page
+                        \ at a time)
 .pcm2
 
  STA LO(PROGM%) + &FF00,X
- INX
- BNE pcm3
- INC pcm1+2             \ (a page done: the next one)
- INC pcm2+2
+ CPX #0
+ BNE pcm0
+ DEC pcm1+2             \ (a page done: the one below)
+ DEC pcm2+2
  DEY
- JMP pcm1
+ BNE pcm0
 
-.pcm3
-
- CPY #0                 \ On the part's last page (Y = 0), stop at its end
- BNE pcm1
- CPX #LO(PROGM_END% - PROGM%)
- BNE pcm1
-
- ASSERT LO(PROGM_END% - PROGM%) <> 0
+ ASSERT LO(PROGM_END% - PROGM%) <> 0 AND LO(PROGM%) = 0
 
  LDA #'C'               \ Load x.CODEC, the program's cold image, to STAGE%
  STA pcbuf+8
@@ -194,6 +181,21 @@
  STA &F4
  STA ROMSEL
  JMP HOME%
+
+.pbp
+
+ LDY #HI(BPSTAGE%)      \ Load the blueprint file to BPSTAGE%, in buffer 0,
+ JSR pload+2            \ which is off the screen (LOMOD)
+
+ LDA BANK4              \ Copy it to the home bank's blueprint slot (its pages,
+ LDX #HI(BPSLOT_END% - BPSLOT% + &FF)   \ up to the quarter squares)
+ LDY #HI(BPSLOT%)
+ JSR bcopy
+
+ ASSERT BPSLOT% + (BPSLOT_END% - BPSLOT% + &FF) DIV 256 * 256 = QSL
+
+                        \ Fall through into prest to page the caller's bank
+                        \ back in and return
 
 .prest
 
@@ -265,7 +267,7 @@
 \       Name: bcopy
 \       Type: Subroutine
 \   Category: Loader
-\    Summary: Copy pages from STAGE% into a sideways RAM bank
+\    Summary: Copy pages of the file last loaded into a sideways RAM bank
 \
 \ ------------------------------------------------------------------------------
 \
@@ -277,14 +279,14 @@
 \
 \   Y                   The page in the bank to copy to
 \
+\ The pages are copied from where pload loaded its last file, which sets the
+\ source page in the LDA below.
+\
 \ ******************************************************************************
 
 .bcopy
 
  STY bc2+2              \ Set the destination page in the STA below
-
- LDY #HI(STAGE%)        \ Set the source page in the LDA below
- STY bc1+2
 
  STA &F4                \ Page the bank in
  STA ROMSEL
@@ -293,7 +295,7 @@
 
 .bc1
 
- LDA &FF00,Y            \ (the source page is set above)
+ LDA &FF00,Y            \ (pload sets the source page)
 
 .bc2
 
@@ -335,11 +337,20 @@
 \       Name: pload
 \       Type: Subroutine
 \   Category: Loader
-\    Summary: Load the file named at pcbuf+2 to STAGE%
+\    Summary: Load the file named at pcbuf+2 to STAGE%, for bcopy
+\
+\ ------------------------------------------------------------------------------
+\
+\ Other entry points:
+\
+\   pload+2             Load the file to page Y instead (PCLI's blueprint
+\                       file, to BPSTAGE%)
 \
 \ ******************************************************************************
 
 .pload
+
+ LDY #HI(STAGE%)        \ The page to load the file to
 
  LDX #6                 \ Set up the OSFILE block (the filing system writes the
 .pld1                   \ file's details into it, so it is set each time)
@@ -348,16 +359,21 @@
  DEX
  BPL pld1
 
+ STY pblk+3             \ The load address's page, which is also the first
+ STY bc1+2              \ page that bcopy copies
+
  LDA #&FF               \ Call OSFILE with A = &FF to load the file to the
- LDX #LO(pblk)          \ address in the block, STAGE%
+ LDX #LO(pblk)          \ address in the block
  LDY #HI(pblk)
  JMP &FFDD
 
 .pblk0
 
  EQUW pcbuf+2           \ The file name
- EQUD STAGE%            \ The load address
+ EQUD 0                 \ The load address (its page is set above)
  EQUB 0                 \ 0: load to the address in the block
+
+ ASSERT LO(STAGE%) = 0 AND LO(BPSTAGE%) = 0
 
 \ ******************************************************************************
 \
