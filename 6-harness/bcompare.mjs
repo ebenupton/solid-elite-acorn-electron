@@ -52,11 +52,14 @@
 // Exit status 0 if the game state is identical at every compared iteration
 // (and both runs completed); prints "BCOMPARE PASS <ref it/s> <cand it/s>" or
 // "BCOMPARE FAIL <reason>".
-import { runElite, loadBuild, loadRefPatch, regionsFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, ROOT, CAND_BUILD, REF_BUILD, WORK, page1Format } from "./blib.mjs";
+import { runElite as runEliteModelB, loadBuild, loadRefPatch, regionsFor, excludeSet, TIMING_EXCLUDE, RELOC_EXCLUDE, DRAW_EXCLUDE, ROOT, CAND_BUILD, REF_BUILD, WORK, page1Format } from "./blib.mjs";
 import { makePilot, patchCommander } from "./bpilot.mjs";
 import { writeFileSync, mkdirSync } from "fs";
 import { makeTracer } from "./btrace.mjs";
 import { parseArgs } from "./args.mjs";
+// (a build whose build.json says "machine": "electron" runs on clkh, the
+// headless Electron: elib.mjs; the reference stays on jsbeeb)
+import { runElite as runEliteElectron, isElectron } from "./elib.mjs";
 
 const args = parseArgs({ iters: "value", ref: "value", cand: "value", seed: "value", loose: "flag", deadregs: "flag", window: "value",
     out: "value", shots: "value", maxsecs: "value", nopatch: "flag", norefcache: "flag", views: "flag", screens: "flag", trace: "value", screen: "flag",
@@ -104,6 +107,9 @@ async function run(label, build, seedBoot, refPatch = null) {
     const traceOut = [];
     const tracer = args.trace ? makeTracer(args.trace, build, traceOut) : null;
     const t0 = Date.now();
+    const elk = isElectron(build);
+    if (elk && args.screen) throw new Error("--screen: an Electron build's screen is another format");
+    const runElite = elk ? runEliteElectron : runEliteModelB;
     const r = await runElite({
         build, pilot, iters: ITERS, maxSecs: +(args.maxsecs || 4 * ITERS), refPatch, deadRegs: !!args.deadregs && label === "cand",
         patch: args.nopatch ? null : patchCommander, seedBoot, screen: !!args.screen,
@@ -114,7 +120,7 @@ async function run(label, build, seedBoot, refPatch = null) {
     if (Object.keys(r.deadN || {}).length) console.log(`${label}: registers scrambled after ${Object.entries(r.deadN).map(([n, c]) => n + " " + c).join(", ")}`);
     r.phases = phases; r.stats = pilot.P.stats; r.wall = (Date.now() - t0) / 1000;
     if (tracer) writeFileSync(`${OUT}/trace-${label}.txt`, traceOut.join("\n") + "\n");
-    console.log(`${label}: ${r.iters} iterations (${r.tt100} in flight), emulated ${r.emuSecs.toFixed(1)} s, wall ${r.wall.toFixed(1)} s${r.error ? ", STOPPED: " + r.error : ""}`);
+    console.log(`${label}: ${r.iters} iterations (${r.tt100} in flight), emulated ${r.emuSecs.toFixed(1)} s, wall ${r.wall.toFixed(1)} s${elk ? ` (Electron, clkh: ${r.stops} stops)` : ""}${r.error ? ", STOPPED: " + r.error : ""}`);
     return r;
 }
 

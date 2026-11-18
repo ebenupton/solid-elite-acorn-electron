@@ -4,7 +4,8 @@
 //
 //  clkh's copy of CLK's Machines/Acorn/Electron/Electron.cpp (the CLK tree is
 //  used read-only). Its changes are marked "clkh:": a count of the 2 MHz
-//  cycles run since the machine was made (total_cycles).
+//  cycles run since the machine was made (total_cycles), and which slots
+//  hold a ROM's image (rom_image_).
 //
 //  Created by Thomas Harte on 03/01/2016.
 //  Copyright 2016 Thomas Harte. All rights reserved.
@@ -700,6 +701,9 @@ private:
 
 		if(int(slot) < 16) {
 			rom_inserted_[int(slot)] = true;
+#ifdef CLK_HEADLESS
+			rom_image_[int(slot)] = true;	// clkh: a ROM's image (the DFS's slot is writeable too)
+#endif
 		}
 	}
 
@@ -812,6 +816,7 @@ private:
 	std::function<void(uint16_t, bool, bool, int)> ram_access_hook;		// every main-RAM bus cycle: address, write, opcode fetch, its cycles
 	std::function<void(uint16_t, uint8_t)> ram_write_hook;			// a store into main RAM: address, value
 	int count_from_line = 200;
+	bool rom_image_[16] = {};	// clkh: the slots that hold a ROM's image (the others: sideways RAM, or empty)
 	uint64_t total_cycles = 0;	// clkh: 2 MHz cycles run (each bus cycle's length, stretched or not)
 #endif
 

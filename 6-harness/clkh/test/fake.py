@@ -2,7 +2,8 @@
 # Builds the harness's test program (fake.asm) into OUT (default
 # 6-harness/clkh/build/fake): fake.ssd, its symbols, and two build.json files
 # for the same disc: ref.json (a Model B build, for blib.mjs on jsbeeb) and
-# elk.json ("machine": "electron", for elib.mjs on clkh, with DKSX).
+# elk.json ("machine": "electron", for elib.mjs on clkh, with DKSX), and
+# elk-bad.json, the control (fake-bad.ssd: BAD = 1), which must differ.
 #   python3 6-harness/clkh/test/fake.py [OUT] [--beebasm PATH]
 import json, os, re, subprocess, sys
 
@@ -14,10 +15,14 @@ if "--beebasm" in args:
 out = os.path.abspath(args[0] if args else os.path.join(HERE, "..", "build", "fake"))
 os.makedirs(out, exist_ok=True)
 
-r = subprocess.run([beebasm, "-i", os.path.join(HERE, "fake.asm"), "-do", os.path.join(out, "fake.ssd"),
-                    "-boot", "PROG", "-d"], cwd=out, capture_output=True, text=True)
-if r.returncode:
-    sys.exit(r.stdout + r.stderr)
+def asm(disc, bad):
+    r = subprocess.run([beebasm, "-i", os.path.join(HERE, "fake.asm"), "-do", os.path.join(out, disc),
+                        "-boot", "PROG", "-d", "-D", f"BAD={bad}"], cwd=out, capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(r.stdout + r.stderr)
+    return r
+asm("fake-bad.ssd", 1)
+r = asm("fake.ssd", 0)
 syms = {m.group(1): int(m.group(2)) for m in re.finditer(r"'([^']+)':(\d+)L?", r.stdout)}
 # (BeebAsm lists labels only: the constants, the original's addresses, from the source)
 for m in re.finditer(r"(\w+) = &([0-9A-Fa-f]+)", open(os.path.join(HERE, "fake.asm")).read()):
@@ -56,8 +61,9 @@ dump(os.path.join(out, "docked-symbols.txt"), dock)
 dump(os.path.join(out, "loader-symbols.txt"), {k: syms[k] for k in loader})
 open(os.path.join(out, "flight-banks.txt"), "w").write("".join(f"{k} H\n" for k in sorted(inbank)))
 open(os.path.join(out, "docked-banks.txt"), "w").write("")
-for name, extra in (("ref.json", {}), ("elk.json", {"machine": "electron"})):
-    d = {"disc": "fake.ssd",
+for name, extra, disc in (("ref.json", {}, "fake.ssd"), ("elk.json", {"machine": "electron"}, "fake.ssd"),
+                          ("elk-bad.json", {"machine": "electron"}, "fake-bad.ssd")):
+    d = {"disc": disc,
          "flight": {"syms": "flight-symbols.txt", "banks": "flight-banks.txt",
                     "images": [["PROG.bin", "m", "2000"], ["BANK.bin", "H", "8000"]]},
          "docked": {"syms": "docked-symbols.txt", "banks": "docked-banks.txt", "images": [["PROG.bin", "m", "2000"]]},

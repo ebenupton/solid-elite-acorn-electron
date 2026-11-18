@@ -11,7 +11,8 @@
 \ ships move by the keys and RAND, the laser kills one in the sights, and
 \ every 64th iteration OSFILE 5 makes the filing system write its catalogue
 \ over WP and its scratch bytes into zero page.
-\ make: python3 6-harness/clkh/test/fake.py
+\ make: python3 6-harness/clkh/test/fake.py (BAD = 1: a variant whose laser
+\ pulse is one longer, the control that must differ: fake-bad.ssd)
 
 \ the original's addresses (4-reference-binaries/sth/flight-symbols.txt)
 RAND = &00 : ECMA = &30 : QQ22 = &2E : MSTG = &45 : INWK = &46 : DELTA = &7D
@@ -35,6 +36,15 @@ IRQ1V = &204
 
 ORG &2000
 .start
+    \ (about three seconds before S%, as the original's loader takes longer:
+    \ blib.mjs's boot runs a second past the BREAK before its hooks)
+    LDA #24 : STA t0
+.W1 LDX #0 : LDY #0
+.W2 DEX : BNE W2 : DEY : BNE W2 : DEC t0 : BNE W1
+    \ the cursor off (the game takes the VDU's workspace, UP; the MOS's
+    \ bytes there are the boot's leftovers, seeded by the harness)
+    LDX #0
+.S3 LDA vdu,X : JSR OSWRCH : INX : CPX #10 : BNE S3
 .Spc
     JMP S1
 .S1
@@ -47,9 +57,6 @@ ORG &2000
     LDA #0 : CPX #0 : BNE S2 : LDA #&FF
 .S2
     STA elkm
-    \ the cursor off (the game takes the VDU's workspace, UP)
-    LDX #0
-.S3 LDA vdu,X : JSR OSWRCH : INX : CPX #10 : BNE S3
     \ the bank: slot 4, its number in BANKH, its code copied in
     LDA #4 : STA BANKH
     LDA &F4 : PHA
@@ -85,7 +92,7 @@ ORG &2000
     LDA #12 : STA DELTA
     LDX #1
 .B1 STX slot : JSR spawn : LDX slot : INX : CPX #4 : BNE B1
-    LDA #&FF : STA MCNT
+    LDA #&FF : STA MCNT : STA ENERGY : STA FSH : STA ASH
     JMP TT100
 
 .stsub LDA stv : STA stj : RTS
@@ -172,7 +179,7 @@ ORG &2000
 .D4 LDA kf : AND #&40 : BEQ D5 : LDA JSTY : CLC : ADC #8 : BCS D5 : STA JSTY   \ S
 .D5 LDA kf : AND #&20 : BEQ D6 : LDA DELTA : CMP #40 : BCS D6 : INC DELTA     \ SPACE
 .D6 LDA kf : AND #&10 : BEQ D7 : LDA DELTA : BEQ D7 : DEC DELTA               \ /
-.D7 LDA kf : AND #&08 : BEQ D8 : LDA #8 : STA LASCT : JSR fire                \ A
+.D7 LDA kf : AND #&08 : BEQ D8 : LDA #8+BAD : STA LASCT : JSR fire            \ A (BAD: a control that must differ)
 .D8 LDA kf : AND #&01 : BEQ D9 : LDA NOMSL : BEQ D9 : DEC NOMSL               \ M
 .D9 RTS
 

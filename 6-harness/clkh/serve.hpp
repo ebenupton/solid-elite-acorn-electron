@@ -164,7 +164,7 @@ struct Server {
 	}
 	bool sys_writer() const {
 		if(lpc >= 0xc000) return true;
-		if(lpc >= 0x8000) return !m.rom_write_masks_[m.active_rom_];
+		if(lpc >= 0x8000) return m.rom_image_[m.active_rom_] || !m.rom_write_masks_[m.active_rom_];	// (a ROM: not sideways RAM)
 		return lpc >= 0x0d00 && lpc < 0x0e00;
 	}
 	bool in_ovload() const { return lpc >= ov_lo && lpc < ov_hi && int(m.active_rom_) == ov_slot; }
