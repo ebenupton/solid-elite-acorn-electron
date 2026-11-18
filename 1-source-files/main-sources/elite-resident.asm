@@ -188,15 +188,8 @@
  LDY #&80
  JSR bcopy
 
- LDX #0                 \ Port: the home image staged over buffer 0's
-                        \ dashboard, so copy buffer 1's over it, its seven rows
-.pcp1                   \ of 256 bytes, SCRROW apart
-FOR I%, 0, PANELROWS - 1
- LDA PANEL% + I% * SCRROW,X
- STA PANEL% - BUFD + I% * SCRROW,X
-NEXT
- INX
- BNE pcp1
+ JSR b0fix              \ Port: the home image staged over buffer 0: make it
+                        \ black, with buffer 1's dashboard (b0fix)
 
  LDA pcbuf              \ If this is "L.", return to the caller (in the bank
  CMP #'R'               \ that was paged, which now holds the new program)
@@ -216,6 +209,64 @@ NEXT
  STA &F4
  STA ROMSEL
  RTS
+
+\ ******************************************************************************
+\
+\       Name: b0fix
+\       Type: Subroutine
+\   Category: Loader
+\    Summary: Make buffer 0 black, with a copy of buffer 1's dashboard
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: a program's home image is staged over buffer 0 (STAGE%, while buffer
+\ 1 is on show), so after the load buffer 0's character rows 0 to 23 are made
+\ black and rows 24 to 31 (the dashboard and the black row under it) are
+\ copied from buffer 1's; the frame layer starts the buffer afresh (GSTASH).
+\ The loader does the same once the dashboard is in buffer 1.
+\
+\ ******************************************************************************
+
+.b0fix
+
+ LDY #HI(24 * SCRROW)   \ Zero buffer 0's first 24 rows, a page at a time
+ LDA #HI(BUF0)
+ STA bfz+2
+ LDA #0
+ TAX
+
+.bfz
+
+ STA &FF00,X            \ (the page is set above)
+ INX
+ BNE bfz
+ INC bfz+2
+ DEY
+ BNE bfz
+
+ LDY #HI(8 * SCRROW)    \ Copy buffer 1's last eight rows over buffer 0's
+ LDA #HI(SCREEN% + 24 * SCRROW)
+ STA bfc+2
+ LDA #HI(BUF0 + 24 * SCRROW)
+ STA bfd+2
+
+.bfc
+
+ LDA &FF00,X            \ (the pages are set above)
+
+.bfd
+
+ STA &FF00,X
+ INX
+ BNE bfc
+ INC bfc+2
+ INC bfd+2
+ DEY
+ BNE bfc
+
+ RTS
+
+ ASSERT LO(24 * SCRROW) = 0 AND LO(8 * SCRROW) = 0 AND LO(BUF0) = 0
 
 \ ******************************************************************************
 \

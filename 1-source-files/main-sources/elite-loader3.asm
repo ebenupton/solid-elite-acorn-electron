@@ -599,19 +599,21 @@ NEXT
  LDY #HI(LTPN)          \ (through PCLI, which passes the command to the MOS)
  JSR PCLI
 
- LDX #0                 \ Copy it into both buffers' dashboards: its seven rows
-                        \ of 256 bytes, SCRROW apart
+ LDX #0                 \ Copy it into buffer 1's dashboard: its seven rows of
+                        \ 256 bytes, SCRROW apart
 
 .ldp1
 
 FOR I%, 0, PANELROWS - 1
  LDA STAGE% + I% * 256,X
  STA PANEL% + I% * SCRROW,X
- STA PANEL% - BUFD + I% * SCRROW,X
 NEXT
 
  INX
  BNE ldp1
+
+ JSR b0fix              \ Make buffer 0 black, with a copy of buffer 1's last
+                        \ eight rows (the staging has been through it)
 
  SEI                    \ Disable interrupts while we change the screen
 
