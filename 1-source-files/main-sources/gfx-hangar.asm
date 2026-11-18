@@ -150,14 +150,16 @@ FOR q, 12, 2, -1
 NEXT
 
 \ HPWL, HPWH: the wall's and the floor's colours in f_col's packed form
-\ (hangarcols.py, docs/renderer.md): the wall a darker tan, two yellow, a magenta
-\ and a black pixel in each 2x2 cell (RGB about 191, 128, 64), the floor a
-\ light tan, two yellow, a magenta and a cyan (about 191, 191, 128). Ink
-\ counts in quarters make f_col's 4x4 Bayer tile a 2x2 one, yellow on a
-\ diagonal: a regular pattern, no banding
+\ (docs/renderer.md): the wall a darker tan, two yellow, a magenta and a black
+\ pixel in each 2x2 cell (RGB about 191, 128, 64), the floor a light tan, two
+\ yellow, a magenta and a cyan (about 191, 191, 128). Ink counts in quarters
+\ of the eight cells make f_col's 2x4 kernel a 2x2 one, yellow on a diagonal
+\ (its thresholds 0 to 3: lightramps.py's KERNEL): a regular pattern, no
+\ banding. The wall: a = 4, b = 4, c = 6 (w = &1884); the floor: a = 4, b =
+\ 6, c = 8 (w = &20C4)
 
 .HPWL
- EQUB &08, &88
+ EQUB &84, &C4
 .HPWH
- EQUB &31, &41
-
+ EQUB &18, &20
+ ASSERT &1884 = 4 + 32 * 4 + 1024 * 6 AND &20C4 = 4 + 32 * 6 + 1024 * 8

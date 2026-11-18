@@ -2829,9 +2829,11 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
 
 \ f_col: A = a face's or item's colour byte, X = the level (0..31): the
 \ colour R_COLE, R_COLO, R_COL2, R_COL3 (rows y AND 3 = 0..3). A = 0..8: entry
-\ X of that hue ramp (gfx-light6.asm), a 4x4 dither packed as w = a + 32 b +
-\ 1024 c, whose rows are H[a] EOR H[c] EOR HL[b] (H = HL AND &F0); A = &80 +
-\ k: the unlit colour k (black, cyan, magenta, yellow).
+\ X of that hue ramp (gfx-light6.asm), a 2x4 dither (eight cells, each row's
+\ two repeated across the byte) packed as w = a + 32 b + 1024 c (a, b, c the
+\ cumulative ink counts, 0..8), whose rows are H[a] EOR H[c] EOR HL[b] (H =
+\ HL AND &F0, nine entries a row); A = &80 + k: the unlit colour k (black,
+\ cyan, magenta, yellow).
 
 .fc_fix
  AND #3
@@ -2866,8 +2868,8 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  AND #31
  TAX
  FOR r, 0, 3            \ H[a] EOR H[c]
-  LDA LT_HL0+17*r,X
-  EOR LT_HL0+17*r,Y
+  LDA LT_HL0+9*r,X
+  EOR LT_HL0+9*r,Y
   AND #&F0
   STA fc_row+r
  NEXT
@@ -2883,17 +2885,17 @@ fsd_zl = &20 : fsd_zh = &21 : fsd_rl = &22 : fsd_q = &24 : fsd_x = &25
  LDA LT_HL0,Y           \ EOR HL[b]
  EOR fc_row
  STA R_COLE
- LDA LT_HL0+17,Y
+ LDA LT_HL0+9,Y
  EOR fc_row+1
  STA R_COLO
- LDA LT_HL0+34,Y
+ LDA LT_HL0+18,Y
  EOR fc_row+2
  STA R_COL2
- LDA LT_HL0+51,Y
+ LDA LT_HL0+27,Y
  EOR fc_row+3
  STA R_COL3
  RTS
-ASSERT LT_HL1 = LT_HL0 + 17 AND LT_HL2 = LT_HL0 + 34 AND LT_HL3 = LT_HL0 + 51
+ASSERT LT_HL1 = LT_HL0 + 9 AND LT_HL2 = LT_HL0 + 18 AND LT_HL3 = LT_HL0 + 27
 
 .fc_lo  EQUB 0
 .fc_hi  EQUB 0

@@ -469,6 +469,37 @@ into the back buffer, every ghost's density stepped down by the probes not
 in sight (`fl_vred`), each ghost's box marked dirty (`R_MARKBOX`) so that
 the next frame on the buffer repairs it.
 
+### The shading
+
+Every dithered fill is a 2 x 4 ordered dither (ELECTRON-REPORT.md,
+"Shading"): eight cells, two MODE 5 pixels wide (square on the screen) and
+four rows high, each row's two cells repeated across a byte, so a colour is
+four bytes, one per row (`y AND 3`), as `R_POLY` takes it (`R_COLE`,
+`R_COLO`, `R_COL2`, `R_COL3`). The cells' thresholds are `lightramps.py`'s
+`KERNEL` (rows 0 4, 6 2, 1 5, 7 3), the brightest inks at the lowest.
+
+* **The ships' faces** take entry `level` (0 to 31, the lighting's,
+  unchanged) of their hue's ramp (`gfx-light6.asm`, made by
+  `2-build-files/lightramps.py`, run by `faces.py`), packed as cumulative
+  ink counts and expanded by `f_col` with nine-entry row masks
+  (`LT_HL0`-`3`). A hue of two inks and black has too few eight-cell mixes
+  for 32 distinct entries, so a ramp holds six to eight levels, neighbours
+  repeating, chosen by the same perceptual search as before with lightness
+  weighted over hue (`lightramps.py`'s docstring; its preview,
+  `3-assembled-output/lighting/ramps32.png`).
+* **The unlit colours, the fixed colours, the distant dots, the sun's and
+  the planet's colours** are solid or 2 x 2 (a 2 x 4 kernel's rows repeated),
+  as before.
+* **The hangar's** wall and floor are 2 x 2 cells of the kernel (`HPWL`,
+  `HPWH`), and **the lens flare's** densities are the kernel's cells below
+  1, 1, 2, 3 and 4 eighths (`fl_mt`: its ladder's 1/16 rung is the kernel's
+  least, 1/8).
+* **The stars' occlusion:** `2-build-files/starocc.py` reads every fill
+  from the sources and checks that each one that is not black has a
+  non-black pixel in every byte of every row (the ramps keep at most four
+  black cells, so every kernel row has an ink), and that the hangar's and
+  the flare's dithers are the kernel's.
+
 ### The test
 
 `6-harness/test_frame.py` builds banks 5 and 6 and runs them on py65's NMOS

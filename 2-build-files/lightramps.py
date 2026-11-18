@@ -25,20 +25,34 @@ C3Y1, M3Y1), as one ink plus black has only 17 levels, too few for 32 distinct
 entries.  Each ramp runs from 50% of the hue's own full brightness (entry 0)
 to its full brightness (its mix with no black: entry 31).
 
-Selection.  Each entry is a 4x4 ordered dither (16 pixels: a count of each ink,
-laid out on a Bayer matrix, brightest inks at the lowest thresholds, so a pixel
-lit at one level stays lit above it).  A dynamic programme over all ink counts
-(only the hue's own inks plus black) picks the entries, each close in CIELAB
-to its target (lightness weighted WL), with lightness strictly rising and as
-few pixels as possible changing from one entry to the next (WS per pixel), so
-the texture does not flicker as a face's level steps, and little hue drift
-between neighbours (WH per squared degree of a*b* angle).
+Selection.  Each entry is a 2x4 ordered dither (the Electron's MODE 5, where
+a pixel is twice as wide as it is high, so the kernel is square on the
+screen: eight cells, a count of each ink laid out on the threshold matrix
+KERNEL, brightest inks at the lowest thresholds, so a cell lit at one level
+stays lit above it).  A dynamic programme over all ink counts (only the hue's
+own inks plus black, and at most four black cells: every kernel row then has
+an ink, which the stars' occlusion needs, starocc.py) picks the entries, each
+close in CIELAB to its target (lightness weighted WL), with lightness never
+falling and as few cells as possible changing from one entry to the next (WS
+per cell), so the texture does not flicker as a face's level steps, and
+little hue drift between neighbours (WH per squared degree of a*b* angle).
 
-In MODE 1 a 4x4 tile is four bytes, one per row (pixel x of a byte is x AND 3),
-so the fill takes row y's byte as tile row y AND 3.  The pool is 9 ramps x 32
-entries (1152 bytes as tiles); the tables store each entry as its three
-cumulative ink counts packed in two bytes (576 bytes), and the frame layer's
-f_col expands it to the four row bytes with 68 bytes of row masks.
+Levels.  A hue of two inks and black has 45 eight-cell mixes and fewer with
+distinct lightness, too few for 32 strictly rising entries (the 4x4 tiles'
+sixteen cells had 153), so a ramp keeps its 32 entries (the lighting's level,
+0 to 31, is unchanged: gfx-light.asm) with neighbours allowed to be the same
+mix: the report gives each ramp's distinct levels. The weights favour
+lightness over hue (WL 30, WH 0.02), which gives six to eight levels a ramp
+(a mean L* error of 1.2 and CIELAB error of 6.5) where hue-true mixes alone
+give three to seven (1.6 and 5.0): the shading's steps matter more than a
+slight drift of hue between them.
+
+In MODE 5 a byte is four pixels, so a kernel row's two cells repeat twice
+across it (pixel x of a byte is cell x AND 1), one byte per row, and the
+fill takes row y's byte as kernel row y AND 3.  The pool is 9 ramps x 32
+entries; the tables store each entry as its three cumulative ink counts
+packed in two bytes (576 bytes), and the frame layer's f_col expands it to
+the four row bytes with 36 bytes of row masks.
 
 Master port (from the demo port's tools/lightramps.py): the tables are in
 bank 6 (gfx-light6.asm: the ramp pointers, the row masks, the ramps and the
@@ -64,9 +78,9 @@ OUT = os.path.join(ROOT, '3-assembled-output', 'lighting')
 NLEV = 32               # ramp entries: I = 0.5 .. 1
 AMB, DIF = 0.5, 0.5
 LTO = np.array([1.0, 1.0, -1.0]) / math.sqrt(3)       # towards the light (Elite frame)
-WL = 12.0                                              # DP: lightness weight
-WS = 12.0                                              # DP: weight per pixel changed between entries
-WH = 0.3                                               # DP: weight per (degree of hue drift)^2 between entries
+WL = 30.0                                              # DP: lightness weight
+WS = 12.0                                              # DP: weight per cell changed between entries
+WH = 0.02                                              # DP: weight per (degree of hue drift)^2 between entries
 
 # each family's hue: (cyan, magenta, yellow) ink counts, black removed
 HUES = {
@@ -85,9 +99,11 @@ HUE_ORDER = list(HUES)          # ramp index = position here
 INK_RGB = np.array([SW.PHYS[i] for i in (SW.K, SW.C, SW.M, SW.Y)], float)
 INK_LIN = np.array([[F._lin(float(c)) for c in rgb] for rgb in INK_RGB])
 LUMA = INK_LIN @ np.array([0.2126, 0.7152, 0.0722])
-BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
-COMPS = [c for c in itertools.product(range(17), repeat=4) if sum(c) == 16]   # (k, c, m, y)
-COMP_LIN = np.array([sum(n * INK_LIN[i] for i, n in enumerate(c)) / 16 for c in COMPS])
+NCELL = 8                                              # a kernel's cells
+KERNEL = np.array([[0, 4], [6, 2], [1, 5], [7, 3]])    # 2x4 thresholds: row y AND 3, cell x AND 1
+KMAXK = 4                                              # the most black cells (every row inked)
+COMPS = [c for c in itertools.product(range(NCELL + 1), repeat=4) if sum(c) == NCELL]   # (k, c, m, y)
+COMP_LIN = np.array([sum(n * INK_LIN[i] for i, n in enumerate(c)) / NCELL for c in COMPS])
 COMP_LAB = np.array([F._lab(tuple(li)) for li in COMP_LIN])
 
 
@@ -114,22 +130,24 @@ def targets(name):
 
 
 def tile(comp):
-    """4x4 ordered layout of a 16-pixel plan (ink index per pixel)."""
+    """The 2x4 ordered layout (4 rows of 2 cells) of an 8-cell plan (ink index
+    per cell)."""
     plan = sorted([i for i, n in enumerate(comp) for _ in range(n)], key=lambda i: -LUMA[i])
-    return np.array(plan)[BAYER]
+    return np.array(plan)[KERNEL]
 
 
 def ramp(name):
     """NLEV ink counts (k, c, m, y) for the hue: a dynamic programme over the
-    16-pixel plans of the hue's own inks plus black, minimising the sum of
-    each entry's CIELAB error to its target (lightness weighted WL) and WS
-    times the number of pixels that change between consecutive tiles (their
-    Hamming distance: smooth texture as the level steps) and WH times their
-    squared hue-angle difference (degrees), with lightness strictly rising."""
+    8-cell plans of the hue's own inks plus at most KMAXK black, minimising
+    the sum of each entry's CIELAB error to its target (lightness weighted
+    WL) and WS times the number of cells that change between consecutive
+    kernels (their Hamming distance: smooth texture as the level steps) and
+    WH times their squared hue-angle difference (degrees), with lightness
+    never falling (an entry may repeat the last)."""
     tg = targets(name)
     c_, m_, y_ = HUES[name]
-    idx = [i for i, cp in enumerate(COMPS)
-           if all(cnt == 0 or have for cnt, have in zip(cp[1:], (c_, m_, y_)))]
+    idx = [i for i, cp in enumerate(COMPS) if cp[0] <= KMAXK and
+           all(cnt == 0 or have for cnt, have in zip(cp[1:], (c_, m_, y_)))]
     idx.sort(key=lambda i: COMP_LAB[i, 0])
     LAB = COMP_LAB[idx]
     Lv = LAB[:, 0]
@@ -137,7 +155,8 @@ def ramp(name):
     Ham = (T[:, None, :] != T[None, :, :]).sum(2)
     ang = np.degrees(np.arctan2(LAB[:, 2], LAB[:, 1]))
     dang = np.abs((ang[:, None] - ang[None, :] + 180) % 360 - 180)
-    lower = Lv[:, None] < Lv[None, :] - 1e-9          # [i, j]: i may precede j
+    lower = (Lv[:, None] < Lv[None, :] - 1e-9) | np.eye(len(idx), dtype=bool)   # [i, j]: i may
+                                                      # precede j (or j repeat i)
     INF = 1e18
 
 
@@ -160,12 +179,13 @@ def ramp(name):
 
 
 def tile_bytes(t):
-    """The four MODE 1 bytes (rows 0..3) of a 4x4 tile of ink indices."""
+    """The four MODE 5 bytes (rows 0..3) of a 2x4 kernel of ink indices (pixel
+    p of a byte is cell p AND 1)."""
     out = []
     for row in range(4):
         b = 0
         for p in range(4):
-            v = int(t[row, p])
+            v = int(t[row, p & 1])
             b |= ((v >> 1) & 1) << (7 - p) | (v & 1) << (3 - p)
         out.append(b)
     return out
@@ -243,12 +263,12 @@ def level_float(nv):
 
 # ---------------------------------------------------------------- tables
 FIXED = {'black': 0, 'cyan': 1, 'magenta': 2, 'yellow': 3}   # unlit colours
-FIXED_COMP = {'black': (16, 0, 0, 0), 'cyan': (0, 16, 0, 0), 'magenta': (0, 0, 16, 0),
-              'yellow': (0, 0, 0, 16)}
+FIXED_COMP = {'black': (NCELL, 0, 0, 0), 'cyan': (0, NCELL, 0, 0), 'magenta': (0, 0, NCELL, 0),
+              'yellow': (0, 0, 0, NCELL)}
 SWATCH_FIXED = {F.BLACK: 'black', F.INK_SWATCH[SW.C]: 'cyan', F.INK_SWATCH[SW.M]: 'magenta',
                 F.INK_SWATCH[SW.Y]: 'yellow'}
 NRAMP = len(HUE_ORDER)
-FIXED_BYTE = [0x00, 0x0F, 0xF0, 0xFF]   # the unlit colours' MODE 1 bytes (every row)
+FIXED_BYTE = [0x00, 0x0F, 0xF0, 0xFF]   # the unlit colours' MODE 5 bytes (every row)
 
 
 def hue_byte(fam):
@@ -266,15 +286,16 @@ def comp_of(t):
 
 
 def cum(comp):
-    """(a, b, c): pixels with Bayer threshold t < a are yellow, a <= t < b cyan,
-    b <= t < c magenta, the rest black (tile's luma order Y, C, M, K)."""
+    """(a, b, c): cells with threshold t < a are yellow, a <= t < b cyan,
+    b <= t < c magenta, the rest black (the kernel's luma order Y, C, M, K)."""
     k, c, m, y = comp
     return y, y + c, y + c + m
 
 
 def rowmask(r, n):
-    """4-bit mask of row r's pixels with threshold < n (pixel p = bit 3 - p)."""
-    return sum(1 << (3 - p) for p in range(4) if BAYER[r][p] < n)
+    """4-bit mask of row r's pixels whose cell's threshold is < n (pixel p =
+    bit 3 - p, its cell p AND 1)."""
+    return sum(1 << (3 - p) for p in range(4) if KERNEL[r][p & 1] < n)
 
 
 def expand(a, b, c):
@@ -304,12 +325,12 @@ def emit_light(path6):
             '\\ The shared ramp pool: ramps 0..%d (%s), 32 entries' % (NRAMP - 1, ', '.join(HUE_ORDER)),
             '\\   each (0 ambient only, 50% of the hue .. 31 full light).',
             '\\   LT_RL/LT_RH[ramp] -> 32 low bytes, then 32',
-            '\\   high bytes, of w = a + 32 b + 1024 c for the entry\'s 4x4 dither: Bayer',
-            '\\   thresholds t < a yellow, < b cyan, < c magenta, the rest black.',
-            '\\ LT_HL0..3[n] (n = 0..16): row r\'s mask m of pixels with threshold < n as',
+            '\\   high bytes, of w = a + 32 b + 1024 c for the entry\'s 2x4 dither (cells',
+            '\\   with threshold t < a yellow, < b cyan, < c magenta, the rest black).',
+            '\\ LT_HL0..3[n] (n = 0..8): row r\'s mask m of pixels with threshold < n as',
             '\\   m << 4 OR m: row byte = H[a] EOR H[c] EOR HL[b], H = HL AND &F0.',
             '\\ LT_FIX[k] (with the last ramp): the unlit colours (black, cyan, magenta, yellow) as',
-            '\\   MODE 1 bytes.',
+            '\\   MODE 5 bytes.',
             '\\ (The unit face normals, magnitude %d, are in gfx-normals.asm, in the game\'s bank 4.)' % NSC,
             '']
 
@@ -329,7 +350,7 @@ def emit_light(path6):
     L6.append(' EQUB ' + ', '.join('HI(LT_P%d)' % i for i in range(NRAMP)))
     for r in range(4):
         L6.append('.LT_HL%d' % r)
-        eb(L6, [rowmask(r, n) << 4 | rowmask(r, n) for n in range(17)], 17)
+        eb(L6, [rowmask(r, n) << 4 | rowmask(r, n) for n in range(NCELL + 1)], NCELL + 1)
     for i in range(NRAMP):
         ramp(L6, i)
     L6.append('.LT_FIX')
@@ -341,7 +362,7 @@ def emit_light(path6):
 def report():
     R = ramps()
     tg = levels_I()
-    print('ramp pool: %d hues x %d entries = %d tiles (%d bytes as 4-byte tiles, %d packed)'
+    print('ramp pool: %d hues x %d entries = %d kernels (%d bytes as 4-byte rows, %d packed)'
           % (NRAMP, NLEV, NRAMP * NLEV, 4 * NRAMP * NLEV, 2 * NRAMP * NLEV))
     print('hues (C, M, Y ink mix) and full-brightness L*: ' +
           ', '.join('%s C%dM%dY%d %.1f' % ((h,) + HUES[h] + (lab(hue_lin(h))[0],)) for h in HUE_ORDER))
@@ -360,16 +381,17 @@ def report():
         dE = [np.linalg.norm(tile_lab(R[h][k]) - targets(h)[k]) for k in range(NLEV)]
         cnt = [comp_of(R[h][k]) for k in range(NLEV)]
         Ls = [tile_lab(R[h][k])[0] for k in range(NLEV)]
-        assert all(b > a for a, b in zip(Ls, Ls[1:])) and len(set(map(tuple, cnt))) == NLEV
-        print('%-7s mean dE %.1f  %s' % (h, np.mean(dE), ' '.join('K%dC%dM%dY%d' % c for c in cnt)))
+        assert all(b >= a for a, b in zip(Ls, Ls[1:])) and all(c[0] <= KMAXK for c in cnt)
+        print('%-7s mean dE %.1f, %d levels  %s' % (h, np.mean(dE), len(set(map(tuple, cnt))),
+                                                 ' '.join('K%dC%dM%dY%d' % c for c in cnt)))
 
 
 def ramps_png(path):
     from PIL import Image
     R = ramps()
     rows = []
-    for h in HUE_ORDER:
-        rows.append(np.concatenate([np.tile(t, (4, 4)) for t in R[h]], 1))
+    for h in HUE_ORDER:                 # (each kernel cell a MODE 5 pixel: two
+        rows.append(np.concatenate([np.repeat(np.tile(t, (4, 4)), 2, 1) for t in R[h]], 1))   # wide)
         rows.append(np.zeros((4, NLEV * 16), int))
     img = INK_RGB[np.concatenate(rows, 0)].astype(np.uint8)
     Image.fromarray(np.kron(img, np.ones((3, 3, 1), np.uint8))).save(path)
@@ -407,7 +429,7 @@ def annotate(t, s):
 
 def cell_tile(sw):
     cl = SW.cell(*SW.ALL[sw])
-    return np.array([[cl[(x & 1, y & 1)] for x in range(4)] for y in range(4)])
+    return np.array([[cl[(x & 1, y & 1)] for x in range(2)] for y in range(4)])
 
 
 def render(t, s, M, pos, lit, fixed=True):
@@ -472,7 +494,7 @@ def render(t, s, M, pos, lit, fixed=True):
     out = np.zeros((H, W), int)
     for k, til in tiles.items():
         m = ids == k
-        out[m] = til[yy[m] & 3, xx[m] & 3]
+        out[m] = til[yy[m] & 3, (xx[m] >> 1) & 1]   # (MODE 5: a cell is two game x)
     return INK_RGB[out].astype(np.uint8)
 
 

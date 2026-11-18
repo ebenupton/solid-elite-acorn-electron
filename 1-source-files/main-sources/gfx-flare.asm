@@ -9,11 +9,11 @@
 \ the screen (x 1..255, y 0..191), eight
 \ ghosts go over the frame after the lasers and before the text, sights and
 \ stars: at C + k D / 8 (C = (128, 96), D = sun - C), six dithered discs and
-\ two dotted rings, each pixel of a disc's 4x4 Bayer mask (its density, rows
-\ shifted by the ghost's number) ORed in its ink. OR only lifts MODE 1's
+\ two dotted rings, each pixel of a disc's 2x4 dither mask (its density, rows
+\ shifted by the ghost's number) ORed in its ink. OR only lifts MODE 5's
 \ two-bit inks (K = 00 < C = 01, M = 10 < Y = 11): additive light in this
 \ palette. Three levels by |dx| + |dy| step every density down the ladder 0,
-\ 1, 2, 4, 6, 8 / 16.
+\ 1, 1, 2, 3, 4 / 8.
 \
 \ Occlusion: before any ghost, R_FLARE probes the back buffer at nine
 \ points of the sun's disc (its centre, and eight round it at about 0.62 R:
@@ -528,12 +528,15 @@ FLHMAX = 26             \ the ring round the sun only for a sun this small
 .fl_ni  EQUB &83, 4, 3, 5, 3, 3, &83, 2
 .fl_hl  EQUB 0, LO(fl_h4), LO(fl_h7), LO(fl_h3), LO(fl_h10), LO(fl_h5), 0, LO(fl_h18)
 
-fl_mt = P% - 4          \ row masks of densities 1, 2, 4, 6, 8 / 16 (4x4
-                        \ Bayer), by density index (1..5) and row
- EQUB &88, &00, &00, &00
- EQUB &88, &00, &22, &00
+fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
+                        \ kernel's cells with thresholds below that, each
+                        \ row's two repeated across the byte: lightramps.py's
+                        \ KERNEL), by density index (1..5) and row: the
+                        \ ladder's 1 / 16 rung is 1 / 8, a kernel's least
+ EQUB &AA, &00, &00, &00
+ EQUB &AA, &00, &00, &00
  EQUB &AA, &00, &AA, &00
- EQUB &AA, &44, &AA, &11
+ EQUB &AA, &55, &AA, &00
  EQUB &AA, &55, &AA, &55
 
 .fsd0
