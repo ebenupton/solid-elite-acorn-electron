@@ -4,7 +4,7 @@
 | main RAM | `&0100-&01FF` | the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched) | 256 | 0 |
 | main RAM | `&0300-&03CF` | `UP`, the game's workspace | 208 | 0 |
 | main RAM | `&0400-&06FA` | resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` | 761 | 2 |
-| main RAM | `&06FB-&0723` | the circle engine's variables (main low: `gfx-merid.asm`) | 41 | 0 |
+| main RAM | `&06FB-&0723` | the circle engine's variables (main low: `gfx-merid.asm`) | 35 | 6 |
 | main RAM | `&0724-&07BF` | the glue: the trampolines into bank 5, `GCALL`; then `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`) | 155 | 1 |
 | main RAM | `&07C0-&07FF` | `SNE`, `ACT` | 64 | 0 |
 | main RAM | `&0880-&08BF` | `QQ16` | 64 | 0 |
@@ -19,7 +19,7 @@
 | main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
 | main RAM | `&1F80-&1F8F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
 | main RAM | `&1F90-&1F9F` | `SNDH`, the interrupt's hook into the sound engine (copied there by the loader's `LOAD`) | 16 | 0 |
-| main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 80 | 14 |
+| main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 28 | 66 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&244F` | the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`) | 0 | 1104 |
 | main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 1326 | 722 |
@@ -29,7 +29,7 @@
 | bank 4 (flight) | `&8000-&A77F` | `S%` and the hot pass | 10112 | 0 |
 | bank 4 (flight) | `&A780-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2706 | 238 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
-| bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 54 | 40 |
+| bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 93 | 1 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
 | bank 4 (docked) | `&8000-&ADBF` | `S%` and the hot pass | 9176 | 2536 |
 | bank 4 (docked) | `&ADC0-&B2FF` | the main RAM part's image | 1344 | 0 |
@@ -57,4 +57,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 1121, main RAM (flight) 1664, main RAM (docked) 1076, bank 4 (flight) 278, bank 4 (docked) 2696, bank 7 (flight) 171, bank 7 (docked) 5022, bank 5 831, bank 6 135.
+Free, by place: main RAM 1179, main RAM (flight) 1664, main RAM (docked) 1076, bank 4 (flight) 239, bank 4 (docked) 2696, bank 7 (flight) 171, bank 7 (docked) 5022, bank 5 831, bank 6 135.

@@ -55,8 +55,8 @@
 \     circle's record into the next slot of PCB, from the axis pcv (pf_tilt's
 \     sign-magnitude words), its scale pcn, the cosine pcc and its sign
 \     pcneg and the body pcbx, pcby, pcr; its part of the base colour into
-\     pc_inv. It uses Elite's zero page &10-&26, which PF_HOOK saves, and
-\     reads main RAM only for the quarter squares (QSL, QSH);
+\     pc_inv. It uses Elite's zero page &10-&26 (PF_HOOK keeps the XX0 and
+\     INF in it), and reads the quarter squares (QSL, QSH);
 \
 \   * PC_ROWS (the planet's records), in the frame (bank 6's f_bounds; the
 \     Master port's through T_CAPS): the disc layer's boundaries for rows
@@ -2217,15 +2217,22 @@ ASSERT pra1 = pra0 + 7 AND pra3 = pra0 + 21 AND prk1 = prk0 + 7 AND prk3 = prk0 
 
 
 
-\ The engine's variables: pc_circ's in main RAM, at PFVH% after
-\ gfx-planet7.asm's (main high) and at PFVA% (main low), and what one call
-\ makes and uses in bank 4 after the blueprint slot, at PFVS% (bank 4 top), so
-\ that the code at the home bank's end has the room, each placed by the
-\ flight code's layout (elite-map.asm's addresses); PC_ROWS' in bank 6 (bank
+\ The engine's variables: pc_circ's in bank 4 after the blueprint slot, at
+\ PFVS% (bank 4 top: what one call makes and uses, and reads and writes
+\ most), and the rest in main RAM, at PFVH% after gfx-planet7.asm's (main
+\ high) and at PFVA% (main low), so that the code at the home bank's end has
+\ the room, each placed by the flight code's layout (elite-map.asm's
+\ addresses); PC_ROWS' in bank 6 (bank
 \ 6's pass); and the records' slots' offsets, which both read (pcb_o, five
 \ bytes, in main RAM after the glue: the resident block A's main passes)
 
 \       Area: main high
+
+.pc_n   SKIP 6          \ the two nodes, in 1/512 pixels
+.pc_tw  SKIP 4          \ the record's thresholds T1, T2 before clamping (16-bit:
+                        \ each slot's into PC_TU, for the frame's f_hrec)
+
+\       Area: main low
 
 .pv                     \ pc_circ's 16-bit operands (pc_mul: offsets O_ from pv)
 .pv_m   SKIP 6          \ |mx|, |my|, |mz| >> 2
@@ -2248,21 +2255,21 @@ O_T = pm_tq - pv
 O_V = pm_v - pv
 O_CN = pv_cn - pv
 O_RC = pv_rc - pv
-.pm_sg  SKIP 6          \ their signs (by 2)
-.pm_nz  SKIP 6          \ &80 if non-zero (by 2)
-.pm_sx  SKIP 1          \ bit 7: mx < 0 (after negating m if mz < 0)
-.pm_sy  SKIP 1          \ bit 7: my' < 0
-.pm_inv SKIP 1          \ 1 if m was negated
-.pc_v   SKIP 2
 .pc_o   SKIP 3          \ } 24-bit signed, at pc_o + X for pc_sgn: an offset
 .pc_a9  SKIP 3          \ } (16.8); A, sqrt(B) and the two nodes, in 1/512
 .pc_s9  SKIP 3          \ } pixels
-.pc_n   SKIP 6
-.pc_tw  SKIP 4          \ the record's thresholds T1, T2 before clamping (16-bit:
-                        \ each slot's into PC_TU, for the frame's f_hrec)
 
-\       Area: main low
+\       Area: bank 4 top
 
+                        \ (in bank 4, with the code: the variables that
+                        \ pc_circ reads and writes most)
+.pm_zsave SKIP 4        \ Elite's XX0 and INF while PF_HOOK uses &10-&26
+.wr     SKIP RSZ        \ the record being made
+.pcbx   SKIP 2          \ the body: its centre and radius
+.pcby   SKIP 2
+.pcr    SKIP 1
+.pcc    SKIP 1          \ the circle's cosine (0.8) and its sign (bit 7)
+.pcneg  SKIP 1
 .pm_eu  SKIP 1
 .pm_ulo SKIP 2
 .pm_a32 SKIP 4          \ a, 16.16 signed } (in this order: the record's
@@ -2280,16 +2287,12 @@ O_RC = pv_rc - pv
 .pc_dn  SKIP 1          \ bit 7: d < 0 once m is negated (0 if d is 0)
 .pc_tb  SKIP 1          \ bit 7: the bottom in the region, bit 6: the top
 .pc_st  SKIP 1
-
-\       Area: bank 4 top
-
-.pm_zsave SKIP 23       \ Elite's &10-&26 while PF_HOOK uses them
-.wr     SKIP RSZ        \ the record being made
-.pcbx   SKIP 2          \ the body: its centre and radius
-.pcby   SKIP 2
-.pcr    SKIP 1
-.pcc    SKIP 1          \ the circle's cosine (0.8) and its sign (bit 7)
-.pcneg  SKIP 1
+.pm_sg  SKIP 6          \ the axis' signs (by 2)
+.pm_nz  SKIP 6          \ &80 if non-zero (by 2)
+.pm_sx  SKIP 1          \ bit 7: mx < 0 (after negating m if mz < 0)
+.pm_sy  SKIP 1          \ bit 7: my' < 0
+.pm_inv SKIP 1          \ 1 if m was negated
+.pc_v   SKIP 2
 
 \       Area: bank 6
 
