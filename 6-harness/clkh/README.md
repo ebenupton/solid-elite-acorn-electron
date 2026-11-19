@@ -11,10 +11,14 @@ Electron port's candidate on it (`elib.mjs`); the reference stays on jsbeeb.
     make -C 6-harness/clkh/build -j6
 
 `CLK_ROOT` is the CLK tree (read-only), by default
-`~/cleo_electron/electron/clk` (branch `elk-headless`, with its capture and bus
-hooks). The CLK tree is never changed: CLK's Electron machine is compiled
-from this folder's copy, `Electron.cpp`, whose changes are marked `clkh:`
-(the machine's 2 MHz cycle count). The build directory is ignored by git.
+`~/cleo_electron/electron/clk`: Clock Signal with the headless Electron's
+capture and bus hooks, branch `elk-headless` of
+[ebenupton/CLK](https://github.com/ebenupton/CLK/tree/elk-headless), a fork of
+Thomas Harte's [Clock Signal](https://github.com/TomHarte/CLK). The CLK tree
+is never changed: CLK's Electron machine is compiled from this folder's copy,
+`Electron.cpp`, whose changes are marked `clkh:` (the machine's 2 MHz cycle
+count). Clock Signal, and so `Electron.cpp`, is Thomas Harte's, under the MIT
+licence: `LICENCE-CLK`. The build directory is ignored by git.
 The harness finds the binary at `6-harness/clkh/build/clkh`, or `$CLKH`.
 
 `--soundlog F` writes every write to the tone channel's registers (`&FE06`,
@@ -22,7 +26,8 @@ The harness finds the binary at `6-harness/clkh/build/clkh`, or `$CLKH`.
 value in hex (`6-harness/soundwav.py` renders it as WAV).
 
 ROMs: `--rompath DIR` holding `os.rom`, `basic.rom` and `DFS-1770-2.20.rom`
-(`~/elite-electron-roms`, the harness's default, or `$ELK_ROMS`).
+(`~/elite-electron-roms`, the harness's default, or `$ELK_ROMS`; the DFS is
+in the repository's `roms/`, the MOS and BASIC are not).
 
 ## Use
 
