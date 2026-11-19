@@ -29,11 +29,10 @@
 \   * class 1, a crater planet (TYPE 130): one to three craters, small caps
 \     from the system's seed (pf_craters), base 0.
 \
-\ Elite's state is not touched: of Elite's zero page &10-&26 (the engine's
-\ workspace), XX0 and INF are saved and restored (the rest are temporaries
-\ that the game sets before it reads them: XX16's last eleven bytes, which
-\ are LL9's for a ship, P, V, XX and YY), and A, X, Y and the flags are
-\ preserved. The frame layer makes
+\ Elite's state is not touched: of Elite's zero page the engine uses only
+\ &18-&1B and &23-&26, temporaries that the game sets before it reads them
+\ (XX16's last three bytes, which are LL9's for a ship, P, V+1, XX and
+\ YY), and A, X, Y and the flags are preserved. The frame layer makes
 \ the rows with gfx-merid.asm's PC_ROWS (f_bounds, in bank 6).
 \ 6-harness/planet_caps.py models it all bit for bit.
 \
@@ -42,7 +41,6 @@
 \       Area: bank 4 high
 
 .PF_HOOK
- ASSERT INF = XX0 + 2 AND XX0 >= &10 AND INF + 1 <= &26
  PHP
  PHA
  LDA TYPE               \ the class: a crater planet (TYPE 130) 1, a meridian
@@ -59,12 +57,6 @@
  PHA
  TYA
  PHA
- LDX #3                 \ (XX0 and INF, in the engine's workspace, Elite's
-.pfh0                   \ &10-&26)
- LDA XX0,X
- STA pm_zsave,X
- DEX
- BPL pfh0
  LDA K3                 \ the centre
  STA pcbx
  LDA K3+1
@@ -95,12 +87,6 @@
  ORA #&80
  STA PF_CLS
 .pfh7
- LDX #3
-.pfh1
- LDA pm_zsave,X
- STA XX0,X
- DEX
- BPL pfh1
  PLA
  TAY
  PLA

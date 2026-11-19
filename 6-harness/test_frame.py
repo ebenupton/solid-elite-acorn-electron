@@ -995,9 +995,8 @@ def pmath_tests(quick=False):
     rb = lambda n: rnd.getrandbits(n) if n else 0
     cy, bad = [], []
     for n in range(0, 65536, 7 if quick else 1):
-        put(TT, n & 255)
-        put(TT + 1, n >> 8)
-        cy.append(m.gcall(F['pm_isqrt']))
+        mem.main[STUB:STUB + 7] = bytes([0xA2, n & 255, 0xA9, n >> 8, 0x20, F['pm_isqrt'] & 255, F['pm_isqrt'] >> 8])
+        cy.append(m.gcall_at(STUB, 7))           # (n in A and X)
         f = math.isqrt(n)
         if m.mpu.a != f or get(TT) | get(TT + 1) << 8 != n - f * f:
             bad.append(n)

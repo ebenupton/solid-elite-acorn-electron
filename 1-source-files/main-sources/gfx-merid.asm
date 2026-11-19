@@ -55,8 +55,10 @@
 \     circle's record into the next slot of PCB, from the axis pcv (pf_tilt's
 \     sign-magnitude words), its scale pcn, the cosine pcc and its sign
 \     pcneg and the body pcbx, pcby, pcr; its part of the base colour into
-\     pc_inv. It uses Elite's zero page &10-&26 (PF_HOOK keeps the XX0 and
-\     INF in it), and reads the quarter squares (QSL, QSH);
+\     pc_inv. It uses Elite's zero page &18-&1B and &23-&26 (temporaries
+\     that the game sets before it reads them: XX16's last three bytes, P,
+\     V+1, XX and YY), and reads
+\     the quarter squares (QSL, QSH);
 \
 \   * PC_ROWS (the planet's records), in the frame (bank 6's f_bounds; the
 \     Master port's through T_CAPS): the disc layer's boundaries for rows
@@ -67,8 +69,8 @@
 
 \       Area: bank 4, bank 6
 
-pm_p  = &18             \ zero page workspace (Elite's, saved and restored):
-pm_tt = &20             \ product, quotient; temporary
+pm_p  = &18             \ zero page workspace (Elite's temporaries): product,
+                        \ quotient
 pmi_n = &23             \ pm_isqrt's: n' (&23-&24) and a square (&25-&26)
 pmi_c = &25
 pc_xs = &23             \ pcl4's X (NMOS: for PHX, PLX; pmi_n's byte, as pcl4
@@ -258,11 +260,9 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  STA wr+R_K0,X
  DEX
  BPL pcl6
- LDA wr+R_K0+2          \ s0 = round(sqrt(K0)): f = isqrt(K0's integer part),
- STA pm_tt              \ s0 = f + 1 iff the remainder > f, or = f and K0's
- LDA wr+R_K0+3          \ fraction >= 1/4
- STA pm_tt+1
- JSR pm_isqrt
+ LDX wr+R_K0+2          \ s0 = round(sqrt(K0)): f = isqrt(K0's integer part),
+ LDA wr+R_K0+3          \ s0 = f + 1 iff the remainder > f, or = f and K0's
+ JSR pm_isqrt           \ fraction >= 1/4
  TAX
  LDA pm_tt+1
  BNE pcs1
@@ -365,11 +365,9 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  LDX #O_RC
  LDY #O_V
  JSR pc_mul
- LDA pm_p+2             \ S = 256 f, f = isqrt(B's integer part);
- STA pm_tt              \ S9 = 2 S + (B > S^2: the remainder or B's
- LDA pm_p+3             \ fraction not 0)
- STA pm_tt+1
- JSR pm_isqrt
+ LDX pm_p+2             \ S = 256 f, f = isqrt(B's integer part);
+ LDA pm_p+3             \ S9 = 2 S + (B > S^2: the remainder or B's
+ JSR pm_isqrt           \ fraction not 0)
  STA pc_s9+1
  LDA pm_tt
  ORA pm_tt+1
@@ -1238,16 +1236,17 @@ PMQ_H = 23              \ start)
  SBC QSH,Y              \ (bankcheck: ok)
  RTS
 
-\ pm_isqrt: A = f = floor(sqrt(pm_tt)) (16-bit), pm_tt = the remainder
-\ pm_tt - f^2. n is normalised to n' = 4^k n >= 2^14 (k = 0..7), so that
+\ pm_isqrt: A = f = floor(sqrt(n)), n = (A X) (16-bit), pm_tt = the
+\ remainder n - f^2 (n is kept in pm_tt till then). n is normalised to n' = 4^k n >= 2^14 (k = 0..7), so that
 \ f' = floor(sqrt(n')) is pis_t's floor(sqrt(256 h')) (h' = n' DIV 256) or
 \ one more (as sqrt(256 h' + 255) - sqrt(256 h') < 1); then f = f' >> k.
 \ The squares come from the quarter-square table (c^2 = 4 QS(c) + (c AND 1))
 
 .pm_isqrt
+ STX pm_tt
+ STA pm_tt+1
  LDY #0                 \ k
- LDX pm_tt
- LDA pm_tt+1
+ CMP #0
  BNE pis1
  TXA                    \ n < 256: n' = 256 n, k = 4
  BEQ pis9               \ (n = 0: f = 0, the remainder 0)
@@ -2262,7 +2261,7 @@ ASSERT pra1 = pra0 + 7 AND pra3 = pra0 + 21 AND prk1 = prk0 + 7 AND prk3 = prk0 
 
                         \ (in bank 4, with the code: the variables that
                         \ pc_circ reads and writes most)
-.pm_zsave SKIP 4        \ Elite's XX0 and INF while PF_HOOK uses &10-&26
+.pm_tt  SKIP 2          \ a temporary: pcl1's, pm_isqrt's n and remainder
 .wr     SKIP RSZ        \ the record being made
 .pcbx   SKIP 2          \ the body: its centre and radius
 .pcby   SKIP 2
