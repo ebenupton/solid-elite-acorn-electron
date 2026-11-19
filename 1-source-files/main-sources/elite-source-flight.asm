@@ -28171,6 +28171,9 @@ ENDIF
 
  STY rdy+1              \ Store Y in the LDY at rdy, to restore it at the end
 
+ LDA #0                 \ Port: no FUNC seen yet (rdkn returns it alone as
+ STA rdkn+1             \ CAPS LOCK, &40, the original's damping toggle)
+
  LDA kbany              \ Port: if kbkeys found no key down in the whole matrix
  BNE rdk0               \ since the last call here (DOKEY's scan, for DK4's
  INC kbany              \ call in the same iteration), there is none to scan
@@ -28201,13 +28204,14 @@ ENDIF
  DEY
  BPL rdk8
 
- LDX #&41               \ No digit: FUNC is a shift, not a key, so go on
- BNE rdk1               \ scanning from the key after it
+ STX rdkn+1             \ No digit: FUNC is a shift, not a key, so go on
+ INX                    \ scanning from the key after it, and if no key
+ BNE rdk1               \ follows, FUNC alone is CAPS LOCK (rdkn)
 
 .rdk2
 
  TXA                    \ If nothing is pressed, set A = %10000000, as the
- BMI rdk5               \ original's loop leaves it
+ BMI rdkn               \ original's loop leaves it, unless FUNC was alone
 
                         \ (The docked code's RDKEY also tells @, SHIFT with the
                         \ Electron's 0 key, from 0: flight has no use for @)
@@ -28239,6 +28243,11 @@ ENDIF
  ORA #%10000000         \ Set bit 7, as DKS4 returns a pressed key, with the C
  CLC                    \ flag clear, as the Model B's RDKEY leaves it for a
  BCC rdy                \ key (this BCC is effectively a JMP)
+
+.rdkn
+
+ LDA #0                 \ &40 if FUNC was held alone (patched above): CAPS
+ BNE rdk6               \ LOCK, which the Electron's keyboard does not give
 
 .rdk5
 
@@ -28862,7 +28871,10 @@ ENDIF
 
                         \ These are the secondary flight controls:
 
- EQUB &60               \ TAB       KYTB+8      Energy bomb
+ EQUB &17               \ -         KYTB+8      Energy bomb (Port: the
+                        \                       Electron has no TAB key, so
+                        \                       "-", as in Acornsoft's
+                        \                       Electron Elite)
  EQUB &70               \ ESCAPE    KYTB+9      Launch escape pod
  EQUB &23               \ T         KYTB+10     Target missile
  EQUB &35               \ U         KYTB+11     Unarm missile

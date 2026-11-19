@@ -22,7 +22,7 @@
 | main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 28 | 66 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&244F` | the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`) | 0 | 1104 |
-| main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 2008 | 40 |
+| main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 2019 | 29 |
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 944 | 0 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1491, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 1047, bank 6 10.
+Free, by place: main RAM 1491, main RAM (flight) 1029, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 1047, bank 6 10.

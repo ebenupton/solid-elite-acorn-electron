@@ -79,7 +79,7 @@ hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free
   &2C50    14 MAS2
   &2C5E   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
   &2EA1   351 KS3..SFX
-hots &2450-&2C4F: 35 units, 2008 bytes, 40 free
+hots &2450-&2C4F: 35 units, 2019 bytes, 29 free
   &2450    41 SUNSC
   &2479    26 UNIV
   &2493    15 HLOIN2
@@ -103,15 +103,15 @@ hots &2450-&2C4F: 35 units, 2008 bytes, 40 free
   &285B    78 TT17
   &28A9     7 MAS4
   &28B0    14 DPLT
-  &28BE   101 RDKEY
-  &2923   109 EXNO3..KYTB
-  &2990   136 DKS1..DKS2
-  &2A18    23 DKS3
-  &2A2F   162 TIDY
-  &2AD1    73 SHPPT
-  &2B1A    86 H_CIRC
-  &2B70    11 LL9F
-  &2B7B    14 H_PTCLS
-  &2B89    14 H_PTCLSE
-  &2B97    17 H_DOT
-  &2BA8   128 SHAND
+  &28BE   112 RDKEY
+  &292E   109 EXNO3..KYTB
+  &299B   136 DKS1..DKS2
+  &2A23    23 DKS3
+  &2A3A   162 TIDY
+  &2ADC    73 SHPPT
+  &2B25    86 H_CIRC
+  &2B7B    11 LL9F
+  &2B86    14 H_PTCLS
+  &2B94    14 H_PTCLSE
+  &2BA2    17 H_DOT
+  &2BB3   128 SHAND
