@@ -200,7 +200,13 @@ opts.onIter = (i, s, res) => {
                     rows[f[0]] = { accesses: v.slice(0, 6), cycles: v.slice(6, 12), run: v[12], entries: v[13] };
                 }
                 const calls = elk.e.ask("acccalls").toString().split("\n").filter(Boolean).map(l => { const f = l.split(" "); return [f[0], f[1], +f[2] / n]; });
-                prof[which[si]] = { cyclesPerIteration: per, categories: CAT, accesses: tot.slice(0, 6), cycles: tot.slice(6), byLabel: rows, calls };
+                const kd = elk.e.ask("acckinds").toString().split("\n").filter(Boolean), kt = kd[0].split(" ").map(Number).map(x => x / n), nk = kt.length / 2;
+                const krows = {};
+                for (const l of kd.slice(1)) { const f = l.split(" "), v = f.slice(1).map(Number).map(x => x / n); krows[f[0]] = { accesses: v.slice(0, nk), cycles: v.slice(nk) }; }
+                prof[which[si]] = { cyclesPerIteration: per, categories: CAT, accesses: tot.slice(0, 6), cycles: tot.slice(6), byLabel: rows, calls,
+                    kinds: { accesses: kt.slice(0, nk), cycles: kt.slice(nk) }, byLabelKind: krows,
+                    byAddress: elk.e.ask("accaddr").toString().split("\n").filter(Boolean).map(l => { const f = l.split(" "); return [parseInt(f[0], 16), +f[1] / n, +f[2] / n]; }),
+                    byPC: elk.e.ask("accpc").toString().split("\n").filter(Boolean).map(l => { const f = l.split(" "); return [+f[0], parseInt(f[1], 16), +f[2] / n, +f[3] / n, +f[4]]; }) };
             }
             results[which[si]] = { cycles: Math.round(per), its: +(2e6 / per).toFixed(3), n: times.length - 1, ships: used };
             console.log(`${which[si].padEnd(10)} ${String(Math.round(per)).padStart(7)} cycles/iteration  ${(2e6 / per).toFixed(2).padStart(6)} it/s   (ships ${used.join(",") || "none"})`);

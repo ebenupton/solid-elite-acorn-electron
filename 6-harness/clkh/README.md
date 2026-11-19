@@ -73,6 +73,7 @@ Numbers are decimal or `0x` hex.
 | `t0d`, `tpage1` | text | page `&0D` writes by game code (iteration, PC, address); page 1's figures |
 | `labclear`, `labfile PATH` | | labels: lines `SLOT START END NAME` (hex; SLOT -1 main RAM, -2 the MOS) |
 | `accon SCREENLO`, `accoff`, `accreset`, `acctot`, `accdump` | ; ; ; text; text | count main-RAM accesses and cycles by label (`accreset` zeroes the counts) |
+| `acckinds`, `accaddr`, `accpc` | text | the same traffic by kind (a zero-page operand, a `(zp),Y` or `(zp,X)` pointer fetch, the stack by `JSR`/`RTS`, `PHA`/`PLA`, `PHP`/`PLP` or an interrupt, page 1 as data, other data below the screen, screen reads and writes, code fetched from main RAM, hardware at `&FC00-&FEFF`), in all and by label; by the address touched; by the instruction that touched it (slot, PC, accesses, cycles, opcode) |
 | `quit` | | |
 
 An event is `B|E|R cycles pc slot a x y s p f4 watchgen ids`: `B` a

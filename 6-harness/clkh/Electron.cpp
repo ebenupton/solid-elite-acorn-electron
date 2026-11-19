@@ -279,6 +279,9 @@ public:
 				ram_[address] = *value;
 			}
 		} else {
+#ifdef CLK_HEADLESS
+			if(io_access_hook && address >= 0xfc00 && address < 0xff00) io_access_hook(address, !is_read(operation), cycles.template as<int>());	// clkh: hardware traffic
+#endif
 			switch(address & 0xff0f) {
 				case 0xfe00:
 					if(is_read(operation)) {
@@ -820,6 +823,7 @@ private:
 	std::function<bool(uint16_t, uint8_t, uint8_t, uint8_t)> os_trap;	// an opcode fetch at &FFxx (PC, A, X, Y): true = served by the host (RTS)
 	std::function<void(uint16_t, uint8_t, uint8_t)> opcode_hook;		// every opcode fetch: PC, paged slot, S
 	std::function<void(uint8_t, uint16_t, uint8_t)> swram_write_hook;	// a store into sideways RAM: slot, address, value
+	std::function<void(uint16_t, bool, int)> io_access_hook;		// every bus cycle at &FC00-&FEFF: address, write, its cycles
 	std::function<void(uint16_t, bool, bool, int)> ram_access_hook;		// every main-RAM bus cycle: address, write, opcode fetch, its cycles
 	std::function<void(uint64_t, int, uint8_t)> sound_hook;	// clkh: a write to &FE06 or &FE07: the cycle (2 MHz), 6 or 7, the value
 	std::function<void(uint8_t)> fe05_hook;	// clkh: a write to &FE05 (the value)

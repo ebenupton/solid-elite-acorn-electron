@@ -92,6 +92,21 @@ struct Server {
 	std::vector<uint8_t> lab_start_ram = std::vector<uint8_t>(32768, 0);
 	std::vector<uint8_t> lab_start_rom = std::vector<uint8_t>(16 * 16384, 0);
 	std::array<uint64_t, 12> acc_tot{};
+	// the same traffic by kind ("acckinds"), accesses then cycles: 0 a zero-page operand,
+	// 1 a (zp),Y pointer fetch, 2 a (zp,X) pointer fetch, 3 the stack by JSR/RTS,
+	// 4 by PHA/PLA, 5 by PHP/PLP, 6 by an interrupt's entry and RTI (and BRK),
+	// 7 page 1 addressed as data, 8 other data below the screen, 9 screen reads,
+	// 10 screen writes, 11 code fetched from main RAM, 12 hardware (&FC00-&FEFF)
+	static constexpr int NK = 13;
+	std::array<uint64_t, 2 * NK> kind_tot{};
+	std::vector<std::array<uint64_t, 2 * NK>> kacc;
+	// and by the address touched ("accaddr": accesses, their cycles) and by the instruction
+	// that touched it ("accpc": slot or -1, PC, accesses, cycles)
+	std::vector<std::array<uint32_t, 2>> addr_acc = std::vector<std::array<uint32_t, 2>>(32768);
+	std::vector<std::array<uint32_t, 2>> pc_acc = std::vector<std::array<uint32_t, 2>>(32768 + 17 * 16384);
+	size_t pc_slot(uint16_t pc, uint8_t rom) const { return pc < 0x8000 ? pc : pc < 0xc000 ? 32768 + size_t(rom & 15) * 16384 + (pc & 0x3fff) : 32768 + 16 * 16384 + (pc & 0x3fff); }
+	uint8_t cur_op = 0xea;		// the opcode being run
+	int op_zp = 0, op_st = 0;	// its zero-page and page 1 accesses so far
 	uint64_t prof_last = 0;
 	int prof_lab = -1;
 	int call_from = -2;		// the label of a JSR just fetched (-2: none), for the call counts
@@ -156,7 +171,8 @@ struct Server {
 			if(prof_lab >= 0) acc[size_t(prof_lab)][12] += now - prof_last;
 			prof_last = now; prof_lab = label_of(pc, rom);
 			if(call_from != -2) { calls[{call_from, prof_lab}]++; call_from = -2; }
-			if(view(pc) == 0x20) call_from = prof_lab;
+			cur_op = view(pc); op_zp = op_st = 0;
+			if(cur_op == 0x20) call_from = prof_lab;
 			if(prof_lab >= 0 && (pc < 0x8000 ? lab_start_ram[pc] : pc < 0xc000 ? lab_start_rom[size_t(rom & 15) * 16384 + (pc & 0x3fff)] : 0)) acc[size_t(prof_lab)][13]++;
 		}
 		lpc = pc; lrom = rom;
@@ -237,12 +253,39 @@ struct Server {
 		const int l = op ? label_of(a, uint8_t(m.active_rom_)) : label_of(lpc, lrom);
 		acc_tot[size_t(c)]++; acc_tot[size_t(6 + c)] += uint64_t(cyc);
 		if(l >= 0) { acc[size_t(l)][size_t(c)]++; acc[size_t(l)][size_t(6 + c)] += uint64_t(cyc); }
+		if(c != 5) {
+			addr_acc[a][0]++; addr_acc[a][1] += uint32_t(cyc);
+			auto &pa = pc_acc[pc_slot(lpc, lrom)]; pa[0]++; pa[1] += uint32_t(cyc);
+		}
+		// by kind: the opcode says what a zero-page or stack access is for
+		int k;
+		if(c == 5) k = 11;
+		else if(c == 0) {
+			const int n = op_zp++;
+			k = ((cur_op & 0x1f) == 0x11 && n < 2) ? 1 : ((cur_op & 0x1f) == 0x01 && n < 3) ? 2 : 0;
+		} else if(c == 1) {
+			const int n = op_st++;
+			const unsigned sp = 0x100 + m.m6502_.value_of(R::StackPointer);
+			if((cur_op == 0x20 || cur_op == 0x60) && n < 3) k = 3;
+			else if((cur_op == 0x48 && n < 1) || (cur_op == 0x68 && n < 2)) k = 4;
+			else if((cur_op == 0x08 && n < 1) || (cur_op == 0x28 && n < 2)) k = 5;
+			else if(cur_op == 0x40 || cur_op == 0x00) k = 6;
+			else if(wr && (a == sp || a == sp + 1 || a + 1 == sp)) k = 6;	// (an interrupt's pushes)
+			else k = 7;
+		} else k = c == 2 ? 8 : c == 3 ? 9 : 10;
+		kind_tot[size_t(k)]++; kind_tot[size_t(NK + k)] += uint64_t(cyc);
+		if(l >= 0) { kacc[size_t(l)][size_t(k)]++; kacc[size_t(l)][size_t(NK + k)] += uint64_t(cyc); }
+	}
+	void on_io(uint16_t, bool, int cyc) {
+		const int l = label_of(lpc, lrom);
+		kind_tot[12]++; kind_tot[size_t(NK + 12)] += uint64_t(cyc);
+		if(l >= 0) { kacc[size_t(l)][12]++; kacc[size_t(l)][size_t(NK + 12)] += uint64_t(cyc); }
 	}
 	int intern(const std::string &n) {
 		auto it = lab_index.find(n);
 		if(it != lab_index.end()) return it->second;
 		const int k = int(lab_names.size());
-		lab_names.push_back(n); lab_index[n] = k; acc.push_back({});
+		lab_names.push_back(n); lab_index[n] = k; acc.push_back({}); kacc.push_back({});
 		return k;
 	}
 
@@ -260,6 +303,7 @@ struct Server {
 			if(swl_on && rom == swl_slot && a == swl_addr && wlogtxt.size() < 200000) { char b[80]; std::snprintf(b, sizeof b, "sw %u:%04x=%02x pc=%04x slot=%u\n", rom, a, v, lpc, unsigned(lrom)); wlogtxt += b; } };
 		m.fe05_hook = [this](uint8_t v) { histv[histp++ & 4095] = 0xFE050000u | uint32_t(lpc); histv[histp++ & 4095] = 0xFE060000u | v; };
 		m.ram_access_hook = nullptr;
+		m.io_access_hook = nullptr;
 	}
 	// serve commands until a "run" (or quit); called at top level and from a stop
 	void serve_stop() {
@@ -391,14 +435,48 @@ struct Server {
 			screen_lo = unsigned(num(1) ? num(1) : 0x3000);
 			acc_on = true; prof_on = true; prof_last = m.total_cycles; prof_lab = -1;
 			m.ram_access_hook = [this](uint16_t ad, bool wr, bool op, int cyc) { on_access(ad, wr, op, cyc); };
+			m.io_access_hook = [this](uint16_t ad, bool wr, int cyc) { on_io(ad, wr, cyc); };
 			return false;
 		}
 		if(c == "accreset") {	// zero the counts (labels kept)
 			for(auto &v : acc) v.fill(0);
+			for(auto &v : kacc) v.fill(0);
+			for(auto &v : addr_acc) v.fill(0);
+			for(auto &v : pc_acc) v.fill(0);
+			kind_tot.fill(0);
 			acc_tot.fill(0); prof_last = m.total_cycles; prof_lab = -1; calls.clear(); call_from = -2;
 			return false;
 		}
-		if(c == "accoff") { acc_on = prof_on = false; m.ram_access_hook = nullptr; return false; }
+		if(c == "accoff") { acc_on = prof_on = false; m.ram_access_hook = nullptr; m.io_access_hook = nullptr; return false; }
+		if(c == "accaddr") {	// per main-RAM address touched as data: hex address, accesses, cycles
+			std::string out;
+			char b[64];
+			for(size_t k = 0; k < addr_acc.size(); k++) if(addr_acc[k][0]) { std::snprintf(b, sizeof b, "%04zx %u %u\n", k, addr_acc[k][0], addr_acc[k][1]); out += b; }
+			send(out); return false;
+		}
+		if(c == "accpc") {		// per instruction that touched main RAM as data: slot (-1 main RAM, 16 the MOS), hex PC, accesses, cycles, the opcode there now
+			std::string out;
+			char b[64];
+			for(size_t k = 0; k < pc_acc.size(); k++) if(pc_acc[k][0]) {
+				const size_t sl = (k - 32768) >> 14, of = (k - 32768) & 0x3fff;
+				if(k < 32768) std::snprintf(b, sizeof b, "-1 %04zx %u %u %u\n", k, pc_acc[k][0], pc_acc[k][1], unsigned(m.ram_[k]));
+				else std::snprintf(b, sizeof b, "%zu %04zx %u %u %u\n", sl, sl == 16 ? 0xc000 + of : 0x8000 + of, pc_acc[k][0], pc_acc[k][1], unsigned(sl == 16 ? m.os_[of] : m.roms_[sl][of]));
+				out += b;
+			}
+			send(out); return false;
+		}
+		if(c == "acckinds") {	// the 13 kinds' accesses, then their cycles; then per label: name and the same
+			std::string out;
+			for(int k = 0; k < 2 * NK; k++) out += std::to_string(kind_tot[size_t(k)]) + (k == 2 * NK - 1 ? "\n" : " ");
+			for(size_t k = 0; k < lab_names.size(); k++) {
+				bool any = false; for(auto v : kacc[k]) any |= v != 0;
+				if(!any) continue;
+				out += lab_names[k];
+				for(auto v : kacc[k]) out += " " + std::to_string(v);
+				out += "\n";
+			}
+			send(out); return false;
+		}
 		if(c == "acctot") {		// the 6 categories' accesses, then their cycles
 			std::string out;
 			for(int k = 0; k < 12; k++) out += std::to_string(acc_tot[size_t(k)]) + (k == 11 ? "\n" : " ");

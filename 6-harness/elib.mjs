@@ -458,7 +458,9 @@ export function elkLabeller(b, buildFile) {
     const f0 = b.loader.farC, f1 = b.loader["FAR_USED%"];
     if (f0 >= 0x8000 && f1 !== undefined) for (const [k, v] of Object.entries(b.loader)) if (v >= f0 && v <= f1 && common[k] === undefined) for (const r of ["H", "C"]) extra.push([r, v, k, "*"]);
     const progLabels = { flight: labelsOf(b.progs.flight), docked: labelsOf(b.progs.docked) };
-    return (e, bk, prog) => {
+    // (lab.last: the labels uploaded, [slot, address, name, map], sorted, for
+    // a tool that names an address itself)
+    const lab = (e, bk, prog) => {
         const slotOf = map => map === "m" ? -1 : map[0] === "#" ? e.rb(b.loader["BANK" + map.slice(1)]) : bk.bankOf(map);
         const lines = ["-1 0 8000 ram:?", "-2 c000 10000 MOS"];
         for (let s = 0; s < 16; s++) {
@@ -477,7 +479,9 @@ export function elkLabeller(b, buildFile) {
         const f = join(e.dir, "labels.txt");
         writeFileSync(f, lines.join("\n") + "\n");
         e.send("labclear"); e.send(`labfile ${f}`);
+        lab.last = all;
     };
+    return lab;
 }
 
 // For the tools that press real keys (bredock.mjs, bsavetest.mjs): an
