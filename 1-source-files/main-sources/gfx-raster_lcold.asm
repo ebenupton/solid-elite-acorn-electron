@@ -1,13 +1,12 @@
 \ ============================================================================
-\ raster_lcold.asm -- R_LINE's cold part (gfx-raster_line.asm, in the
-\ polygon window), here in the shared region for room: rl_mdq, rl_mdqa (the
-\ multiply-divide rl_gen's exact clipping uses, on the shared region's
-\ rp_mul16 and rp_div32) and rl_long (lines with d > 255).  They use the
-\ shared region (the arithmetic, r_pset, R_LINE's variables in a run page's
-\ tail) and the zero page, nothing of the polygon window's.  INCLUDE it in
-\ bank 5's assembly, at the end of its code (bank 5 end).
+\ raster_lcold.asm -- R_LINE's cold part (gfx-raster_line.asm): rl_mdq,
+\ rl_mdqa (the multiply-divide rl_gen's exact clipping uses, on the shared
+\ region's rp_mul16 and rp_div32) and rl_long (lines with d > 255).  They
+\ use the shared region (the arithmetic, r_pset, R_LINE's variables in a
+\ run page's tail).  INCLUDE it in bank 5's assembly after R_LINE
+\ (gfx-bank5.asm: the room at the bank's top is the glue's).
 \
-\       Area: bank 5 end
+\       Area: bank 5
 \ ============================================================================
 
 \ rl_mdqa: rl_mdq with rp_mb = d and rp_v = a (rl_gen's rl_i and rl_j bounds);

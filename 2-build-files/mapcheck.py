@@ -204,7 +204,7 @@ if B5["R_LOEND"] > st or B5["R_GAPEND"] > B5["r_tables"] or B5["RJT_END"] > 0xC0
 if os.path.getsize(OUT + "BANK5.bin") != 0xC000 - img:
     errors.append("bank 5: its image is not R_POLY on (the row runs are made at start)")
 nlab += inside(B5, OUT + "gfx-raster-bank5runs.asm", B5["r_run0"], img, "bank 5's row runs' and row tables' pages")
-for f in ("gfx-raster_poly", "gfx-raster_line"):
+for f in ("gfx-raster_poly", "gfx-raster_line", "gfx-raster_lcold"):
     nlab += inside(B5, OUT + "%s-bank5.asm" % f, img, st, "bank 5's R_POLY and R_LINE")
 for f in ("gfx-raster", "gfx-raster_init", "gfx-raster_rep", "gfx-raster_dq"):
     nlab += inside(B5, OUT + "%s-bank5.asm" % f, st + 0x600, rjt, "bank 5's high region")

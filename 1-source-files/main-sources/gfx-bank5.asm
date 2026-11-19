@@ -13,8 +13,9 @@
 \   &8C00-&90FF  the row tables (made at start too), with the stars'
 \                records and variables in the rest of their pages, and
 \                R_LINE's (not in the image)
-\   &9100-&A7FF  R_POLY (both phases), R_LINE and the lens flare
-\                (gfx-raster_poly.asm, gfx-raster_line.asm, gfx-flare.asm)
+\   &9100-&A7FF  R_POLY (both phases), R_LINE with its cold part and the
+\                lens flare (gfx-raster_poly.asm, gfx-raster_line.asm,
+\                gfx-raster_lcold.asm, gfx-flare.asm)
 \   &A800-&ADFF  the state: each buffer's dirty extents, this frame's written
 \                extents (R_WL, R_WR) and R_POLY's edge tables
 \   &AE00 on     the shared region (gfx-raster.asm): R_SETBUF and r_pgfix,
@@ -85,9 +86,11 @@
  INCLUDE "3-assembled-output/gfx-raster_dq-bank5.asm"
  INCLUDE "3-assembled-output/gfx-raster-bank5end.asm"
  INCLUDE "3-assembled-output/gfx-raster_init-bank5end.asm"
- INCLUDE "3-assembled-output/gfx-raster_lcold-bank5end.asm"
  INCLUDE "3-assembled-output/gfx-raster_reset-bank5end.asm"
 
+ IF HI(P%) <> HI(P% + 12 + 3 * 14 - 1)
+  SKIP &101 - LO(P%)    \ (the two stubs and the jump table are within a page,
+ ENDIF                  \ and no entry's low byte is 0: gfx-glue.asm)
 .R_DOTX                 \ R_DOT and R_GETW for the callers that pass X in GX
  LDX GX                 \ (gfx-glue.asm's T_DOT and T_GETW, the painter's
  JMP R_DOT              \ FT_GETW): X is C_T5's, the low byte of the entry,
@@ -141,6 +144,7 @@
 .R_IMAGE                \ (for bank5.py: the image's start)
  INCLUDE "3-assembled-output/gfx-raster_poly-bank5.asm"
  INCLUDE "3-assembled-output/gfx-raster_line-bank5.asm"
+ INCLUDE "3-assembled-output/gfx-raster_lcold-bank5.asm"
  INCLUDE "3-assembled-output/gfx-flare-bank5.asm"
 .R_LOEND
 
