@@ -30,10 +30,10 @@
 \     from the system's seed (pf_craters), base 0.
 \
 \ Elite's state is not touched: of Elite's zero page the engine uses only
-\ &18-&1B and &23-&26, temporaries that the game sets before it reads them
-\ (XX16's last three bytes, which are LL9's for a ship, P, V+1, XX and
-\ YY), and A, X, Y and the flags are preserved. The frame layer makes
-\ the rows with gfx-merid.asm's PC_ROWS (f_bounds, in bank 6).
+\ &18-&1B, temporaries that the game sets before it reads them (XX16's
+\ last three bytes, which are LL9's for a ship, and P), and A, X, Y and
+\ the flags are preserved. The frame layer makes the rows with
+\ gfx-merid.asm's PC_ROWS (f_bounds, in bank 6).
 \ 6-harness/planet_caps.py models it all bit for bit.
 \
 \ ******************************************************************************
@@ -164,8 +164,12 @@
  RTS
 .pfs_c EQUB 247, 241, 232, 222
 
-                        \ pf_tilt's variables, after PF_HOOK in its page (bank
-                        \ 4, where the code is; pc_circ reads pcv and pcn)
+                        \ pf_tilt's table and variables, after PF_HOOK in its
+                        \ page (bank 4, where the code is; pc_circ reads pcv
+                        \ and pcn)
+.pfn_lo EQUB LO(10923), LO(9770), LO(10596)
+.pfn_hi EQUB HI(10923), HI(9770), HI(10596)
+.pfn_k  EQUB 0, 2, 3
 .pcv    SKIP 6          \ the axis (three sign-magnitude words: pf_tilt)
 .pcn    SKIP 2          \ 2^24 / the axis' nominal length (>> 3)
 .pft_f  SKIP 1          \ pf_tilt's own
@@ -259,9 +263,6 @@
  BPL pft1
  RTS
 
-.pfn_lo EQUB LO(10923), LO(9770), LO(10596)
-.pfn_hi EQUB HI(10923), HI(9770), HI(10596)
-.pfn_k  EQUB 0, 2, 3
 
 \ pft_add: pft_r += the INWK word at X + Y, its magnitude shifted right A
 \ times, negated if its sign EOR pft_n bit 0 is set (Y kept)

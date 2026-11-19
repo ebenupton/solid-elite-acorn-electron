@@ -55,9 +55,9 @@
 \     circle's record into the next slot of PCB, from the axis pcv (pf_tilt's
 \     sign-magnitude words), its scale pcn, the cosine pcc and its sign
 \     pcneg and the body pcbx, pcby, pcr; its part of the base colour into
-\     pc_inv. It uses Elite's zero page &18-&1B and &23-&26 (temporaries
-\     that the game sets before it reads them: XX16's last three bytes, P,
-\     V+1, XX and YY), and reads
+\     pc_inv. It uses Elite's zero page &18-&1B (pm_p: temporaries
+\     that the game sets before it reads them, XX16's last three bytes and
+\     P), and reads
 \     the quarter squares (QSL, QSH);
 \
 \   * PC_ROWS (the planet's records), in the frame (bank 6's f_bounds; the
@@ -71,10 +71,6 @@
 
 pm_p  = &18             \ zero page workspace (Elite's temporaries): product,
                         \ quotient
-pmi_n = &23             \ pm_isqrt's: n' (&23-&24) and a square (&25-&26)
-pmi_c = &25
-pc_xs = &23             \ pcl4's X (NMOS: for PHX, PLX; pmi_n's byte, as pcl4
-                        \ does not call pm_isqrt)
 
 \ A circle's record (RSZ bytes, in its slot of PCB)
 R_A   = 0               \ a, 16.16 signed
@@ -358,7 +354,8 @@ PCMAX = 3               \ the planet's records (slots 0-2)
 .pcl4
  LDX #0                 \ the centre (xc, yc) = (cx, cy) + d (hx, hy) (16.8),
 .pcl4a                  \ rounded: C0, the centre line at row Yc, and Yc (rows
- STX pc_xs              \ Yc +/- k from the ellipse's centre row)
+ STX pcl4x+1            \ Yc +/- k from the ellipse's centre row; X kept in
+                        \ pcl4x's operand)
  TXA
  LSR A                  \ (NMOS: C clear, X even)
  TAY
@@ -369,7 +366,8 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  TAY
  PLA
  JSR pc_off
- LDX pc_xs
+.pcl4x
+ LDX #0                 \ (patched: X)
  LDA pc_o
  CMP #&80
  LDA pc_o+1
@@ -1189,6 +1187,7 @@ PMQ_H = 23              \ start)
  INC pm_p+3
  RTS
 
+.pmi_n  SKIP 2          \ pm_isqrt's n'
 .pm_a   SKIP 2          \ the multiplicand (pm_mul16, pm_sq16)
 .pm_b   SKIP 2          \ the multiplier
 .pm_t8  SKIP 1          \ a product's low byte (PMQ)
@@ -1238,7 +1237,9 @@ PMQ_H = 23              \ start)
  CMP #0
  BNE pis1
  TXA                    \ n < 256: n' = 256 n, k = 4
- BEQ pis9               \ (n = 0: f = 0, the remainder 0)
+ BNE pis0
+ RTS                    \ (n = 0: f = 0, the remainder 0)
+.pis0
  LDX #0
  LDY #4
 .pis1
@@ -2257,6 +2258,7 @@ ASSERT pra1 = pra0 + 7 AND pra3 = pra0 + 21 AND prk1 = prk0 + 7 AND prk3 = prk0 
                         \ (in bank 4, with the code: the variables that
                         \ pc_circ reads and writes most)
 .pm_tt  SKIP 2          \ a temporary: pcl1's, pm_isqrt's n and remainder
+.pmi_c  SKIP 2          \ pm_isqrt's square
 .wr     SKIP RSZ        \ the record being made
 .pcbx   SKIP 2          \ the body: its centre and radius
 .pcby   SKIP 2
