@@ -719,7 +719,7 @@ ENDMACRO
 .pfx      SKIP 1         \ r_pgfix's X, Y and the character row's address's
 .pfy      SKIP 1         \ high byte
 .pfh      SKIP 1
-.rmb_y    SKIP 1         \ R_MARKBOX's row
+.rmb_y    SKIP 1         \ r_mrows' last row
 .R_PRBUF  SKIP 1         \ the rasteriser's private state: the current buffer
 .R_PRDYT  SKIP 2         \ (R_INIT sets it to 0 first); per buffer the rows that
 .R_PRDYB  SKIP 2         \ may have a dirty extent, the star records; the rows
@@ -1368,8 +1368,27 @@ ASSERT r_colo = r_cole + 1
 .R_MARKDIRTY
   R_IN2 R_XL, R_XR
 .r_mdirty                 \ (this bank's: r_xl, r_xr)
+  STY rmb_y               \ (one row)
+\ r_mrows: rows Y .. rmb_y (Y <= rmb_y): the buffer's row range extended by
+\ them, then each row's DIRTY by r_xl .. r_xr, in one loop.  Y = the last
+\ row on exit.
+.r_mrows
 {
-  LDA r_xl
+  LDX R_PRBUF
+  TYA
+  CMP R_PRDYT,X
+  BCS n3
+  STA R_PRDYT,X
+.n3
+  LDA rmb_y
+  STA lim+1
+  CMP R_PRDYB,X
+  BCC n4
+  STA R_PRDYB,X
+.n4
+  LDX r_xl
+.lp
+  TXA
 .^r_pt05 CMP r_dl,Y
   BCS n1
 .^r_pt06 STA r_dl,Y
@@ -1379,16 +1398,12 @@ ASSERT r_colo = r_cole + 1
   BCC n2
 .^r_pt08 STA r_dr,Y
 .n2
-  LDX R_PRBUF
-  TYA
-  CMP R_PRDYT,X
-  BCS n3
-  STA R_PRDYT,X
-.n3
-  CMP R_PRDYB,X
-  BCC n4
-  STA R_PRDYB,X
-.n4
+.lim
+  CPY #0                  \ (the last row)
+  BCS done
+  INY
+  BNE lp                  \ (always)
+.done
   RTS
 }
 

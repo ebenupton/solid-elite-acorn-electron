@@ -314,14 +314,9 @@ c_RB  = RZB + &1F                 \ its run's base + R_RUNX - 3
 .R_MARKBOX
   R_IN2 R_XL, R_XR
 .r_mbox                   \ (this bank's: r_xl, r_xr)
-{
+  LDA R_BY1               \ rows Y .. R_BY1 (the one row Y if it is less): r_mrows
+  STA rmb_y
+  CPY rmb_y
+  BCC P%+5
   STY rmb_y
-.lp
-  JSR r_mdirty
-  LDY rmb_y
-  CPY R_BY1
-  INY
-  STY rmb_y
-  BCC lp
-  RTS
-}
+  JMP r_mrows
