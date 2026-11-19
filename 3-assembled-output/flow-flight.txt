@@ -1,4 +1,4 @@
-hot &8000-&A698: 59 units, 9850 bytes, 31 free
+hot &8000-&A698: 59 units, 9881 bytes, 0 free
   &8000    22 S%
   &8016    13 INBAY
   &8023     9 LTLI
@@ -39,25 +39,25 @@ hot &8000-&A698: 59 units, 9850 bytes, 31 free
   &95F2    70 TIS3..DVIDT
   &9638    60 LL5
   &9674   110 LL28
-  &96E2   120 L5SET
-  &975A     4 SHCOL
-  &975E     6 RECM
-  &9764    28 MFRAME
-  &9780    11 LL42F
-  &978B   716 L_REC
-  &9A57  1650 LL9 (Part 1 of 12)..LL9 (Part 6 of 12)
-  &A0C9   385 LL61..LL9 (Part 9 of 12)
-  &A24A     1 LL9 (Part 9 of 12), drawing
-  &A24B     6 LL9 (Part 10 of 12)
-  &A251     1 LL9 (Part 11 of 12)
-  &A252     2 LL9 (Part 12 of 12)
-  &A254     1 LL9 (Part 12 of 12), drawing
-  &A255   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
-  &A3F9    87 MVT1
-  &A450   103 MVS4
-  &A4B7    53 MVT6
-  &A4EC   190 MV40
-  &A5AA   208 LYN..SCAN
+  &96E2   148 L5SET
+  &9776     4 SHCOL
+  &977A     6 RECM
+  &9780    28 MFRAME
+  &979C    11 LL42F
+  &97A7   716 L_REC
+  &9A73  1653 LL9 (Part 1 of 12)..LL9 (Part 6 of 12)
+  &A0E8   385 LL61..LL9 (Part 9 of 12)
+  &A269     1 LL9 (Part 9 of 12), drawing
+  &A26A     6 LL9 (Part 10 of 12)
+  &A270     1 LL9 (Part 11 of 12)
+  &A271     2 LL9 (Part 12 of 12)
+  &A273     1 LL9 (Part 12 of 12), drawing
+  &A274   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
+  &A418    87 MVT1
+  &A46F   103 MVS4
+  &A4D6    53 MVT6
+  &A50B   190 MV40
+  &A5C9   208 LYN..SCAN
 hotm &1A58-&1E3F: 21 units, 490 bytes, 510 free
   &1A58    41 SUNSC
   &1A81    26 UNIV

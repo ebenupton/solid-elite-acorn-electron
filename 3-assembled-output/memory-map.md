@@ -26,8 +26,8 @@
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 944 | 0 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
-| bank 4 (flight) | `&8000-&A679` | `S%` and the hot pass | 9850 | 0 |
-| bank 4 (flight) | `&A67A-&B138` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2712 | 39 |
+| bank 4 (flight) | `&8000-&A698` | `S%` and the hot pass | 9881 | 0 |
+| bank 4 (flight) | `&A699-&B138` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2712 | 8 |
 | bank 4 (flight) | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 4 (flight) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 4 (flight) | `&B200-&B2FF` | `PF_HOOK` (bank 4 high pass) | 235 | 21 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1362, main RAM (flight) 511, main RAM (docked) 1171, bank 4 (flight) 61, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.
+Free, by place: main RAM 1362, main RAM (flight) 511, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.

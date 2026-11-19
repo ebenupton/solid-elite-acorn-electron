@@ -31117,7 +31117,7 @@ ENDMACRO
 MACRO L5ADD s, k
 
                         \ Set (l5g A) = (l5g l5t) + (the sign in s, EOR the sign
-                        \ of XX16+k+l5i; A), as LL38 does: signs are in bit 7.
+                        \ of XX16S+k+l5i; A), as LL38 does: signs are in bit 7.
                         \ Returns Y = l5i; X is changed
 
  TAX                    \ Keep the magnitude in X
@@ -31125,7 +31125,7 @@ MACRO L5ADD s, k
  LDY l5i                \ Set Y to the axis's offset
 
  LDA s                  \ If the two signs are different, jump to l5as
- EOR XX16+k,Y
+ EOR XX16S+k,Y
  EOR l5g
  BMI l5as
 
@@ -31304,6 +31304,14 @@ ENDMACRO
  LDA XX4                \ Put XX4 into the comparison at l5x4
  STA l5x4+1
 
+ LDX #17                \ Copy XX16 into XX16S, in this bank, for the loop's
+                        \ reads of the orientation vectors' scaled magnitudes
+.l5c16                  \ and their signs, which are the same for every vertex
+ LDA XX16,X             \ (so each is read from zero page once a ship, not
+ STA XX16S,X            \ three times a vertex)
+ DEX
+ BPL l5c16
+
  RTS                    \ Return from the subroutine
 
 .l5i
@@ -31362,6 +31370,12 @@ ENDMACRO
  EQUB 0                 \ Non-zero: LL9 has shown a face of the ship it is
                         \ drawing without testing its normal (part 5; S_SHIP
                         \ reads it and clears it)
+
+.XX16S
+
+ SKIP 18                \ Part 6: a copy of XX16, the orientation vectors'
+                        \ scaled magnitudes and their signs, made by L5SET, for
+                        \ the reads of the loop's dot products
 
 .l8d
 
@@ -32630,7 +32644,6 @@ LIGHT_SUN = TRUE
  LDY l8y                \ Store the result in the low byte's location, so we
  STA XX16,Y             \ can keep the old, unscaled high byte intact for the
                         \ sign
-
  DEY                    \ Decrement the loop counter twice
  DEY
 
@@ -33306,30 +33319,25 @@ LIGHT_SUN = TRUE
                         \ and the same for y and z. The vertex's coordinates
                         \ are put into its three multiplications (the macro
                         \ L5MUL), which read the orientation vectors from XX16
-                        \ as part 2 leaves it, as the transpose. The products,
+                        \ as part 2 leaves it (from its copy XX16S, which
+                        \ L5SET makes, in this bank), as the transpose. The products,
                         \ the sums and their signs are the original's (FMLTU and
                         \ LL38)
 
 .l5b0
 
  LDA &FFFF,Y            \ Fetch byte #0 for this vertex, the magnitude of its
- STA l5m0+5             \ x-coordinate, into the first multiplication
- STA l5m0+14
- STA l5m0+21
+ L8PB l5m0              \ x-coordinate, into the first multiplication
 
 .l5b1
 
  LDA &FFFF,Y            \ Fetch byte #1 for this vertex, the magnitude of its
- STA l5m1+5             \ y-coordinate, into the second multiplication
- STA l5m1+14
- STA l5m1+21
+ L8PB l5m1              \ y-coordinate, into the second multiplication
 
 .l5b2
 
  LDA &FFFF,Y            \ Fetch byte #2 for this vertex, the magnitude of its
- STA l5m2+5             \ z-coordinate, into the third multiplication
- STA l5m2+14
- STA l5m2+21
+ L8PB l5m2              \ z-coordinate, into the third multiplication
 
  LDA #0                 \ Clear bit 7 of l5n and l5n+1: the vertex's x and
  STA l5n                \ y-coordinates have the signs of the ship's, so far
@@ -33341,26 +33349,26 @@ LIGHT_SUN = TRUE
 .l5ax
 
  LDA l5s                \ Set l5g to the sign of x * sidev (bit 7), for this
- EOR XX16+1,Y           \ axis
+ EOR XX16S+1,Y          \ axis
  STA l5g
 
 .l5m0
 
- L5MUL XX16             \ Set l5t = x * |sidev| / 256
+ L5MUL XX16S            \ Set l5t = x * |sidev| / 256
  STA l5t
 
  LDY l5i                \ Set Y to the axis's offset once more
 
 .l5m1
 
- L5MUL XX16+6           \ Set A = y * |roofv| / 256
+ L5MUL XX16S+6          \ Set A = y * |roofv| / 256
 
  L5ADD l5s+1, 7         \ Set (l5g l5t) = (l5g l5t) + y * roofv / 256
  STA l5t
 
 .l5m2
 
- L5MUL XX16+12          \ Set A = z * |nosev| / 256
+ L5MUL XX16S+12         \ Set A = z * |nosev| / 256
 
  L5ADD l5s+2, 13        \ Set (l5g A) = (l5g l5t) + z * nosev / 256, which is
                         \ the original's XX12 for this axis: vertv_x, vertv_y or
