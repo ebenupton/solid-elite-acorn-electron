@@ -214,6 +214,17 @@ export async function runElite(opts) {
     };
     res.refPatched = 0; res.deadN = {}; res.siteN = {}; res.keepN = 0; res.keepFirst = null;
 
+    // the energy bomb's key is the build's own (KYTB+8 in the flight code's
+    // image: "-" since FUNC took TAB's place), where the pilot presses the
+    // original's TAB: at Rd2, the scan DK4 reads the secondary flight keys
+    // with, and at DKS4
+    let bombKey = 0x60;
+    {
+        const a = P.flight.sy.KYTB, role = P.flight.bank.KYTB || "H";
+        const im = a === undefined ? null : P.flight.images.find(im => (a < 0x8000 || im.map === role) && a + 8 >= im.base && a + 8 < im.base + im.data.length);
+        if (im) bombKey = im.data[a + 8 - im.base] & 0x7f;
+    }
+
     // the compared regions, in clkh (in order: "snap" returns them so)
     const offOfAddr = new Map();
     { let o = 0; for (const [a, n] of regions) { e.send(`treg ${a} ${n}`); for (let i = 0; i < n; i++) offOfAddr.set(a + i, o + i); o += n; } }
@@ -235,6 +246,9 @@ export async function runElite(opts) {
         const r = e.ask(`snap ${settle ? 1 : 0}`);
         if (settle) e.invalidate();
         const buf = Uint8Array.from(r.subarray(0, total));
+        // (KL, the key the scan found, in the original's numbers: the bomb's)
+        const kl = offOfAddr.get(fsy.KL);
+        if (bombKey !== 0x60 && kl !== undefined && buf[kl] === bombKey) buf[kl] = 0x60;
         const d = [];
         for (let i = total; i + 1 < r.length; i += 2) d.push(offOfAddr.get(r[i] | r[i + 1] << 8));
         return { snap: canon(buf), dirty: d.length ? d.sort((x, y) => x - y) : null };
@@ -259,8 +273,11 @@ export async function runElite(opts) {
             }
             case "Rd2":
                 if (started) {
+                    // (the scan's answer is the original's, the lowest of the
+                    // BBC Micro's numbers, and then the build's key for it)
                     const ks = keysDown.filter(k => k >= 16 && k < 128);
-                    e.a = ks.length ? Math.min(...ks) | 0x80 : 0x80;
+                    const k0 = ks.length ? Math.min(...ks) : 0;
+                    e.a = (k0 === 0x60 ? bombKey : k0) | 0x80;
                 }
                 break;
             case "DKS4": {
@@ -272,7 +289,7 @@ export async function runElite(opts) {
                     const w = labelOf(h.prog, c.site, c.romsel);
                     down = opts.pilot.dks ? !!opts.pilot.dks({ ...ctxBase, kind: "dks4", key, site: w, prog: pn }) : false;
                     if (down) res.keyLog.push([iter, "CTRL:" + w, "1"]);
-                } else down = keysDown.includes(key);
+                } else down = keysDown.includes(key === bombKey ? 0x60 : key === 0x60 ? bombKey : key);
                 e.x = down ? key | 0x80 : key;
                 break;
             }
