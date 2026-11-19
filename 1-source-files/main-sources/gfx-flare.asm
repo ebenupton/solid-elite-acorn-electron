@@ -666,8 +666,6 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  ADC fl_cl
  STA flo4+1
  STA flo5+1
- STA flo6+1
- STA flo7+1
  STA flo8+1
  STA flo10+1
 .^r_yp8
@@ -675,8 +673,6 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  ADC #0
  STA flo4+2
  STA flo5+2
- STA flo6+2
- STA flo7+2
  STA flo8+2
  STA flo10+2
                         \ (and on into fl_or)
@@ -691,23 +687,18 @@ fl_mt = P% - 4          \ row masks of densities 1, 1, 2, 3, 4 / 8 (the 2x4
  BEQ flo9
  LDA fl_rq
  AND fl_m
+ SEC
+.flo2                   \ (A = the byte's mask: the last's, then fl_m)
 .flo4
  ORA &FFFF,Y
 .flo5
  STA &FFFF,Y
- SEC
- BCS flo3
-.flo2
-.flo6
- LDA &FFFF,Y
- ORA fl_m
-.flo7
- STA &FFFF,Y
-.flo3
  TYA
- SBC #8
+ SBC #8                 \ (C = 1, and after it)
  TAY
- BNE flo2
+ BEQ flo9
+ LDA fl_m
+ BNE flo2               \ (always: a row's mask is not zero)
 .flo9                   \ (Y = 0)
  LDA fl_lq
  AND fl_m

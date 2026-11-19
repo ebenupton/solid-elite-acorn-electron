@@ -463,7 +463,7 @@ End macro R_IN2
      AEEC   8D 79 9F   STA &9F79
      AEEF   8D 99 BB   STA &BB99
      AEF2   8D 02 A3   STA &A302
-     AEF5   8D E7 A6   STA &A6E7
+     AEF5   8D E1 A6   STA &A6E1
      AEF8   8D AE 94   STA &94AE
      AEFB   8D 42 AF   STA &AF42
      AEFE   BD 29 AF   LDA &AF29,X
@@ -474,7 +474,7 @@ End macro R_IN2
      AF0D   8D 7A 9F   STA &9F7A
      AF10   8D 9A BB   STA &BB9A
      AF13   8D 03 A3   STA &A303
-     AF16   8D E8 A6   STA &A6E8
+     AF16   8D E2 A6   STA &A6E2
      AF19   8D AF 94   STA &94AF
      AF1C   8D 43 AF   STA &AF43
      AF1F   A9 FF      LDA #&FF
@@ -5034,7 +5034,7 @@ raster_line.asm: 1669  bytes
      A2B8   8E A1 8F   STX &8FA1
      A2BB   A2 08      LDX #&08
 .flv1
-     A2BD   BC 35 A7   LDY &A735,X
+     A2BD   BC 23 A7   LDY &A723,X
      A2C0   AD 92 1E   LDA &1E92
      A2C3   18         CLC
      A2C4   79 9C 8F   ADC &8F9C,Y
@@ -5045,7 +5045,7 @@ raster_line.asm: 1669  bytes
      A2CF   C9 FE      CMP #&FE
      A2D1   B0 57      BCS &A32A
      A2D3   8D A2 8F   STA &8FA2
-     A2D6   BC 3E A7   LDY &A73E,X
+     A2D6   BC 2C A7   LDY &A72C,X
      A2D9   AD 93 1E   LDA &1E93
      A2DC   18         CLC
      A2DD   79 9C 8F   ADC &8F9C,Y
@@ -5092,7 +5092,7 @@ raster_line.asm: 1669  bytes
      A330   D0 01      BNE &A333
      A332   60         RTS
      A333   18         CLC
-     A334   BE 47 A7   LDX &A747,Y
+     A334   BE 35 A7   LDX &A735,Y
 .flm1
      A337   AD 92 1E   LDA &1E92
      A33A   20 F6 A3   JSR &A3F6
@@ -5134,7 +5134,7 @@ raster_line.asm: 1669  bytes
      A381   8C 9D 8F   STY &8F9D
      A384   30 24      BMI &A3AA
 .flm8
-     A386   BC 2D A7   LDY &A72D,X
+     A386   BC 1B A7   LDY &A71B,X
 .flc1
      A389   A2 01      LDX #&01
 .flc2
@@ -5235,12 +5235,12 @@ raster_line.asm: 1669  bytes
      A457   8E AD 8F   STX &8FAD
 .fsr1
      A45A   8E A9 8F   STX &8FA9
-     A45D   BD 51 A7   LDA &A751,X
+     A45D   BD 3F A7   LDA &A73F,X
      A460   AC 98 8F   LDY &8F98
      A463   F0 01      BEQ &A466
      A465   0A         ASL A
      A466   8D A3 8F   STA &8FA3
-     A469   BD 52 A7   LDA &A752,X
+     A469   BD 40 A7   LDA &A740,X
      A46C   C0 00      CPY #&00
      A46E   F0 01      BEQ &A471
      A470   0A         ASL A
@@ -5427,13 +5427,13 @@ raster_line.asm: 1669  bytes
      A5C2   02
 .fl_hl
      A5C3   00
-     A5C4   67
-     A5C5   72
-     A5C6   63
-     A5C7   7A
-     A5C8   6C
+     A5C4   55
+     A5C5   60
+     A5C6   51
+     A5C7   68
+     A5C8   5A
      A5C9   00
-     A5CA   85
+     A5CA   73
      A5CB   AA
      A5CC   00
      A5CD   00
@@ -5473,7 +5473,7 @@ raster_line.asm: 1669  bytes
 .fsd5
      A5FD   AC A9 8F   LDY &8FA9
 .fsd6
-     A600   B9 63 A7   LDA &A763,Y
+     A600   B9 51 A7   LDA &A751,Y
      A603   AA         TAX
      A604   49 FF      EOR #&FF
      A606   38         SEC
@@ -5574,184 +5574,175 @@ raster_line.asm: 1669  bytes
      A6CD   B9 00 8E   LDA &8E00,Y
      A6D0   18         CLC
      A6D1   6D B1 8F   ADC &8FB1
-     A6D4   8D 09 A7   STA &A709
-     A6D7   8D 0C A7   STA &A70C
-     A6DA   8D 12 A7   STA &A712
+     A6D4   8D FE A6   STA &A6FE
+     A6D7   8D 01 A7   STA &A701
+     A6DA   8D 15 A7   STA &A715
      A6DD   8D 18 A7   STA &A718
-     A6E0   8D 27 A7   STA &A727
-     A6E3   8D 2A A7   STA &A72A
 .r_yp8
-     A6E6   B9 00 8C   LDA &8C00,Y
-     A6E9   69 00      ADC #&00
-     A6EB   8D 0A A7   STA &A70A
-     A6EE   8D 0D A7   STA &A70D
-     A6F1   8D 13 A7   STA &A713
-     A6F4   8D 19 A7   STA &A719
-     A6F7   8D 28 A7   STA &A728
-     A6FA   8D 2B A7   STA &A72B
+     A6E0   B9 00 8C   LDA &8C00,Y
+     A6E3   69 00      ADC #&00
+     A6E5   8D FF A6   STA &A6FF
+     A6E8   8D 02 A7   STA &A702
+     A6EB   8D 16 A7   STA &A716
+     A6EE   8D 19 A7   STA &A719
 .fl_or
-     A6FD   AC AD 8F   LDY &8FAD
-     A700   F0 1E      BEQ &A720
-     A702   AD 91 8F   LDA &8F91
-     A705   2D AA 8F   AND &8FAA
-.flo4
-     A708   19 FF FF   ORA &FFFF,Y
-.flo5
-     A70B   99 FF FF   STA &FFFF,Y
-     A70E   38         SEC
-     A70F   B0 09      BCS &A71A
+     A6F1   AC AD 8F   LDY &8FAD
+     A6F4   F0 18      BEQ &A70E
+     A6F6   AD 91 8F   LDA &8F91
+     A6F9   2D AA 8F   AND &8FAA
+     A6FC   38         SEC
 .flo2
-.flo6
-     A711   B9 FF FF   LDA &FFFF,Y
-     A714   0D AA 8F   ORA &8FAA
-.flo7
-     A717   99 FF FF   STA &FFFF,Y
-.flo3
-     A71A   98         TYA
-     A71B   E9 08      SBC #&08
-     A71D   A8         TAY
-     A71E   D0 F1      BNE &A711
+.flo4
+     A6FD   19 FF FF   ORA &FFFF,Y
+.flo5
+     A700   99 FF FF   STA &FFFF,Y
+     A703   98         TYA
+     A704   E9 08      SBC #&08
+     A706   A8         TAY
+     A707   F0 05      BEQ &A70E
+     A709   AD AA 8F   LDA &8FAA
+     A70C   D0 EF      BNE &A6FD
 .flo9
-     A720   AD 90 8F   LDA &8F90
-     A723   2D AA 8F   AND &8FAA
+     A70E   AD 90 8F   LDA &8F90
+     A711   2D AA 8F   AND &8FAA
 .flo8
-     A726   19 FF FF   ORA &FFFF,Y
+     A714   19 FF FF   ORA &FFFF,Y
 .flo10
-     A729   99 FF FF   STA &FFFF,Y
-     A72C   60         RTS
+     A717   99 FF FF   STA &FFFF,Y
+     A71A   60         RTS
 .fl_dk
+     A71B   00
+     A71C   03
+     A71D   02
+     A71E   04
+     A71F   02
+     A720   01
+     A721   02
+     A722   02
+.fl_pxi
+     A723   00
+     A724   01
+     A725   04
+     A726   00
+     A727   00
+     A728   02
+     A729   02
+     A72A   03
+     A72B   03
+.fl_pyi
+     A72C   00
      A72D   00
-     A72E   03
-     A72F   02
+     A72E   00
+     A72F   01
      A730   04
      A731   02
-     A732   01
+     A732   03
      A733   02
-     A734   02
-.fl_pxi
-     A735   00
-     A736   01
-     A737   04
-     A738   00
-     A739   00
-     A73A   02
-     A73B   02
-     A73C   03
-     A73D   03
-.fl_pyi
-     A73E   00
-     A73F   00
-     A740   00
-     A741   01
-     A742   04
-     A743   02
-     A744   03
-     A745   02
-     A746   03
+     A734   03
 .fl_vred
-     A747   00
-     A748   FD
-     A749   FD
-     A74A   FD
-     A74B   FE
-     A74C   FE
-     A74D   FE
-     A74E   FF
-     A74F   FF
-     A750   00
+     A735   00
+     A736   FD
+     A737   FD
+     A738   FD
+     A739   FE
+     A73A   FE
+     A73B   FE
+     A73C   FF
+     A73D   FF
+     A73E   00
 .fl_ring
-     A751   0F
-     A752   00
-     A753   0F
-     A754   03
-     A755   0E
-     A756   06
-     A757   0C
-     A758   08
-     A759   0B
-     A75A   0B
-     A75B   08
-     A75C   0C
-     A75D   06
-     A75E   0E
-     A75F   03
-     A760   0F
-     A761   00
-     A762   0F
+     A73F   0F
+     A740   00
+     A741   0F
+     A742   03
+     A743   0E
+     A744   06
+     A745   0C
+     A746   08
+     A747   0B
+     A748   0B
+     A749   08
+     A74A   0C
+     A74B   06
+     A74C   0E
+     A74D   03
+     A74E   0F
+     A74F   00
+     A750   0F
 .fl_htab
 .fl_h3
 Macro FLHW:
-     A763   03
-     A764   03
-     A765   02
-     A766   01
+     A751   03
+     A752   03
+     A753   02
+     A754   01
 End macro FLHW
 .fl_h4
 Macro FLHW:
-     A767   04
-     A768   04
-     A769   04
-     A76A   03
-     A76B   02
+     A755   04
+     A756   04
+     A757   04
+     A758   03
+     A759   02
 End macro FLHW
 .fl_h5
 Macro FLHW:
-     A76C   05
-     A76D   05
-     A76E   05
-     A76F   04
-     A770   03
-     A771   02
+     A75A   05
+     A75B   05
+     A75C   05
+     A75D   04
+     A75E   03
+     A75F   02
 End macro FLHW
 .fl_h7
 Macro FLHW:
-     A772   07
-     A773   07
-     A774   07
-     A775   06
-     A776   06
-     A777   05
-     A778   04
-     A779   02
+     A760   07
+     A761   07
+     A762   07
+     A763   06
+     A764   06
+     A765   05
+     A766   04
+     A767   02
 End macro FLHW
 .fl_h10
 Macro FLHW:
-     A77A   0A
-     A77B   0A
-     A77C   0A
-     A77D   0A
-     A77E   09
-     A77F   09
-     A780   08
-     A781   07
-     A782   06
-     A783   05
-     A784   03
+     A768   0A
+     A769   0A
+     A76A   0A
+     A76B   0A
+     A76C   09
+     A76D   09
+     A76E   08
+     A76F   07
+     A770   06
+     A771   05
+     A772   03
 End macro FLHW
 .fl_h18
 Macro FLHW:
-     A785   12
-     A786   12
-     A787   12
-     A788   12
-     A789   12
-     A78A   11
-     A78B   11
-     A78C   11
-     A78D   10
-     A78E   10
-     A78F   0F
-     A790   0E
-     A791   0E
-     A792   0D
-     A793   0C
-     A794   0A
-     A795   09
-     A796   07
-     A797   04
+     A773   12
+     A774   12
+     A775   12
+     A776   12
+     A777   12
+     A778   11
+     A779   11
+     A77A   11
+     A77B   10
+     A77C   10
+     A77D   0F
+     A77E   0E
+     A77F   0E
+     A780   0D
+     A781   0C
+     A782   0A
+     A783   09
+     A784   07
+     A785   04
 End macro FLHW
 .R_LOEND
-Bank 5 (rasteriser): the row runs &8000-&90FF  (made at start), &9100 -&A797  (free 104 ), &AE00 -&BF52  (the jump table &&BF29 -&BF52 ; free 173 ), free 136 , the common block &B1A3 -&B1FE  (free 1 ), r_gl, r_wq, the 32-bit divide and the interrupt handler to &B3F9  (free 6 )
+Bank 5 (rasteriser): the row runs &8000-&90FF  (made at start), &9100 -&A785  (free 122 ), &AE00 -&BF52  (the jump table &&BF29 -&BF52 ; free 173 ), free 136 , the common block &B1A3 -&B1FE  (free 1 ), r_gl, r_wq, the 32-bit divide and the interrupt handler to &B3F9  (free 6 )
 Saving file '3-assembled-output/BANK5.bin'
 Including file 1-source-files/main-sources/elite-map.asm
 Processed file '1-source-files/main-sources/elite-map.asm' ok
