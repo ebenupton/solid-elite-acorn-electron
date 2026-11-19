@@ -128,6 +128,28 @@
                         \ file into the bank no further
  ASSERT QSL = SETF% AND QSH + &200 = &C000
 
+ COMMON% = &B1A3        \ The common block (elite-common.asm): the code that
+ COMMON_END% = &B200    \ pages the banks, at the same address with the same
+                        \ bytes in every bank's image (bank 5's assembly makes
+                        \ them, COMMON.bin, which the others take in:
+                        \ 2-build-files/bank5.py), so that the instruction
+                        \ after a write to ROMSEL is fetched from the bank
+                        \ paged in, at the next address: in the room below
+                        \ bank 5's per-x tables, below bank 6's page-aligned
+                        \ state, below the blueprint slot in each home bank
+                        \ and after each cold image (elite-layout-*.asm,
+                        \ gfx-bank5.asm, gfx-bank6.asm; 2-build-files/
+                        \ mapcheck.py checks that the six images hold the
+                        \ same bytes there)
+
+ FJT% = &BFC0           \ Bank 6's entries, a table of jumps at its top
+                        \ (gfx-bank6.asm), which the common block's GCALL
+                        \ calls: FG_* are their low bytes
+
+ DPENT% = COMMON_END%   \ The painter's entries in the flight code's bank 7,
+                        \ which the common block's C_T7 calls by their low
+                        \ bytes (elite-layout-flight.asm)
+
  ROMSEL = &FE05         \ The Electron's ROM select register (the ULA's
                         \ interrupt clear and paging register: bits 0-3 page
                         \ a ROM, bits 4-6 clear interrupts, so a bank number,
@@ -233,14 +255,17 @@
                         \ LASY; cleared after each frame)
  GNF = GVARS + 10       \ F_SHIP's and L_REC's inputs: the ship's number of
  GTYPE = GVARS + 12     \ faces and its type (TYPE, or 32 for the dodecahedron
-                        \ station: a type 2 with 24 vertices); GVARS + 9 and
-                        \ + 11 are free
+                        \ station: a type 2 with 24 vertices); GVARS + 11 is
+                        \ free
  GHOLD = GVARS + 8      \ Non-zero from a program's load (F_DIRECT) until its
                         \ first screen clear (TTX66): nothing reads it on the
                         \ Electron, whose loads stage below buffer 1
  GSTASH = GVARS + 13    \ Bit 7 set: a disc command has used buffer 0 (PCLI):
                         \ the next frame starts it afresh (f_b0new)
- GA = GVARS + 14        \ GCALL's A across the paging (gfx-glue.asm)
+ GA = GVARS + 14        \ A across a paging (elite-common.asm's GCALL and stubs)
+ GX = GVARS + 9         \ X across a paging, for the routines that take it
+                        \ (gfx-glue.asm: the common block's calls take the
+                        \ routine's entry in X)
  PF_CLS = GVARS + 15    \ The planet's class, as PF_HOOK made it in this
                         \ iteration (gfx-planet7.asm: 0 a meridian planet, 1
                         \ craters; bit 7 set if it made the surface's circles,
@@ -249,27 +274,27 @@
                         \ the disc: F_PFHOLD, f_hrec)
 
                         \ The frame layer's entries, as the game calls them
-                        \ (LDX #FG_xxx : JSR GCALL, gfx-glue.asm), in the order
-                        \ of bank 6's dispatcher (gfx-bank6.asm)
+                        \ (LDX #FG_xxx : JSR GCALL, elite-common.asm), in the
+                        \ order of bank 6's table of jumps (gfx-bank6.asm)
 
- FG_INIT     = 0         \ the entries, in fjt_lo's order (gfx-bank6.asm)
- FG_DIRECT   = 1
- FG_FRAME    = 2
- FG_SHIP     = 3
- FG_LINE     = 4
- FG_PDOT     = 5
- FG_PLANET   = 6
- FG_SHPPT    = 7
- FG_CHAR     = 8
- FG_DELCHAR  = 9
- FG_CLRTEXT  = 10
- FG_GUN      = 11
- FG_HANG0    = 12
- FG_HANGAR   = 13
- FG_CLOUD    = 14
- FG_SETLD    = 15
- FG_PFHOLD   = 16
- FG_DCHAR    = 17        \ (the game's direct-mode text: TT26, CHPR)
+ FG_INIT    = LO(FJT%) + 3 * 0   \ the entries, in FJT%'s order (gfx-bank6.asm): each
+ FG_DIRECT  = LO(FJT%) + 3 * 1   \ the low byte of its jump there
+ FG_FRAME   = LO(FJT%) + 3 * 2
+ FG_SHIP    = LO(FJT%) + 3 * 3
+ FG_LINE    = LO(FJT%) + 3 * 4
+ FG_PDOT    = LO(FJT%) + 3 * 5
+ FG_PLANET  = LO(FJT%) + 3 * 6
+ FG_SHPPT   = LO(FJT%) + 3 * 7
+ FG_CHAR    = LO(FJT%) + 3 * 8
+ FG_DELCHAR = LO(FJT%) + 3 * 9
+ FG_CLRTEXT = LO(FJT%) + 3 * 10
+ FG_GUN     = LO(FJT%) + 3 * 11
+ FG_HANG0   = LO(FJT%) + 3 * 12
+ FG_HANGAR  = LO(FJT%) + 3 * 13
+ FG_CLOUD   = LO(FJT%) + 3 * 14
+ FG_SETLD   = LO(FJT%) + 3 * 15
+ FG_PFHOLD  = LO(FJT%) + 3 * 16
+ FG_DCHAR   = LO(FJT%) + 3 * 17   \ (the game's direct-mode text: TT26, CHPR)
  FG_N        = 18
 
                         \ The fixed colours of the frame layer's lines and dots
@@ -315,11 +340,11 @@
  SND_ECMA = &30         \ ECMA, which the engine reads (each program's layout
                         \ checks it)
 
- GLUE% = &0724          \ The glue the game calls the frame layer through, and
-                        \ the trampolines into bank 5 (gfx-glue.asm): at a
-                        \ fixed address at the end of the resident block A
-                        \ (&0724-&07BF), which includes it there, so that bank 6
-                        \ can be built against it
+ GLUE% = &0724          \ The circle engine's table that banks 4 and 6 both
+                        \ read (pcb_o, gfx-merid.asm's main pass): at a fixed
+                        \ address at the end of the resident block A, which
+                        \ includes it there, so that bank 6 can be built
+                        \ against it
 
  PFVA% = &06FB          \ The circle engine's variables (gfx-merid.asm and
  PFVH% = RESH% + 16     \ gfx-planet7.asm, the flight code's planet surface in
@@ -330,10 +355,6 @@
                         \ the blueprint slot, to the quarter squares, which a
                         \ set's file loads over (LOMOD) between iterations
  ASSERT PFVA% + 41 = GLUE%
-
- PF_INWK = &46          \ INWK, for bank 5's part of the planet's surface
-                        \ (gfx-planet7.asm's pf_tilt), which is built before the
-                        \ flight code (elite-layout-flight.asm checks it)
 
  LCOL = &A8             \ The colour of the next lines, pixels and characters
                         \ that the drawing routines draw on the space view: a

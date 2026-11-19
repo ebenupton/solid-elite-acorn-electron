@@ -320,6 +320,18 @@ Then `2-build-files/mapcheck.py` checks the map ("The map", below).
 | `WRCHR` (WRCHV) | the resident block | the home bank in, then `JSR S%+6` (`JMP TT26` in the flight code, `JMP CHPR` in the docked code), then the caller's ROM back |
 | `BRKR` (BRKV) | the resident block | the home bank in, then `JMP S%+11` (`JMP BRBR1`, or in the docked code the handler that `BRKBK` and `SVE` set) |
 | `PCLI` (the programs' `OSCLI`) | the resident block | loads a program or a blueprint file into its banks through `STAGE%`, or passes the command to the MOS from main RAM |
+| `GCALL` (the game's hooks into the frame layer) | the common block | bank 6 in, the entry in X (`FG_*`: its jump in `FJT%`), then the caller's bank back |
+| `C_POLY`, `C_T5`, `C_T7`, `C_HOME` (the frame layer's calls, and the painter's: `gfx-glue.asm`) | the common block | bank 5, the flight code's bank 7 or the home bank in, the entry in X (in `RJT`, `DPENT%`, `S%`), then the caller's bank back |
+
+The common block (`elite-common.asm`, `COMMON%` to `COMMON_END%`) is the same
+bytes at the same address in every bank's image (bank 5's assembly makes
+them, `COMMON.bin`, which the other images take in; `mapcheck.py` checks the
+six images), so that the instruction after a write to `ROMSEL` is fetched
+from the bank paged in, at the next address: no code of these calls
+runs in main RAM, which the Electron runs at half
+speed. `&F4` is written before `ROMSEL` on every switch, and the loader writes
+the bank numbers into each bank's copy of the block's first five bytes, and the page of the
+bank's entries into its copy of the call's `JSR` (`cbcopy`, `cbset`).
 
 A far call costs about 110 cycles (`farC6` as `farC`) and three bytes of stack, and passes A, X,
 Y and the flags both ways. The harness (`6-harness/blib.mjs`) sees through

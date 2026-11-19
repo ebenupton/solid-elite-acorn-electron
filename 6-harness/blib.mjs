@@ -97,9 +97,15 @@ export function loadSyms(path) {
 // program is { name, sy (symbols), images: [{ data, map, base }] } and map is
 // "m" (main RAM) or a sideways RAM bank's role, whose bank number the
 // build's resident code keeps at the symbol named in banks (loader symbols).
+// A build with a common block (d.common: common-entry.asm, the labels of the
+// code that every bank holds at the same address) has its labels with the
+// loader's: they are live whatever game bank is paged, as the resident
+// code's are.
 export function loadBuild(file) {
     const d = JSON.parse(readFileSync(file, "utf8"));
     const p = f => resolve(dirname(file), f);
+    const entries = f => { const o = {}; if (f) for (const m of readFileSync(p(f), "utf8").matchAll(/^([A-Za-z_][\w%]*)\s*=\s*&([0-9A-Fa-f]+)/gm)) o[m[1]] = parseInt(m[2], 16); return o; };
+    const common = entries(d.common);
     // (o.banks: the build's file of each label's bank role, "label H" or
     // "label C", for labels in sideways RAM; without it, every label is in
     // its image's mapping by address, as in the original)
@@ -113,7 +119,7 @@ export function loadBuild(file) {
     };
     return {
         file, disc: p(d.disc), progs: { flight: prog("flight", d.flight), docked: prog("docked", d.docked) },
-        loader: loadSyms(p(d.loader)), banks: d.banks || {}, patches: d.patches || [],
+        loader: { ...common, ...loadSyms(p(d.loader)) }, common, banks: d.banks || {}, patches: d.patches || [],
     };
 }
 

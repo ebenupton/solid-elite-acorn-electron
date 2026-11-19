@@ -18,17 +18,26 @@
 \   then         the state: the ship records (F_RP, F_SR), the text map (F_TM,
 \                F_TMR), the discs' half-widths (F_HW, F_HW2, page aligned),
 \                the zero page F_FRAME keeps (f_zsv), the docking slot (F_SLV)
-\   FJT (&BFC0)  the dispatcher: GCALL (gfx-glue.asm) enters here with X =
-\                an entry's number (FG_*), A in GA
+\   FJT% (&BFC0) the entries, a table of jumps: GCALL (the common block's,
+\                elite-common.asm) calls the one whose low byte is in X
+\                (FG_*, elite-map.asm)
 \
-\ It also assembles the main RAM glue (gfx-glue.asm) at GLUE%, as the
-\ resident block includes it, and writes it to GLUE.bin for the test
-\ (6-harness/test_frame.py).
+\ The common block (COMMON% to COMMON_END%: the code that pages the banks,
+\ the same bytes at the same address in every bank, taken in here from bank
+\ 5's assembly, COMMON.bin) is just below the page-aligned state. F_INIT,
+\ which runs once, is assembled in the room of the sun's half-widths (F_HW2),
+\ which are first written after it; the frame layer's calls out of the bank
+\ (gfx-glue.asm) are with its code, in the room after the state and in the
+\ room after FJT%.
+\
+\ It also assembles the circle engine's table in main RAM (gfx-merid.asm's
+\ main pass) at GLUE%, as the resident block includes it, and writes it to
+\ GLUE.bin for the test (6-harness/test_frame.py).
 \
 \ Each file is placed by its passes (2-build-files/streams.py: every block's
-\ "Area:" line names its place): this file INCLUDEs the bank 6 passes and the
-\ glue's main pass (3-assembled-output/<file>-bank6.asm, gfx-glue-main.asm),
-\ which bank6.py has streams.py write first.
+\ "Area:" line names its place): this file INCLUDEs the bank 6 passes
+\ (3-assembled-output/<file>-bank6.asm), which bank6.py has streams.py write
+\ first.
 \
 \ ******************************************************************************
 
@@ -36,13 +45,13 @@
  INCLUDE "1-source-files/main-sources/elite-map.asm"
  INCLUDE "3-assembled-output/bank6-game.asm"
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"
+ INCLUDE "3-assembled-output/common-entry.asm"   \ (the common block's labels)
 
  CPU 0
 
  CLEAR GLUE%, &07C0
  ORG GLUE%
  GUARD &07C0
- INCLUDE "3-assembled-output/gfx-glue-main.asm"
  INCLUDE "3-assembled-output/gfx-merid-main.asm"
 .GLUE_TOP
  SAVE "3-assembled-output/GLUE.bin", GLUE%, GLUE_TOP, GLUE%
@@ -70,6 +79,7 @@
  INCLUDE "3-assembled-output/gfx-frame_cold-bank6.asm"
  INCLUDE "3-assembled-output/gfx-hangar-bank6.asm"
  INCLUDE "3-assembled-output/gfx-finit-bank6.asm"
+ INCLUDE "3-assembled-output/gfx-glue-bank6.asm"   \ (the calls out of the bank)
 .F_CODEEND
  INCLUDE "1-source-files/main-sources/gfx-faces.asm"
  INCLUDE "1-source-files/main-sources/gfx-light6.asm"
@@ -98,10 +108,17 @@ f_hct = f_hcb + PC_TU - MBOX    \ thresholds), the disc's centre then, and
 .F_SMEND                \ (the end of the state that need not be aligned)
 F_ALSZ = 2 * 256 + 768 + 7 * 192 + 24 + 1   \ the aligned state's size (from F_HW
 F_AL = (FCSLOT - F_ALSZ) AND &FF00          \ to F_END), as high as it goes
- ASSERT P% <= F_AL
- SKIP F_AL - P%
+ ASSERT P% <= COMMON% AND F_AL = COMMON_END%   \ (the common block is in the
+ SKIP COMMON% - P%                            \ room below it)
+ INCBIN "3-assembled-output/COMMON.bin"   \ the common block (elite-common.asm)
+ ASSERT P% = F_AL
 .F_HW   SKIP 256        \ the planet's half-widths (f_hwbuild)
-.F_HW2  SKIP 256        \ the sun's
+.F_HW2                  \ the sun's, with F_INIT's code in their room until
+                        \ they are first written (gfx-finit.asm)
+ INCLUDE "3-assembled-output/gfx-finit-bank6init.asm"
+.F_INITEND
+ ASSERT F_INITEND <= F_HW2 + 256
+ ORG F_HW2 + 256
 .F_TM   SKIP 768        \ the text map: desired characters, 24 rows of 32
  ASSERT LO(F_TM) = 0    \ (f_cell adds only the high byte)
 .R_NDISCR SKIP 192      \ the discs' rows this frame (f_discspans: the layer's,
@@ -118,35 +135,30 @@ ENDIF
 .f_tcol SKIP 1          \ (f_char1's column)
 .F_END
  ASSERT F_END - F_HW = F_ALSZ
+ INCLUDE "3-assembled-output/gfx-glue-bank6top.asm"   \ (calls out of the bank, in
+.F_TOPEND                                            \ the room to the face lists)
+ ASSERT F_TOPEND <= FCSLOT
  ASSERT F_END <= FCSLOT \ the face lists of the blueprint set loaded, to FJT
                         \ (FCSLOT and its size: gfx-faces.asm; F_SETLD)
 
- CLEAR FJT, &C000       \ (so that an overflow is reported below, with the
- ORG FJT                \ sizes) the dispatcher: X = the entry (FG_*), A = GA
- LDA fjt_hi,X
- PHA
- LDA fjt_lo,X
- PHA
- LDA GA
- RTS                    \ (to the entry, which returns to GCALL)
-.fjt_lo
- EQUB LO(F_INIT-1), LO(F_DIRECT-1), LO(F_FRAME-1), LO(F_SHIP-1)
- EQUB LO(F_LINE-1), LO(F_PDOT-1), LO(F_PLANET-1), LO(F_SHPPT-1)
- EQUB LO(F_CHAR-1), LO(F_DELCHAR-1), LO(F_CLRTEXT-1), LO(F_GUN-1)
- EQUB LO(F_HANG0-1), LO(F_HANGAR-1), LO(F_CLOUD-1), LO(F_SETLD-1)
- EQUB LO(F_PFHOLD-1), LO(F_DCHAR-1)
-.fjt_hi
- EQUB HI(F_INIT-1), HI(F_DIRECT-1), HI(F_FRAME-1), HI(F_SHIP-1)
- EQUB HI(F_LINE-1), HI(F_PDOT-1), HI(F_PLANET-1), HI(F_SHPPT-1)
- EQUB HI(F_CHAR-1), HI(F_DELCHAR-1), HI(F_CLRTEXT-1), HI(F_GUN-1)
- EQUB HI(F_HANG0-1), HI(F_HANGAR-1), HI(F_CLOUD-1), HI(F_SETLD-1)
- EQUB HI(F_PFHOLD-1), HI(F_DCHAR-1)
+ CLEAR FJT%, &C000      \ (so that an overflow is reported below, with the
+ ORG FJT%               \ sizes) the entries, in FG_*'s order (elite-map.asm)
+ JMP F_INIT : JMP F_DIRECT : JMP F_FRAME : JMP F_SHIP
+ JMP F_LINE : JMP F_PDOT : JMP F_PLANET : JMP F_SHPPT
+ JMP F_CHAR : JMP F_DELCHAR : JMP F_CLRTEXT : JMP F_GUN
+ JMP F_HANG0 : JMP F_HANGAR : JMP F_CLOUD : JMP F_SETLD
+ JMP F_PFHOLD : JMP F_DCHAR
+.FJT_TAB
+ INCLUDE "3-assembled-output/gfx-glue-bank6entries.asm"   \ (calls out of the bank,
+                                                          \ in the room after)
 .FJT_END
- ASSERT fjt_hi - fjt_lo = FG_N AND FJT_END <= &C000
+ ASSERT FJT_TAB - FJT% = 3 * FG_N AND FJT_END <= &C000
+ ASSERT HI(FJT%) = HI(FJT_TAB - 1)   \ (GCALL sets only a JSR's low byte: the
+                                     \ bank's CBPG, elite-common.asm)
 
 
-PRINT "Bank 6: the flight code's cold 6 pass &8000-", ~F_START-1, ", the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_SMEND-1, " and ", ~F_HW, "-", ~F_END-1, ", free ", F_AL-F_SMEND+FCSLOT-F_END, ", the face lists' slot ", ~FCSLOT, "-", ~FJT-1, ", the dispatcher ", ~FJT, "-", ~FJT_END-1
-PRINT "Glue (main RAM): ", ~GLUE%, "-", ~GLUE_TOP-1, " (", GLUE_TOP-GLUE%, " bytes: trampolines ", rtramp_end-GLUE%, ", GCALL ", GLUE_END-GCALL, ", pcb_o ", GLUE_TOP-GLUE_END, ")"
+PRINT "Bank 6: the frame layer's code ", ~F_START, "-", ~F_CODEEND-1, " (", F_CODEEND-F_START, " bytes), tables ", ~F_CODEEND, "-", ~F_TABEND-1, " (", F_TABEND-F_CODEEND, "), state ", ~F_TABEND, "-", ~F_SMEND-1, " (free ", COMMON%-F_SMEND, "), the common block ", ~COMMON%, "-", ~COMMON_END%-1, ", state ", ~F_HW, "-", ~F_END-1, ", calls to ", ~F_TOPEND-1, " (free ", FCSLOT-F_TOPEND, "), the face lists' slot ", ~FCSLOT, "-", ~FJT%-1, ", the entries and calls ", ~FJT%, "-", ~FJT_END-1, " (free ", &C000-FJT_END, ")"
+PRINT "Glue (main RAM): ", ~GLUE%, "-", ~GLUE_TOP-1, " (pcb_o, ", GLUE_TOP-GLUE%, " bytes)"
  ASSERT F_END <= FCSLOT
 
  SAVE "3-assembled-output/BANK6.bin", &8000, &C000, &8000

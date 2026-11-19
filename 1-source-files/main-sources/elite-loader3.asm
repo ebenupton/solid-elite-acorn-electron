@@ -39,6 +39,10 @@
  INCLUDE "1-source-files/main-sources/elite-build-options.asm"
 
  INCLUDE "1-source-files/main-sources/elite-map.asm"    \ Port: the memory map
+ INCLUDE "3-assembled-output/common-entry.asm"          \ Port: the common block's
+                                                        \ labels (elite-common.asm)
+ INCLUDE "3-assembled-output/bank5-entry.asm"           \ Port: R_IMG%, where bank
+                                                        \ 5's image goes
 
  _IB_DISC               = (_VARIANT = 1)
  _STH_DISC              = (_VARIANT = 2)
@@ -602,6 +606,8 @@ NEXT
  LDX #HI(&C000 - R_IMG%)   \ which R_INIT makes)
  LDY #HI(R_IMG%)
  JSR bcopy
+ LDA #HI(RJT)           \ (its common block's bank numbers, and its entries'
+ JSR cbset              \ page)
 
  LDA #'F'               \ Load F.BANK to STAGE% and copy it into bank 6 (it
  STA pcbuf+2            \ reaches into buffer 1's top, which is cleared before
@@ -610,6 +616,8 @@ NEXT
  LDX #64
  LDY #&80
  JSR bcopy
+ LDA #HI(FJT%)          \ (its common block's bank numbers, and its entries'
+ JSR cbset              \ page)
 
  LDX #FG_INIT           \ Start the frame layer: direct mode, buffer 1 (SCREEN%)
  JSR GCALL              \ on show
@@ -711,6 +719,31 @@ NEXT
  RTS
 
  ASSERT P% - sndh = SNDHSZ
+
+.cbset
+
+                        \ Port: set the bytes that the loader keeps in the
+                        \ common block (elite-common.asm) of the bank that
+                        \ bcopy has just copied an image into, and left paged
+                        \ in: the page of the bank's entries (A), BANKS's four
+                        \ numbers, and the bank's own (the programs' banks get
+                        \ theirs from cbcopy, elite-resident.asm)
+
+ STA CBPG
+
+ LDX #3
+
+.cbs1
+
+ LDA BANKS,X
+ STA CB7,X
+ DEX
+ BPL cbs1
+
+ LDA &F4
+ STA CBME
+
+ RTS
 
 .LTLI
 

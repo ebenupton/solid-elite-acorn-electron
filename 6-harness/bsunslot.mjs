@@ -113,7 +113,12 @@ async function fly(b, ref, scene, refRun = null, rp = RP) {
     // each routine's entry: address and bank (null: main RAM or the caller's)
     const slot = RP.slot;
     const bank = n => { const r = b.progs.flight.bank[n]; return r === undefined || fsy[n] < 0x8000 ? null : r; };
-    const at = n => ref ? { a: RP.hooks["A_" + n], b: "slot" } : { a: fsy[n + "_6"] ?? fsy[n], b: bank(fsy[n + "_6"] !== undefined ? n + "_6" : n) };
+    // (the candidate's also with the three bytes its flight image has there:
+    // an entry counts only with the routine in memory, as other code runs at
+    // the main RAM parts' addresses, the loader's at boot and the docked
+    // program's)
+    const sigOf = n => progHooks(b, {}).hookOf("flight", n)?.sig;
+    const at = n => ref ? { a: RP.hooks["A_" + n], b: "slot" } : { a: fsy[n + "_6"] ?? fsy[n], b: bank(fsy[n + "_6"] !== undefined ? n + "_6" : n), sig: sigOf(n) };
     const R = { SUNUP: at("SUNUP"), SUNBK: at("SUNBK"), SUNLAU: at("SUNLAU"), SUNSC: at("SUNSC"),
         MVEIT: { a: fsy.MVEIT, b: bank("MVEIT") }, TT100: { a: fsy.TT100, b: bank("TT100") } };
     const cnt = { SUNUP: 0, SUNBKpark: 0, SUNLAU: 0, SUNSCpass: 0, parked: 0, handbackSkips: 0, checked: 0, jumpIters: 0, ev: {}, fails: [] };
@@ -153,6 +158,7 @@ async function fly(b, ref, scene, refRun = null, rp = RP) {
             const rd16 = x => { const v = cpu.readmem(x) | cpu.readmem(x + 1) << 8; return v > 32767 ? v - 65536 : v; };
             const live = h => {
                 if (h.a === undefined) return false;
+                if (h.sig) for (let i = 0; i < 3; i++) if (h.sig[i] !== undefined && cpu.readmem(h.a + i) !== h.sig[i]) return false;
                 if (h.b === null) return true;
                 const n = h.b === "slot" ? slot : cpu.ramRomOs[b.loader[b.banks[h.b]]];
                 return (cpu.romsel & 15) === n;

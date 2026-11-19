@@ -19,14 +19,15 @@
 \                extents (R_WL, R_WR) and R_POLY's edge tables
 \   &AE00 on     the shared region (gfx-raster.asm): R_SETBUF and r_pgfix,
 \                the spans' core, the arithmetic; in the room below the
-\                per-x tables, R_LINE's cold part, the private state,
-\                R_RESETBUF, the frame layer's query (r_wq) and pf_tilt;
+\                per-x tables, the common block (elite-common.asm, at
+\                COMMON%, the same in every bank), R_DOT and the frame
+\                layer's query (r_wq);
 \                the per-x tables at R_TAB% (&B400); the stars; then r_setup, the repair (R_REPAIR and r7_rowrep:
 \                gfx-raster_rep.asm), the disc layer's requests
 \                (gfx-raster_dq.asm), the code a span's rows run (r_pclip,
 \                r_pset, R_SPAN, R_DOT, R_MARKDIRTY) and R_INIT, and RJT,
-\                the jump table, its address for the glue from this
-\                assembly (bank5.py)
+\                the jump table, its address for the frame layer's calls
+\                from this assembly (bank5.py)
 \
 \ Each file is placed by its passes (2-build-files/streams.py: every block's
 \ "Area:" line names its place): this file INCLUDEs the bank 5 runs pass, the
@@ -85,9 +86,16 @@
  INCLUDE "3-assembled-output/gfx-raster_lcold-bank5end.asm"
  INCLUDE "3-assembled-output/gfx-raster_reset-bank5end.asm"
 
-.RJT                    \ the entry points, in this order (gfx-glue.asm's T_n:
- JMP R_INIT             \ RJT + 0, through bank5-entry.asm, which bank5.py
- JMP R_SETBUF           \ RJT + 3 writes from this assembly's symbols)
+.R_DOTX                 \ R_DOT and R_GETW for the callers that pass X in GX
+ LDX GX                 \ (gfx-glue.asm's T_DOT and T_GETW, the painter's
+ JMP R_DOT              \ FT_GETW): X is C_T5's, the low byte of the entry,
+.R_GETWX                \ and these are in RJT's page
+ LDX GX
+ JMP R_GETW
+
+.RJT                    \ the entry points, in this order (gfx-glue.asm's T_n,
+ JMP R_INIT             \ through the common block's C_T5; bank5-entry.asm,
+ JMP R_SETBUF           \ RJT + 3 which bank5.py writes, has RJT's address)
  JMP R_RESETBUF         \ RJT + 6
  JMP R_REPAIR           \ RJT + 9
  JMP R_SPANM            \ RJT + 12 (R_SPAN, then R_MARKDIRTY)
@@ -99,25 +107,29 @@
  JMP R_STARPLOT         \ RJT + 30
  JMP R_MARKBOX          \ RJT + 33
  JMP R_GETW             \ RJT + 36 (the disc layer's and the text's, gfx-raster_dq.asm)
- JMP pf_tilt            \ RJT + 39 (the planet's surface's, gfx-planet7.asm)
- JMP R_FLARE            \ RJT + 42 (the lens flare, gfx-flare.asm)
+ JMP R_FLARE            \ RJT + 39 (the lens flare, gfx-flare.asm)
 .RJT_END
- ASSERT HI(RJT) = HI(RJT_END - 1)   \ (the trampolines set only a JSR's low byte)
+ ASSERT HI(R_DOTX) = HI(RJT_END - 1)   \ (C_T5 sets only a JSR's low byte)
 
 .R_HIEND
  ASSERT R_HIEND <= &C000
 
  CLEAR r_tfree, r_tables \ (gfx-raster.asm skips it)
- ORG r_tfree             \ R_DOT, r_wq and pf_tilt
+ ORG r_tfree             \ the room below the per-x tables: the common block,
+.R_GAPMID                \ then R_DOT and r_wq
+ ASSERT R_GAPMID <= COMMON%
+
+ INCLUDE "1-source-files/main-sources/elite-common.asm"   \ (at COMMON%: the code
+                        \ that pages the banks, the same in every bank; this
+                        \ assembly's bytes are the other images': COMMON.bin,
+                        \ bank5.py)
+ SAVE "3-assembled-output/COMMON.bin", COMMON%, COMMON_END%, COMMON%
+
+ ORG COMMON_END%
  INCLUDE "3-assembled-output/gfx-raster-bank5gap.asm"
  INCLUDE "3-assembled-output/gfx-raster_dq-bank5gap.asm"
- INCLUDE "3-assembled-output/gfx-planet7-bank5gap.asm"  \ (pf_tilt, which the flight
-                        \ code's PF_HOOK calls through T_TILT)
 .R_GAPEND
  ASSERT R_GAPEND <= r_tables
-
- ORG PFVH%              \ (pf_tilt's variables in main RAM, as the flight code's
- INCLUDE "3-assembled-output/gfx-planet7-mainhigh.asm"   \ layout places them)
 
  ORG R_IMG%
  GUARD R_ST%
@@ -127,6 +139,6 @@
  INCLUDE "3-assembled-output/gfx-flare-bank5.asm"
 .R_LOEND
 
- PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), R_DOT, r_wq and pf_tilt to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"
+ PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), free ", COMMON%-R_GAPMID, ", the common block ", ~COMMON%, "-", ~COMMON_USED%-1, " (free ", COMMON_END%-COMMON_USED%, "), R_DOT and r_wq to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"
 
  SAVE "3-assembled-output/BANK5.bin", R_IMG%, &C000, R_IMG%

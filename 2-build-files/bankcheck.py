@@ -46,7 +46,8 @@ PROGS = ("flight", "docked")
 FAR = ("farH", "farHj", "farC", "farCj", "farC6", "ovf1", "ovf2", "ovf3")
 HOTCOPIES = ("config", "low", "hot", "hotm", "hotx", "hotl", "hots", "blueprints")   # (the hot side's copies: streams.py)
 WINDOW7 = {"flight": (OUT + "gfx-raster_disc-bank7.asm",
-                      OUT + "gfx-raster_disc2-bank7.asm", OUT + "gfx-raster_dpatch-bank7.asm")}
+                      OUT + "gfx-raster_disc2-bank7.asm", OUT + "gfx-raster_dpatch-bank7.asm",
+                      OUT + "gfx-glue-bank7.asm")}
                         # (bank 7's renderer window: the renderer's bank 7 passes;
                         # elite-layout-flight.asm)
 MNEM = set(("ADC AND ASL BCC BCS BEQ BIT BMI BNE BPL BRK BVC BVS CLC CLD CLI CLV CMP CPX CPY "

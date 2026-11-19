@@ -13,16 +13,14 @@
 
  INCLUDE "1-source-files/main-sources/elite-map.asm"
  INCLUDE "3-assembled-output/resident.asm"
+ INCLUDE "3-assembled-output/common-entry.asm"
 
- PROGI% = BPSLOT% - PROGIS%
+ PROGI% = COMMON% - PROGIS%
  HOT_END% = PROGI%
 
  INCLUDE "3-assembled-output/elite-docked-config.asm"
 
  ORG PROGM%
-
- FTDP = FALSE             \ The fast trampolines (gfx-glue.asm), first: the same
- INCLUDE "3-assembled-output/gfx-glue-mainpart.asm"   \ in both programs
 
  INCLUDE "3-assembled-output/elite-docked-low.asm"
 

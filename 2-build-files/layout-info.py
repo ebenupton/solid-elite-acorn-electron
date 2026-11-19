@@ -22,9 +22,8 @@
 #     commander), CHK2, CHK and BRBR1 (the break handler), which were the
 #     original's block B at &1100
 #
-#   * the renderer's glue that the programs call (GCALL, T_GETW, T_TILT,
-#     PANR) and pcb_o, the circle engine's table after it, which the flight
-#     code's pc_circ reads
+#   * PANR, and pcb_o, the circle engine's table, which the flight code's
+#     pc_circ reads
 #
 # It also writes 3-assembled-output/flight-banks.txt and docked-banks.txt,
 # the bank of each label of each program, for the harness (below).
@@ -37,11 +36,11 @@ import re
 
 OUT = "3-assembled-output/"
 WINDOW7 = {"flight": ("gfx-raster_disc-bank7.asm", "gfx-raster_disc2-bank7.asm",
-                      "gfx-raster_dpatch-bank7.asm")}   # (bank 7's renderer window, the renderer's
+                      "gfx-raster_dpatch-bank7.asm", "gfx-glue-bank7.asm")}   # (bank 7's renderer window, the renderer's
                                                         # bank 7 passes: elite-layout-flight.asm)
 NAMES = ("farC", "farCj", "farC6", "farH", "farHj", "BANK4", "BANK7", "BANK5", "BANK6", "PCLI",
-         "IRQG", "NA%", "CHK2", "CHK", "BRBR1", "PANR", "GCALL", "dfsin", "dfsout", "pload",
-         "T_GETW", "T_TILT", "pcb_o", "SREQ")   # (SREQ: the sound engine's queue)
+         "IRQG", "NA%", "CHK2", "CHK", "BRBR1", "PANR", "dfsin", "dfsout", "pload",
+         "pcb_o", "SREQ")   # (SREQ: the sound engine's queue)
 
 sy = {}
 for m in re.finditer(r"'([^']+)':(\d+)", open(OUT + "loader-symbols.txt").read()):

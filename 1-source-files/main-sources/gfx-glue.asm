@@ -1,86 +1,43 @@
 \ ******************************************************************************
 \
-\ gfx-glue.asm - the main RAM glue of the filled renderer (docs/renderer.md)
+\ gfx-glue.asm - the frame layer's calls out of bank 6 (docs/renderer.md)
 \
-\ Port (Model B): assembled at GLUE% (elite-map.asm), at the end of the
-\ resident block A, which INCLUDEs it, so that it is visible whatever bank is
-\ paged: the trampolines into bank 5, the rasteriser (which the frame layer
-\ calls), and GCALL, through which the game calls the frame
-\ layer in bank 6. Bank 6 is built against these addresses (gfx-bank6.asm,
-\ which writes GLUE.bin for 6-harness/test_frame.py).
+\ Port (the Electron): the frame layer, in bank 6, calls the rasteriser in
+\ bank 5, the disc layer's painter in the flight code's bank 7 and the game
+\ in bank 4 through the common block (elite-common.asm), the code that pages
+\ the banks, which every bank holds at the same address: no code of a call
+\ runs in main RAM. A call there takes the low byte, in X, of the routine's
+\ entry in its bank's table; this file, in bank 6 (gfx-bank6.asm INCLUDEs
+\ its bank 6 passes), names the calls for the frame layer (and its bank 7
+\ pass, in the flight code's layout, has the painter's table of entries):
 \
-\ GCALL: X = an entry's number (FG_*, elite-map.asm), A and Y its inputs (and
-\ C, which reaches the entry): pages bank 6 in (BANK6), enters it through
-\ its dispatcher at FJT (the top of bank 6), and pages the caller's bank
-\ (whatever was in &F4) back in, returning A and Y as the entry left them
-\ (every entry keeps Y, but F_GUN, which returns one). The flags and X are
-\ not kept. It may be called again while an entry runs (the frame's runs of
-\ game code reach F_PDOT through it), but not from an interrupt.
+\   T_n                 a routine of the rasteriser by its entry in bank 5's
+\                       jump table, RJT (C_T5), with A and Y passed; T_DOT
+\                       and T_GETW, whose routines take X too, pass it in GX
+\                       to entries of their own after RJT (R_DOTX, R_GETWX)
 \
-\       Area: main
+\   FT_POLY             R_POLY, by the common block's own stub for it
+\
+\   FT_DPROWS,          the painter's DP_ROWS, DP_BEGIN, DP_DISC2 and DP_WQ
+\   f_dpbegin,          (C_T7), with A and Y passed, and X in GX
+\   f_dpdisc2, f_dpwq
+\
+\   f_gproj, f_gcloud   the game code the frame runs, LL42F and PTCLR, in
+\                       the program's bank 4 (C_HOME)
+\
+\ A comes back as the routine left it, and Y; X does not. Not re-entrant:
+\ interrupt handlers must not call them.
+\
+\       Area: bank 6
 \
 \ ******************************************************************************
-
-FJT = &BFC0             \ bank 6's dispatcher (gfx-bank6.asm)
 
  INCLUDE "3-assembled-output/bank5-entry.asm"   \ RJT, bank 5's jump table (bank5.py
                                                 \ writes it from bank 5's symbols)
 
-\ (the entries' numbers, FG_*, are in elite-map.asm, for the game's hooks)
-
-\ ******************************************************************************
-\
-\ The trampolines into bank 5, the rasteriser: the frame layer, in bank 6,
-\ calls T_INIT, T_POLY and so on: each pages bank 5 in (BANK5, elite-far.asm),
-\ calls the routine through bank 5's jump table, RJT, and pages the caller's
-\ bank back (whatever was in &F4: so any bank may call them). Each T_n is four
-\ bytes, a JSR to the shared body, rtgo, and the low byte of RJT's entry. A, X
-\ and Y are passed through to the routine; nothing is returned in them
-\ (results, if any, are in the mailbox or the zero page). Not re-entrant:
-\ interrupt handlers must not call them.
-\
-\ ******************************************************************************
-
-.rtA    EQUB 0          \ A, X and Y across the paging
-.rtX    EQUB 0
-.rtY    EQUB 0
-
-.rtgo                   \ the trampolines' body: entered by a JSR from T_n,
-                        \ which is followed by RJT's offset for routine n
- STA rtA                \ keep A, X and Y
- STX rtX
- STY rtY
- PLA                    \ take T_n's return address (its JSR's last byte) off
- STA rtl+1              \ the stack, so that this returns to T_n's caller, and
- PLA                    \ read the offset after it
- STA rtl+2
- LDX #1
-.rtl
- LDA &FFFF,X            \ (the address is set above)
- STA rtj+1              \ the JSR below calls RJT's entry (whose low byte this
-                        \ is: RJT is in one page)
- LDA &F4                \ keep the caller's bank on the stack and page bank 5
- PHA                    \ in
- LDA BANK5
- STA &F4
- STA ROMSEL
- LDA rtA                \ put A, X and Y back for the routine
- LDX rtX
- LDY rtY
-.rtj
- JSR RJT                \ (the low byte is set above)
- STA rtA                \ page the caller's bank back in, keeping A
- PLA
- STA &F4
- STA ROMSEL
- LDA rtA
- RTS
-
- ASSERT HI(RJT) = HI(RJT + 3 * 14)
-
 MACRO RTRAMP n
- JSR rtgo
- EQUB LO(RJT) + 3 * n   \ (the low byte of RJT's entry n)
+ LDX #LO(RJT) + 3 * n   \ (the low byte of RJT's entry n, which is not 0)
+ BNE tgo
 ENDMACRO
 
 .T_INIT       RTRAMP 0  \ (RJT's order, gfx-bank5.asm)
@@ -89,78 +46,95 @@ ENDMACRO
 .T_REPAIR     RTRAMP 3
 .T_SPAN       RTRAMP 4
 .T_MARKDIRTY  RTRAMP 5
-.T_DOT        RTRAMP 6
 .T_POLY       RTRAMP 7
 .T_LINE       RTRAMP 8
 .T_STARERASE  RTRAMP 9
 .T_STARPLOT   RTRAMP 10
 .T_MARKBOX    RTRAMP 11
-.T_GETW       RTRAMP 12 \ (the disc layer's and the text's, gfx-raster_dq.asm)
-.T_TILT       RTRAMP 13 \ (the planet's surface's pf_tilt, gfx-planet7.asm: from
-                        \ the game's PF_HOOK, in the home bank)
-.T_FLARE      RTRAMP 14 \ (the lens flare, gfx-flare.asm)
-.rtramp_end
+.T_FLARE      RTRAMP 13 \ (the lens flare, gfx-flare.asm)
 
-.GCALL
- STA GA                 \ keep A while the bank is paged
- LDA &F4                \ the caller's bank, to page back after
- PHA
- LDA BANK6              \ page bank 6 in (&F4 first, as elite-far.asm)
- STA &F4
- STA ROMSEL
- JSR FJT                \ the entry X, with A = GA, and Y as it was
- TAX                    \ keep A while the bank is paged (X is not kept)
- PLA                    \ page the caller's bank back in
- STA &F4
- STA ROMSEL
- TXA                    \ A as the entry left it
- RTS
+.T_DOT                  \ (R_DOT takes X)
+ STX GX
+ LDX #LO(R_DOTX)
+ BNE tgo
 
-.GLUE_END
+.T_GETW                 \ (R_GETW takes X: the disc layer's and the text's,
+ STX GX                 \ gfx-raster_dq.asm)
+ LDX #LO(R_GETWX)
 
-\ ******************************************************************************
-\
-\ The fast trampolines, at the start of each program's main RAM part (PROGM%,
-\ before its low pass: elite-layout-flight.asm, elite-layout-docked.asm), at
-\ the same addresses in both programs, which bank6.py checks: the frame
-\ layer's hottest calls into bank 5 (FT_GETW, FT_POLY, FT_LINE: as T_GETW,
-\ T_POLY and T_LINE above) and, in the flight code only (FTDP, after the
-\ others), into the disc layer's painter in its bank 7 (FT_DPROWS: as the
-\ far call to DP_ROWS). Each pages its bank in and calls its routine, then
-\ pages the caller's bank back (from &F4: any bank may call them), as the
-\ trampolines above do, with A, X and Y passed in and A passed back, but
-\ with the routine's address in its own code, in about half the
-\ instructions. Not re-entrant: interrupt handlers must not call them.
-\
-\       Area: main part
-\
-\ ******************************************************************************
+.tgo
+ JMP C_T5
 
- INCLUDE "3-assembled-output/bank5-entry.asm"   \ (RJT: bank 5's jump table)
+ ASSERT LO(RJT) <> 0 AND LO(R_DOTX) <> 0 AND LO(R_GETWX) <> 0
 
-MACRO FTRAMP bank, target
- STA ftA                \ keep A while the bank is paged
- LDA &F4                \ keep the caller's bank on the stack, and page the
- PHA                    \ routine's bank in (&F4 first, as elite-far.asm)
- LDA bank
- STA &F4
- STA ROMSEL
- LDA ftA                \ the routine, with A, X and Y as they were
- JSR target
- STA ftA                \ page the caller's bank back in, keeping A
- PLA
- STA &F4
- STA ROMSEL
- LDA ftA
- RTS
-ENDMACRO
+FT_GETW = T_GETW
+FT_POLY = C_POLY
+FT_LINE = T_LINE
 
-.FT_GETW  FTRAMP BANK5, RJT + 3 * 12    \ (RJT's order, gfx-bank5.asm)
-.FT_POLY  FTRAMP BANK5, RJT + 3 * 7
-.FT_LINE  FTRAMP BANK5, RJT + 3 * 8
+.f_dpwq                 \ the painter's entries, in the flight code's bank 7
+ LDX #LO(DPENT%)        \ (gfx-raster_disc.asm, gfx-raster_disc2.asm): DPENT%'s
+ JMP C_T7               \ order (elite-layout-flight.asm)
 
-.ftA    EQUB 0          \ A across the paging
+ ASSERT HI(SGPROJ) = HI(HOME%) AND HI(SGCLOUD) = HI(HOME%)   \ (C_HOME's entries
+                        \ are in the page of S%: the common block's CBPG)
 
-IF FTDP
-.FT_DPROWS FTRAMP BANK7, DP_ROWS        \ (the flight code's bank 7)
-ENDIF
+
+
+\       Area: bank 6 top
+
+                        \ (in the room after the bank's state)
+.FT_DPROWS
+ STX GX
+ LDX #LO(DPENT% + 3)
+ JMP C_T7
+
+.f_dpbegin
+ STX GX
+ LDX #LO(DPENT% + 9)
+ JMP C_T7
+
+.f_dpdisc2
+ STX GX
+ LDX #LO(DPENT% + 15)
+ JMP C_T7
+
+
+
+\       Area: bank 6 entries
+
+                        \ (in the room after FJT%, the bank's entries)
+.f_gproj                \ the game's entries the frame runs (SGPROJ, SGCLOUD:
+                        \ gfx-frame.asm), in each program's S% table
+ LDX #LO(SGPROJ)        \ LL42F: LL9's part 6 on, with H_EE31 returning at once
+ JMP C_HOME
+.f_gcloud
+ LDX #LO(SGCLOUD)       \ PTCLR: PTCLS's drawing of the cloud at XX19 (its
+ JMP C_HOME             \ particles through H_DOT, F_PDOT)
+
+
+
+\       Area: bank 7
+
+                        \ In the flight code's bank 7, at DPENT%
+                        \ (elite-layout-flight.asm): the painter's entries,
+                        \ which the common block's C_T7 calls by their low
+                        \ bytes (f_dpwq, FT_DPROWS, f_dpbegin and f_dpdisc2
+                        \ above, in this order); those that take X have it
+                        \ from GX
+.DPENT
+ JMP DP_WQ
+ LDX GX
+ JMP DP_ROWS
+ LDX GX
+ JMP DP_BEGIN
+ LDX GX
+ JMP DP_DISC2
+.DPENT_END%
+
+ ASSERT DPENT = DPENT% AND HI(DPENT%) = HI(DPENT_END% - 1)   \ (the bank's CBPG:
+                        \ elite-common.asm)
+
+.FT_GETW                \ the painter's call of R_GETW, in bank 5 (dp_fill), as
+ STX GX                 \ the frame layer's T_GETW
+ LDX #LO(R_GETWX)
+ JMP C_T5

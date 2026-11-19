@@ -78,11 +78,11 @@ a character row: `r_spcb` for the spans, `pb_base` for `R_POLY`'s rows,
 ### The interface
 
 Bank 5's entry points are in its jump table, `RJT` (`gfx-bank5.asm`, after
-the high region's code; `bank5.py` writes its address for the glue,
-`3-assembled-output/bank5-entry.asm`), in this order; the frame layer calls them through the trampolines `T_INIT` to
-`T_GETW` (`gfx-glue.asm`, 112 bytes, in the resident block A: each `T_n` is four bytes, a `JSR` to a shared body and the low byte of `RJT`'s entry), each
-of which pages bank 5 in (`BANK5`), calls the entry and pages the caller's
-bank back. A, X and Y are passed through; nothing is returned in them.
+the high region's code; `bank5.py` writes its address for the frame layer,
+`3-assembled-output/bank5-entry.asm`), in this order; the frame layer calls them as `T_INIT` to
+`T_GETW` (`gfx-glue.asm`, in bank 6: each `T_n` loads the low byte of `RJT`'s entry and jumps to the common block's `C_T5`; `R_POLY` has a stub of its own there, `C_POLY`), which
+pages bank 5 in, calls the entry and pages the caller's bank
+back. The common block (`elite-common.asm`) is the code that pages the banks, the same bytes at the same address (`COMMON%`) in every bank, so that none of a call runs in main RAM. A and Y are passed through (X, for `R_GETW` and `R_DOT`, in `GX`), and A and Y come back.
 
 | RJT + | Routine | Inputs |
 |---:|---|---|
@@ -184,7 +184,7 @@ What differs from the Master port's frame layer:
   by `2-build-files/font4.py`: its one copy), a character cell one byte
   (four MODE 5 pixels, eight game x) by eight rows (`f_glyph`).
 * **The rasteriser's state is in bank 5,** which bank 6 cannot see: it is
-  reached only through the trampolines in main RAM (`T_INIT` to `T_GETW`,
+  reached only through the common block's calls (`T_INIT` to `T_GETW`,
   `gfx-glue.asm`), with the inputs in the mailbox and the zero page. What
   the Master port's frame layer read or wrote of the rasteriser's arrays
   goes through bank 5 instead: a text cell that `f_mark` must erase in both
@@ -209,7 +209,7 @@ What differs from the Master port's frame layer:
   offset in Y; the text map's row, `f_rowptr`; the painter's row, `r_rowp`,
   once a character row). The game's zero page overlaps the rasteriser's
   inputs (`XX16` is `&09-&1A`): the frame's runs of game code go through
-  `f_gproj` and `f_gcloud` (the far call `farH` to the program's `S% + 16`
+  `f_gproj` and `f_gcloud` (the common block's `C_HOME` to the program's `S% + 16`
   and `S% + 19`, bank 4), after which the clip window is put back
   (`f_clip`); the loops that run game code count in bank 6, `f_ii`, `f_di`.
 * **The discs** are the Master port's, with the disc layer's row code (the
@@ -248,7 +248,7 @@ What differs from the Master port's frame layer:
 
 | Where | What |
 |---|---|
-| main `&0724-&07B5` | the glue, `GLUE%` (`gfx-glue.asm`): bank 5's trampolines and `GCALL`, at a fixed address at the end of the resident block A, which includes it |
+| every bank, `COMMON%` | the common block (`elite-common.asm`): the calls between the banks (`C_POLY`, `C_T5`, `C_T7`, `C_HOME`, `GCALL`), the same bytes in every bank |
 | main `&7E60-&7EFF` | the mailbox (the rasteriser's inputs; the stars, which the game's hooks write; `f_wq`'s query and answer) |
 | main `&7FA0-&7FAF` | the shared variables, `GVARS` (`elite-map.asm`), after the missile's blueprint |
 | zero page `&06-&0F`, `&20-&21` | the rasteriser's inputs and `DP_BEGIN`'s colour B pair, in transit: `F_FRAME` keeps the game's bytes at `&06-&27` (where game code it runs also writes) in bank 6 (`f_zsv`) and puts them back |
@@ -267,9 +267,9 @@ blueprint's are not its own (`faces.py`'s `GEOM_NORMALS`).
 
 ### The interface
 
-The game calls an entry as `LDX #FG_xxx : JSR GCALL` (`gfx-glue.asm`), with
-the inputs in A, Y and memory. `GCALL` pages bank 6 in, enters it through
-`FJT` and pages the caller's bank back; it returns A and Y as the entry left
+The game calls an entry as `LDX #FG_xxx : JSR GCALL` (`elite-common.asm`: the common block, in the caller's bank), with
+the inputs in A, Y and memory. `GCALL` pages bank 6 in, calls the entry's jump in
+`FJT%` (`FG_xxx` is its low byte) and pages the caller's bank back; it returns A and Y as the entry left
 them, and every entry keeps Y (but `F_GUN`). X is not kept; C reaches the
 entry. Not from an interrupt.
 
@@ -310,7 +310,7 @@ The shared variables (`GVARS`, `elite-map.asm`):
 * `GNF`, `GTYPE`: `F_SHIP`'s and `L_REC`'s inputs.
 * `GSTASH` bit 7: a disc command has used buffer 0 (`PCLI`): the next frame
   starts it afresh (`f_b0new`).
-* `GA`: `GCALL`'s A. `PF_CLS`: the planet's class, as `PF_HOOK` made it
+* `GA`: A across a paging (`GCALL` and the common block's stubs); `GX`: X across one, for the routines that take it. `PF_CLS`: the planet's class, as `PF_HOOK` made it
   this iteration (bit 7: it made the surface's circles, in the mailbox).
 
 * `GHOLD`: non-zero, the rupture keeps the display off after a disc

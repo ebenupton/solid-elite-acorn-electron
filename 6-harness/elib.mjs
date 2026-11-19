@@ -406,7 +406,8 @@ export function elkBanks(b, e) {
 }
 
 // The profiler's labels for a program (eramacc.mjs, bbench.mjs --prof): the
-// program's symbols, the loader's, and any bankN-symbols.txt beside the build
+// program's symbols, the loader's, the common block's in each game bank, and
+// any bankN-symbols.txt beside the build
 // (bank N's slot from the loader's BANKN), each label's range running to the
 // next in its slot; a slot holding a ROM is named by its title. Uploaded to
 // clkh (labclear, labfile) through a file in its directory.
@@ -426,11 +427,14 @@ export function elkLabeller(b, buildFile) {
     const progm = b.progs.flight.sy["PROGM%"] ?? 0x1900;
     for (const [k, v] of Object.entries(b.loader)) if (v >= 0x200 && v < 0x8000 && !(v >= progm && v < 0x3000)) extra.push(["m", v, k]);
     const dir = dirname(buildFile);
+    const common = b.common || {};
     for (const f of readdirSync(dir)) {
         const m = f.match(/^bank(\d+)-symbols\.txt$/);
         if (!m || b.loader["BANK" + m[1]] === undefined) continue;
-        for (const [k, v] of Object.entries(loadSyms(join(dir, f)))) if (v >= 0x8000 && v < 0xc000) extra.push(["#" + m[1], v, k]);
+        for (const [k, v] of Object.entries(loadSyms(join(dir, f)))) if (v >= 0x8000 && v < 0xc000 && common[k] === undefined) extra.push(["#" + m[1], v, k]);
     }
+    // (the common block's labels, in each game bank: named without a bank)
+    for (const [k, v] of Object.entries(common)) for (const r of ["H", "C", "#5", "#6"]) extra.push([r, v, k, "*"]);
     const progLabels = { flight: labelsOf(b.progs.flight), docked: labelsOf(b.progs.docked) };
     return (e, bk, prog) => {
         const slotOf = map => map === "m" ? -1 : map[0] === "#" ? e.rb(b.loader["BANK" + map.slice(1)]) : bk.bankOf(map);
@@ -441,7 +445,7 @@ export function elkLabeller(b, buildFile) {
             const title = rom ? String.fromCharCode(...h.subarray(9, h.indexOf(0, 9))).replace(/[^\w.-]/g, "_") : "";
             lines.push(`${s} 8000 c000 ${rom ? `rom${s}:${title}` : `slot${s}:?`}`);
         }
-        const all = progLabels[prog].concat(extra).map(([m, a, n]) => [slotOf(m), a, n, m]);
+        const all = progLabels[prog].concat(extra).map(([m, a, n, c]) => [slotOf(m), a, n, c ? "m" : m]);
         all.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
         for (let i = 0; i < all.length; i++) {
             const [s, a, n, m] = all[i];

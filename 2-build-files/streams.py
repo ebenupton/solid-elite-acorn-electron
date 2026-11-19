@@ -1507,7 +1507,8 @@ RFILES = ("gfx-glue.asm", "gfx-raster_poly.asm", "gfx-raster_line.asm", "gfx-ras
           "gfx-flare.asm", "gfx-frame_cold.asm", "gfx-hangar.asm", "gfx-finit.asm",
           "gfx-raster_disc.asm", "gfx-raster_disc2.asm", "gfx-raster_dpatch.asm", "gfx-light.asm")
 RPLACES = ("bank 4", "bank 4 top", "bank 5 runs", "bank 5", "bank 5 gap", "bank 5 end", "bank 6", "bank 7", "main",
-           "main low", "main high", "main part", "docked main")
+           "main low", "main high", "main part", "docked main", "bank 4 high", "bank 6 top", "bank 6 entries",
+           "bank 6 init")
 
 
 def renderer_passes(errors):

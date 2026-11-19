@@ -8,8 +8,9 @@ the game must have been built, for the symbols they read and the flight
 code's images) and runs them on py65's NMOS 6502 (the Model B's) with:
 
   * main RAM: the resident block A (the far calls, from the loader's
-    image), the glue (GLUE.bin at GLUE%: the trampolines and GCALL), the
-    loader's bank numbers and the game's variables;
+    image), the circle engine's table (GLUE.bin at GLUE%), the loader's bank
+    numbers (and each bank's copy of them in its common block, as the
+    loader writes them) and the game's variables;
   * &8000-&BFFF paged by writes to ROMSEL (elite-map.asm's: the Electron's
     &FE05): the flight code's home
     bank (D.CODEH, with a blueprint set, D.MOx, in its slot), bank 5,
@@ -18,8 +19,9 @@ code's images) and runs them on py65's NMOS 6502 (the Model B's) with:
     the MOS ROM (its font) at &C000;
   * the ships recorded by the game's own LL9 (H_LL42, S_SHIP, L_REC:
     F_SHIP), and every other entry called as the game calls it, LDX #n :
-    JSR GCALL from main RAM with the home bank paged; the frame runs LL9's
-    part 6 on (LL42F) and PTCLS (PTCLR) in the home bank through farH.
+    JSR GCALL (the common block's) from main RAM with the home bank paged;
+    the frame runs LL9's part 6 on (LL42F) and PTCLS (PTCLR) in the home
+    bank through the common block's C_HOME.
 
 It records synthetic frames (ships placed and turned, one firing at us and
 one exploding; the sun and the planet as discs, a distant ship,
@@ -27,7 +29,7 @@ stars, text, the sights and our laser beams) and checks that:
 
   * every bank 6 entry writes nothing but the renderer's zero page (&06-&27,
     the frame layer's &D2-&E1), the stack page, the screen buffers, the
-    mailbox and the shared variables (MBOX, GVARS on), the glue's and the far
+    mailbox and the shared variables (MBOX, GVARS on), the far
     calls' own bytes, &F4, ROMSEL and banks 5 and 6 (and F_FRAME, which runs
     game code, also the game's zero page and page 1, XX3); that the zero
     page is as it was after every call, but for the drawing's temporaries
@@ -99,7 +101,8 @@ def consts():
     out = {}
     ms = os.path.join(REPO, '1-source-files', 'main-sources')
     for f in (os.path.join(ms, 'elite-map.asm'), os.path.join(OUT, 'bank6-game.asm'),
-              os.path.join(ms, 'gfx-faces.asm'), os.path.join(ms, 'gfx-rws.asm')):
+              os.path.join(ms, 'gfx-faces.asm'), os.path.join(ms, 'gfx-rws.asm'),
+              os.path.join(OUT, 'common-entry.asm')):   # (the common block's labels)
         for l in open(f, encoding='latin-1'):
             for st in l.split('\\')[0].split(':'):
                 m = re.match(r'^\s*([A-Za-z_][\w%]*)\s*=\s*(.+)$', st)
@@ -155,9 +158,15 @@ class Mem:
         self.main[0x400:0x800] = lb[ld['RESAcode'] - 0x1900:ld['RESAcode'] - 0x1900 + 0x400]   # puts it
         g = open(os.path.join(OUT, 'GLUE.bin'), 'rb').read()
         self.main[S['GLUE%']:S['GLUE%'] + len(g)] = g
+        for b, bank in self.banks.items():       # (the common block's bank numbers, as
+            bank[S['CB7'] - 0x8000:S['CB7'] - 0x8000 + 4] = bytes([COLD, FBANK, RBANK, HOME])   # the loader sets
+            bank[S['CBME'] - 0x8000] = b         # them in each bank's copy), and the
+        b5 = syms_of('bank5')                    # page of each bank's entries (CBPG)
+        for b, pg in ((HOME, 0x80), (RBANK, b5['RJT'] >> 8), (FBANK, S['FJT%'] >> 8), (COLD, S['COMMON_END%'] >> 8)):
+            self.banks[b][S['CBPG'] - 0x8000] = pg
         ok = bytearray(0x10000)                  # the write guard's allowed bytes
         for lo, hi in ((0x06, 0x28), (0xD2, 0xE2), (0xF4, 0xF5), (0x100, 0x200), (S['BUF0'], S['BUF0'] + 2 * SCRSZ),
-                       (S['MBOX'], S['MBOX'] + 0xA0), (S['GVARS'], S['VEC']), (S['rtA'], S['rtA'] + 3), (S['rtl'] + 1, S['rtl'] + 3), (S['rtj'] + 1, S['rtj'] + 2),
+                       (S['MBOX'], S['MBOX'] + 0xA0), (S['GVARS'], S['VEC']),
                        (ld['fA'], ld['fA'] + 5), (ld['fpc'] + 1, ld['fpc'] + 3), (ld['fpj'] + 1, ld['fpj'] + 3)):
             ok[lo:hi] = b'\1' * (hi - lo)
         self.ok = ok
@@ -216,7 +225,7 @@ class Machine:
         self.F = syms_of('flight')
         self.mem = Mem(self.S)
         S, m = self.S, self.mem.main
-        m[S['BANK5']], m[S['BANK6']] = RBANK, FBANK
+        m[S['loader']['BANK5']], m[S['loader']['BANK6']] = RBANK, FBANK
         m[S['loader']['BANK7']] = COLD
         m[S['loader']['BANK4']] = HOME
         self.tmp = set()                         # the drawing's temporaries
@@ -241,8 +250,8 @@ class Machine:
         self.mem.main[a], self.mem.main[a + 1] = v & 255, (v >> 8) & 255
 
     def call(self, entry, a=0, y=0, maxcyc=40_000_000, c=0):
-        """LDX #n : JSR GCALL : (stop) from main RAM, the home bank paged"""
-        n = FG.index(entry)
+        """LDX #FG_n : JSR GCALL : (stop) from main RAM, the home bank paged"""
+        n = (self.S['FJT%'] & 255) + 3 * FG.index(entry)   # (FG_n: elite-map.asm)
         mpu, mem = self.mpu, self.mem
         g = self.S['GCALL']
         code = [0xA2, n, 0x20, g & 255, g >> 8]
@@ -988,7 +997,7 @@ def pmath_tests(quick=False):
         if m.mpu.a != f or zp[0x20] | zp[0x21] << 8 != n - f * f:
             bad.append(n)
     check(not bad, 'pm_isqrt: every n (%.0f cycles)%s' % (sum(cy) / len(cy), ' (wrong for %r)' % bad[:6] if bad else ''))
-    if 'pcv' in F:                               # pf_tilt (in bank 5, through T_TILT)
+    if 'pcv' in F:                               # pf_tilt
         cy, bad = [], []
         for i in range(600):
             for o in range(9, 27):                  # (vectors as Elite's: sign-magnitude,
@@ -999,7 +1008,7 @@ def pmath_tests(quick=False):
             x = rnd.choice((9, 15, 21))
             y = 0 if i % 3 == 0 else rnd.choice([v for v in (9, 15, 21) if v != x])
             f = 0 if not y else rnd.getrandbits(3)
-            mem.main[STUB:STUB + 9] = bytes([0xA9, f, 0xA2, x, 0xA0, y, 0x20, m.S['loader']['T_TILT'] & 255, m.S['loader']['T_TILT'] >> 8])
+            mem.main[STUB:STUB + 9] = bytes([0xA9, f, 0xA2, x, 0xA0, y, 0x20, F['pf_tilt'] & 255, F['pf_tilt'] >> 8])
             cy.append(m.gcall_at(STUB, 9))
             inwk = [zp[F['INWK'] + k] for k in range(36)]
             want = PCM.pf_tilt(inwk, x, y, f)

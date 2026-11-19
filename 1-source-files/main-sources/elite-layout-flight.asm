@@ -23,7 +23,9 @@
 \     and PCLI copies them to PROGM% when it loads the program;
 \
 \   * bank 4 (saved as D.CODEH): the hot pass from S% at &8000 (HOME%), the
-\     planet's surface, then the blueprint slot at BPSLOT%, which LOMOD loads
+\     planet's surface, the common block at COMMON% (elite-common.asm: the
+\     code that pages the banks, the same in every bank; in bank 7 too),
+\     PF_HOOK, then the blueprint slot at BPSLOT%, which LOMOD loads
 \     from a D.MOx file, as the original loaded it at &5600 (the image holds
 \     the main RAM part's image there, and stops short of the quarter
 \     squares, which the loader makes);
@@ -31,7 +33,9 @@
 \   * bank 7 (saved as D.CODEC): the cold pass from &8000, then the recursive
 \     text tokens (QQ18, elite-text-tokens.asm's blocks tagged cold), the
 \     overlay region, then the renderer's window (WIN7%: the bank 7 passes of
-\     the renderer's files, the flight code's own parts of the renderer).
+\     the renderer's files, the flight code's own parts of the renderer),
+\     with the common block and the painter's entries (DPENT%) in it,
+\     before the painter's operands' patch.
 \
 \ The renderer's files are placed by passes too (streams.py: each block's
 \ "Area:" line names its place), and this file INCLUDEs their bank 4 and
@@ -43,6 +47,9 @@
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"      \ The renderer's mailbox
  INCLUDE "3-assembled-output/resident.asm"              \ The loader's resident
                                                         \ addresses
+ INCLUDE "3-assembled-output/common-entry.asm"          \ The common block's
+                                                        \ labels (elite-common.asm)
+ INCLUDE "3-assembled-output/bank5-entry.asm"           \ Bank 5's entries
 
 
  PROGI% = BPSLOT%       \ The main RAM part's image, at the start of the
@@ -53,20 +60,16 @@
  INCLUDE "3-assembled-output/elite-flight-config.asm"
 
 IF _CIRCLES
- CIRCSZ = 2706          \ Room at bank 4's end for the planet's surface (the
-ELSE                    \ circle engine's game part) in a build with _CIRCLES
- CIRCSZ = 0
+ CIRCSZ = 2720          \ Room at bank 4's end for the planet's surface (the
+ELSE                    \ circle engine's game part) in a build with _CIRCLES,
+ CIRCSZ = 0             \ but PF_HOOK, which is after the common block
 ENDIF
 
- HOT_END% = BPSLOT% - CIRCSZ   \ (bank 4: the hot pass, the planet's surface
-                        \ in a build with _CIRCLES, then the blueprint slot and
-                        \ the quarter squares)
+ HOT_END% = COMMON% - CIRCSZ   \ (bank 4: the hot pass, the planet's surface
+                        \ in a build with _CIRCLES, the common block, PF_HOOK,
+                        \ then the blueprint slot and the quarter squares)
 
  ORG PROGM%
-
- FTDP = TRUE              \ The fast trampolines (gfx-glue.asm), first: the same
- INCLUDE "3-assembled-output/gfx-glue-mainpart.asm"   \ in both programs, the
-                        \ painter's only in the flight code
 
  INCLUDE "3-assembled-output/elite-flight-low.asm"
 
@@ -133,12 +136,21 @@ ENDIF
                         \ which reads the quarter squares (docs/renderer.md)
 
 IF _CIRCLES
- ASSERT PF_INWK = INWK
  INCLUDE "3-assembled-output/gfx-planet7-bank4.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank4.asm"
 ENDIF
 
 .HOME_END%
+
+ ORG COMMON%            \ the common block (elite-common.asm): the code that
+ INCBIN "3-assembled-output/COMMON.bin"   \ pages the banks, the same bytes in
+ ASSERT P% = COMMON_END%   \ every bank (bank 5's assembly made them)
+
+IF _CIRCLES             \ (PF_HOOK, in the room from the common block to the
+ INCLUDE "3-assembled-output/gfx-planet7-bank4high.asm"   \ blueprint slot)
+ENDIF
+
+.HOME_TOP%
 
 IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
  ORG PFVH%              \ main high, main low and bank 4 top passes
@@ -157,12 +169,13 @@ IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
 ENDIF
 
 
- PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", BPSLOT%-HOME_END%
+
+ PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", COMMON%-HOME_END%, ", the common block ", ~COMMON%, "-", ~COMMON_END%-1, ", PF_HOOK to ", ~HOME_TOP%-1, " (free ", BPSLOT%-HOME_TOP%, ")"
  PRINT "Flight main RAM part: low pass ", ~PROGM%, "-", ~LOW_END%-1, ", hot pass to ", ~PROGM_USED%-1, ", free ", PROGM_END%-PROGM_USED%
  PRINT "Flight second main RAM part (D.LOW): ", ~PROGL%, "-", ~PROGL_USED%-1, ", free ", PROGL_END%-PROGL_USED%
  PRINT "Flight third main RAM part (D.LOW, copied down): ", ~PROGK%, "-", ~PROGK_USED%-1, ", free ", PROGK_END%-PROGK_USED%
  PRINT "Flight fourth main RAM part (D.LOW): ", ~PROGS%, "-", ~PROGS_USED%-1, ", free ", PROGS_END%-PROGS_USED%
- ASSERT HOME_END% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
+ ASSERT HOME_END% <= COMMON% AND HOME_TOP% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
 
  ORG PROGI%             \ the main RAM part's image, at the start of the
  COPYBLOCK PROGM%, PROGM_END%, PROGI%   \ blueprint slot: the D.MOx file loads
@@ -227,11 +240,24 @@ ENDIF
 
  INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
+
+.WIN7_MID%
+
+ ASSERT WIN7_MID% <= COMMON%
+
+ ORG COMMON%            \ the common block, as in bank 4
+ INCBIN "3-assembled-output/COMMON.bin"
+ ASSERT P% = COMMON_END% AND P% = DPENT%
+
+ INCLUDE "3-assembled-output/gfx-glue-bank7.asm"   \ (the painter's entries,
+                        \ DPENT%, which the common block's C_T7 calls, and its
+                        \ own call of bank 5's R_GETW)
+
  INCLUDE "3-assembled-output/gfx-raster_dpatch-bank7.asm"
 
 .WIN7_END%
 
- PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the overlays to ", ~OVL_END%-1, ", the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " and its state ", ~DPST%, "-", ~DFSSAVE%-1, ", free ", DPST%-WIN7_END%
+ PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the overlays to ", ~OVL_END%-1, ", the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", COMMON%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the common block ", ~COMMON%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
  ASSERT WIN7_END% <= DPST%         \ (the disc state, to DFSSAVE%: Port:
                                    \ the end of the bank)
 

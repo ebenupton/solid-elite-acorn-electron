@@ -23,7 +23,9 @@
 \     and PCLI copies them to PROGM% when it loads the program;
 \
 \   * bank 4 (saved as T.CODEH): the hot pass from S% at &8000 (HOME%), then
-\     the main RAM part's image, and the docked code's own blueprints (its
+\     the main RAM part's image, the common block at COMMON%
+\     (elite-common.asm: the code that pages the banks, the same in every
+\     bank; in bank 7 too), and the docked code's own blueprints (its
 \     blocks tagged "Area: blueprints", which followed the code at &5600 in
 \     the original) in the blueprint slot at BPSLOT%; the image stops short
 \     of the quarter squares, which the loader makes (the docked code's
@@ -38,20 +40,20 @@
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"      \ The renderer's mailbox
  INCLUDE "3-assembled-output/resident.asm"              \ The loader's resident
                                                         \ addresses
+ INCLUDE "3-assembled-output/common-entry.asm"          \ The common block's
+                                                        \ labels (elite-common.asm)
 
- PROGI% = BPSLOT% - PROGIS%   \ The main RAM part's image, below the
-                        \ blueprint slot (which holds this program's
-                        \ blueprints)
+ PROGI% = COMMON% - PROGIS%   \ The main RAM part's image, below the
+                        \ common block and the blueprint slot (which holds
+                        \ this program's blueprints)
 
- HOT_END% = PROGI%      \ (bank 4: the hot pass, the main RAM part's image, then
-                        \ the blueprint slot and the quarter squares)
+ HOT_END% = PROGI%      \ (bank 4: the hot pass, the main RAM part's image, the
+                        \ common block, then the blueprint slot and the
+                        \ quarter squares)
 
  INCLUDE "3-assembled-output/elite-docked-config.asm"
 
  ORG PROGM%
-
- FTDP = FALSE             \ The fast trampolines (gfx-glue.asm), first: the same
- INCLUDE "3-assembled-output/gfx-glue-mainpart.asm"   \ in both programs
 
  INCLUDE "3-assembled-output/elite-docked-low.asm"
 
@@ -62,6 +64,7 @@
 
  INCLUDE "3-assembled-output/elite-docked-hotm.asm"
 
+ FT_POLY = C_POLY       \ (the common block's call of R_POLY)
  INCLUDE "3-assembled-output/gfx-hangar-dockedmain.asm"   \ (the hangar's
                         \ background: gfx-hangar.asm)
 
@@ -108,10 +111,15 @@
 
  ASSERT P% = BPSLOT_END%
 
- ORG PROGI%             \ the main RAM part's image, below the blueprint slot
+ ORG PROGI%             \ the main RAM part's image, below the common block
  ASSERT INBAYJ = INBAYJ%   \ (the flight code's INBAY returns there: elite-map.asm)
 
  COPYBLOCK PROGM%, PROGM_END%, PROGI%
+
+ ORG COMMON%            \ the common block (elite-common.asm): the code that
+ INCBIN "3-assembled-output/COMMON.bin"   \ pages the banks, the same bytes in
+ ASSERT P% = COMMON_END% AND COMMON_END% <= BPSLOT%   \ every bank (bank 5's
+                        \ assembly made them)
 
  SAVE "3-assembled-output/T.CODEH.bin", HOME%, BPSLOT_END%, HOME%   \ (to the
                         \ slot's end, below the quarter squares, which the
@@ -140,9 +148,13 @@
 
 .COLD_END%
 
- PRINT "Docked bank 7: &8000-", ~COLD_END%-1, " (the cold pass), free ", DFSSAVE%-COLD_END%
- ASSERT COLD_END% <= DFSSAVE%      \ (Port: the end of the bank, DFSSAVE%)
+ PRINT "Docked bank 7: &8000-", ~COLD_END%-1, " (the cold pass), free ", COMMON%-COLD_END%, ", the common block ", ~COMMON%, "-", ~COMMON_END%-1
+ ASSERT COLD_END% <= COMMON%
 
- SAVE "3-assembled-output/T.CODEC.bin", &8000, COLD_END%, &8000
+ ORG COMMON%            \ the common block, as in bank 4
+ INCBIN "3-assembled-output/COMMON.bin"
+ ASSERT P% = COMMON_END%
+
+ SAVE "3-assembled-output/T.CODEC.bin", &8000, COMMON_END%, &8000
 
  ASSERT ECMA = SND_ECMA   \ (the sound engine reads ECMA: gfx-sound.asm)

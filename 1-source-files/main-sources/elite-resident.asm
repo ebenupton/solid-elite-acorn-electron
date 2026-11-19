@@ -126,9 +126,11 @@
  JSR pload
 
  LDA BANK4              \ Copy it into the home bank, up to the quarter squares,
- LDX #HI(QSL - HOME%)   \ which the loader made and no image holds
- LDY #HI(HOME%)
- JSR bcopy
+ LDX #HI(QSL - HOME%)   \ which the loader made and no image holds (cbcopy: with
+ LDY #HI(HOME%)         \ the common block's bank numbers)
+ JSR cbcopy
+
+ ASSERT HOME% = &8000   \ (cbcopy: the image is the bank's from &8000)
 
  LDA STAGE%+14          \ Copy the program's main RAM part, PROGM% to
  STA pcm1+1             \ PROGM_END%, from its image in the home image, which
@@ -168,7 +170,7 @@
  LDA BANK7              \ Copy it into the cold bank
  LDX #64
  LDY #&80
- JSR bcopy
+ JSR cbcopy
 
  JSR b0fix              \ Port: the home image staged over buffer 0: make it
                         \ black, with buffer 1's dashboard (b0fix)
@@ -863,27 +865,82 @@ pcbuf = PCBUF           \ PCLI: the command (elite-map.asm)
 \
 \ ******************************************************************************
 
- PRINT "Resident block A: &0400-", ~P%-1, ", free ", PFVA%-P%, " (then the circle engine's variables, the renderer's glue, SNE and ACT)"
+ PRINT "Resident block A: &0400-", ~P%-1, ", free ", PFVA%-P%, " (then the circle engine's variables and table, SNE and ACT)"
  ASSERT P% <= PFVA% AND PROGM_END% > PROGM%
 
 \ ******************************************************************************
 \
-\ Port: the renderer's glue (gfx-glue.asm): GCALL, which the game calls bank
-\ 6's entries through, and the trampolines that bank 6 calls bank 5 through,
-\ at GLUE% (which bank 6 is built against, 2-build-files/bank6.py), then the
-\ circle engine's table that both bank 4 and bank 6 read (gfx-merid.asm's
-\ main pass)
+\ Port: the circle engine's table that both bank 4 and bank 6 read
+\ (gfx-merid.asm's main pass), at GLUE% (which bank 6 is built against,
+\ 2-build-files/bank6.py), then cbcopy, in the room after it
 \
 \ ******************************************************************************
 
  ORG GLUE%
 
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"
- INCLUDE "3-assembled-output/gfx-glue-main.asm"
  INCLUDE "3-assembled-output/gfx-merid-main.asm"   \ (pcb_o, which bank 4's pc_circ
                                                    \ and bank 6's PC_ROWS read)
 
- PRINT "The renderer's glue: ", ~GLUE%, "-", ~P%-1, ", free ", &07C0-P%
+\ ******************************************************************************
+\
+\       Name: cbcopy
+\       Type: Subroutine
+\   Category: Loader
+\    Summary: Copy a program's image from STAGE% into its bank (bcopy), with
+\             the common block's bank numbers
+\
+\ ------------------------------------------------------------------------------
+\
+\ Port: every bank's copy of the common block (elite-common.asm) starts with
+\ the bank numbers, BANKS's four and the bank's own, which the images do not
+\ hold, nor the page of the bank's entries (CBPG: S%'s in the home bank, the
+\ flight code's painter's, DPENT%, in the cold bank). This sets them in the
+\ staged image (an image of a whole bank, from
+\ &8000) before the copy, so that the copy writes them: a program's images
+\ are copied over the banks of the program that is running, whose code in
+\ the common block is the same bytes in every image, so that nothing of the
+\ block changes at any time during the copy.
+\
+\ Arguments:
+\
+\   A                   The bank (ROMSEL)
+\
+\   X                   The number of pages to copy
+\
+\   Y                   The page in the bank to copy to (&80)
+\
+\ ******************************************************************************
+
+.cbcopy
+
+ STA CBME - &8000 + STAGE%
+
+ PHA                    \ (the bank, for bcopy)
+
+ CMP BANK4              \ The page of the bank's entries
+ BEQ P%+6
+ LDA #HI(DPENT%)
+ BNE P%+4
+ LDA #HI(HOME%)
+ STA CBPG - &8000 + STAGE%
+
+ LDA BANKS
+ STA CB7 - &8000 + STAGE%
+ LDA BANKS+1
+ STA CB7 - &8000 + STAGE% + 1
+ LDA BANKS+2
+ STA CB7 - &8000 + STAGE% + 2
+ LDA BANKS+3
+ STA CB7 - &8000 + STAGE% + 3
+
+ PLA
+
+ JMP bcopy
+
+.RESG_END%
+
+ PRINT "The circle engine's table and cbcopy: ", ~GLUE%, "-", ~P%-1, ", free ", &07C0-P%
  ASSERT P% <= &07C0
 
  ORG &07C0

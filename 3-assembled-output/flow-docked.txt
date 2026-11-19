@@ -1,4 +1,4 @@
-hot &8000-&ADBF: 119 units, 9176 bytes, 2536 free
+hot &8000-&AC62: 119 units, 9176 bytes, 2187 free
   &8000    22 S%
   &8016    15 INBAY
   &8025    20 DEEOR
@@ -118,7 +118,7 @@ hot &8000-&ADBF: 119 units, 9176 bytes, 2536 free
   &A2D7   122 LL118
   &A351   107 LL120..LL123
   &A3BC    28 LL129
-hotm &1974-&1E3F: 0 units, 0 bytes, 1228 free
+hotm &1910-&1E3F: 0 units, 0 bytes, 1328 free
 hotx &2C50-&2C4F: 0 units, 0 bytes, 0 free
 hotl &2C50-&2C4F: 0 units, 0 bytes, 0 free
 hots &2C50-&2C4F: 0 units, 0 bytes, 0 free

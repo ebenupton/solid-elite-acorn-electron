@@ -14,23 +14,21 @@
  INCLUDE "1-source-files/main-sources/elite-map.asm"
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"
  INCLUDE "3-assembled-output/resident.asm"
+ INCLUDE "3-assembled-output/common-entry.asm"
+ INCLUDE "3-assembled-output/bank5-entry.asm"
 
  PROGI% = BPSLOT%
 
  INCLUDE "3-assembled-output/elite-flight-config.asm"
 
 IF _CIRCLES
- CIRCSZ = 2706
+ CIRCSZ = 2720
 ELSE
  CIRCSZ = 0
 ENDIF
- HOT_END% = BPSLOT% - CIRCSZ
+ HOT_END% = COMMON% - CIRCSZ
 
  ORG PROGM%
-
- FTDP = TRUE              \ The fast trampolines (gfx-glue.asm), first: the same
- INCLUDE "3-assembled-output/gfx-glue-mainpart.asm"   \ in both programs, the
-                        \ painter's only in the flight code
 
  INCLUDE "3-assembled-output/elite-flight-low.asm"
 
@@ -50,6 +48,7 @@ IF _CIRCLES             \ (the planet's surface at the hot pass's end, as the
                         \ layout has it, for the hot pass's reference to it)
  INCLUDE "3-assembled-output/gfx-planet7-bank4.asm"
  INCLUDE "3-assembled-output/gfx-merid-bank4.asm"
+ INCLUDE "3-assembled-output/gfx-planet7-bank4high.asm"
 ENDIF
 
 .M_CIRC_END
@@ -82,6 +81,7 @@ ENDIF
  OVL_END% = &BE00
  CLEAR OVL%, &C000
  ORG OVL%
+ FT_GETW = OVL%         \ (the painter's call of R_GETW: a stub in the layout)
  INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_dpatch-bank7.asm"

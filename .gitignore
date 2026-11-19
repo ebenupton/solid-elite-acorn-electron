@@ -50,6 +50,8 @@ __pycache__/
 # The renderer's pass copies (streams.py)
 3-assembled-output/gfx-*.asm
 3-assembled-output/bank5-entry.asm
+3-assembled-output/common-entry.asm
+3-assembled-output/COMMON.bin
 3-assembled-output/sunref-syms.asm
 
 # clkh, the headless Electron (6-harness/clkh): its build directory

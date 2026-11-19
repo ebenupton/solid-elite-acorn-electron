@@ -7,7 +7,7 @@
 \ the hand-converted NMOS 6502 code of its Model B branch), adapted to the
 \ Model B's memory. The game's drawing routines, in a view that draws ships
 \ (QQ11 = 0, GFORCE = 0: record mode), record what they would have drawn
-\ through GCALL (gfx-glue.asm: LDX #FG_xxx : JSR GCALL), and once per main
+\ through GCALL (elite-common.asm: LDX #FG_xxx : JSR GCALL), and once per main
 \ loop iteration F_FRAME draws the records into the buffer not on show and
 \ asks the interrupt to show it (GFLIP, GPEND). LL9 records each ship as its
 \ part 6 starts (F_SHIP), and the frame runs part 6 on for it as it draws it
@@ -23,8 +23,8 @@
 \     back buffer's base, which f_bufpatch sets each frame (f_scr).
 \
 \   * The rasteriser (bank 5) keeps its state in its own bank, which this
-\     bank cannot see: it is reached only through the trampolines in main
-\     RAM (T_INIT to T_GETW, gfx-glue.asm), with the inputs in its
+\     bank cannot see: it is reached only through the common block's calls
+\     (T_INIT to T_GETW, gfx-glue.asm), with the inputs in its
 \     mailbox (MBOX) and zero page (&06-&27). So what the Master port's frame
 \     layer read or wrote of the rasteriser's arrays goes through bank 5: a
 \     cell f_mark erases is marked dirty at each buffer's next frame
@@ -36,21 +36,21 @@
 \     6 on, PTCLS) are made through f_game, which puts the clip window back
 \     after them, and nothing of FZ is kept across them.
 \
-\   * The game's code that the frame runs is reached through the far call
-\     farH (elite-far.asm), at fixed entries in each program's S% table:
+\   * The game's code that the frame runs is reached through the common
+\     block's C_HOME (gfx-glue.asm), at fixed entries in each program's S% table:
 \     S% + 16 (LL42F: LL9's part 6 on) and S% + 19 (PTCLR: PTCLS's drawing).
 \
 \   * The discs are the Master port's (f_dprep, f_ddraw, f_disc2), with the
 \     disc layer's row code, the painter, in the flight code's bank 7
-\     (gfx-raster_disc.asm, gfx-raster_disc2.asm), reached by far calls and
-\     given its rows a batch at a time in the mailbox; the planet's surface
+\     (gfx-raster_disc.asm, gfx-raster_disc2.asm), reached through the common
+\     block and given its rows a batch at a time in the mailbox; the planet's surface
 \     rows (PC_ROWS, gfx-merid.asm) are in this bank.
 \
 \   * The lighting (L_SUN, L_REC, gfx-light.asm) runs in the game's bank 4,
 \     where the quarter squares are: F_SHIP is given the faces' levels in XX2.
 \
 \   * Every entry keeps Y (but F_GUN, which returns one), and takes its
-\     inputs in A, Y and memory (GCALL carries the entry's number in X).
+\     inputs in A, Y and memory (GCALL takes the entry, FG_*, in X).
 \
 \       Area: bank 6
 \
@@ -920,7 +920,7 @@ RPN = 4
 \ ------------------------------------------------------------------------------
 \ The discs (Port: the BBC Master port's f_discs and f_disc2, with its disc
 \ layer's row code, the painter, in the flight code's bank 7: gfx-raster_disc.asm
-\ and gfx-raster_disc2.asm, reached by far calls, farC; docs/renderer.md, "The
+\ and gfx-raster_disc2.asm, reached through the common block; docs/renderer.md, "The
 \ discs"). The bigger of the sun and the planet (the sun if not smaller) is
 \ the disc layer, kept on each buffer from frame to frame and drawn where it
 \ changed: its spans (f_sunrows, f_plrows: R_NDISCL/R, R_NDT, R_NDB) and the
@@ -2370,15 +2370,8 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BCS fdb1
  RTS
 
-.f_dpbegin              \ the painter's entries, in the flight code's bank 7
- JSR farC               \ (gfx-raster_disc.asm, gfx-raster_disc2.asm)
- EQUW DP_BEGIN
-.f_dpdisc2
- JSR farC
- EQUW DP_DISC2
-.f_dpwq
- JSR farC
- EQUW DP_WQ
+\ (f_dpbegin, f_dpdisc2, f_dpwq: the painter's entries, in the flight code's
+\ bank 7: gfx-glue.asm)
 
 \ f_disc2: the second disc (both the sun and the planet on screen: more
 \ often since the sun is kept near the planet, SUNSC). It is the
@@ -3228,7 +3221,7 @@ ASSERT LT_HL1 = LT_HL0 + 9 AND LT_HL2 = LT_HL0 + 18 AND LT_HL3 = LT_HL0 + 27
 
 \ f_dots: the distant ships' dots and the explosion clouds, in the order
 \ recorded. A cloud is drawn by PTCLS itself (f_gcloud: bank 4, through the
-\ far call farH, entering at PTCLR, the game's S% + 19), from its ship's line
+\ common block, entering at PTCLR, the game's S% + 19), from its ship's line
 \ heap, with the game's zero page kept (f_gkeep); a slot no longer holding an
 \ exploding ship (its data block's byte #31 bit 5) has nothing to draw
 
@@ -4191,7 +4184,7 @@ SGOUT = 20
 \ is 0 (LL72: not exploding), and H_EE31 returns at once (GPRJ, which the
 \ game's LL42F sets round its call of LL42P). The game's zero page is kept
 \ round it (f_gkeep). Port (Model B): part 6 on runs in the game's bank 4,
-\ through the far call farH (f_gproj: the program's S% + 16, LL42F), and
+\ through the common block (f_gproj: the program's S% + 16, LL42F), and
 \ its zero page is the rasteriser's &09-&27 (XX16, XX0 ...) and this
 \ layer's FZ (XX2): the clip window is put back after it (f_clip), and FZ
 \ holds nothing across it
@@ -4261,16 +4254,8 @@ SGOUT = 20
  JSR f_gproj            \ part 6 on, in the game's bank 4
  JMP f_clip             \ (the clip window back: XX16 is over it)
 
-\ f_gproj, f_gcloud: the game code the frame runs, in the program's bank 4
-\ (BANK4), through the far call farH, which pages this bank back after it:
-\ the entries in each program's S% table (elite-source-*.asm)
-
-.f_gproj
- JSR farH               \ LL42F: LL9's part 6 on, with H_EE31 returning at once
- EQUW SGPROJ
-.f_gcloud
- JSR farH               \ PTCLR: PTCLS's drawing of the cloud at XX19 (its
- EQUW SGCLOUD           \ particles through H_DOT, F_PDOT)
+\ (f_gproj, f_gcloud: the game code the frame runs, in the program's bank 4,
+\ the entries in each program's S% table: gfx-glue.asm)
 
 \ f_gkeep: before the frame first runs game code (f_proj, f_dots' clouds),
 \ keep the game's zero page that the game reads afterwards and that game
