@@ -4200,6 +4200,7 @@ ENDIF
 \       Type: Variable
 \   Category: Universe
 \    Summary: Table of pointers to the local universe's ship data blocks
+\       Area: hot, main
 \  Deep dive: The local bubble of universe
 \             Ship data blocks
 \
@@ -12062,7 +12063,7 @@ ENDIF
 \   Category: Tactics
 \    Summary: Make a ship or station hostile, and if this is a ship then enable
 \             the ship's AI and give it a kick of speed
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Aggression and hostility in ship tactics
 \
 \ ------------------------------------------------------------------------------
@@ -13560,6 +13561,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Set P(1 0) = (A A)
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21397,7 +21399,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Take some damage
-\       Area: cold
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21498,6 +21500,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Copy a space coordinate from the K% block into K3
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21544,6 +21547,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Fetch the address of a ship's data block into INF
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27157,6 +27161,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Calculate a cap on the maximum distance to a ship
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28874,6 +28879,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Scan the keyboard for a flight key
+\       Area: hot, main
 \  Deep dive: The key logger
 \
 \ ------------------------------------------------------------------------------
@@ -28914,6 +28920,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Scan the keyboard to see if CTRL is currently pressed
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28939,6 +28946,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Scan the keyboard to see if a specific key is being pressed
+\       Area: hot, main
 \  Deep dive: The key logger
 \
 \ ------------------------------------------------------------------------------
@@ -29079,6 +29087,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Keyboard
 \    Summary: Read the joystick position
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31375,6 +31384,7 @@ ENDMACRO
 \   Category: Drawing planets
 \    Summary: Port: in record mode, record the planet and its surface, and
 \             return from PL9 as its parts 2 and 3 would
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31995,7 +32005,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Port: the handedness of the ship's orientation vectors
-\       Area: cold
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -36834,7 +36844,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Flip the coordinate axes for the four different views
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Flipping axes between space views
 \
 \ ------------------------------------------------------------------------------

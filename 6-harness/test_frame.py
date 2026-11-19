@@ -163,10 +163,13 @@ class Mem:
         self.ok = ok
         game = bytearray(ok)                     # game code (LL9, and what the
                                                  # frame runs) also writes the
+        gsht = syms_of('flight')['GSHT']
         for lo, hi in ((0, 0x100), (0x300, 0x400), (0x900, 0xD00),   # game's zero
-                       (mc['PROGM%'], mc['PROGM_END%']),
+                       (mc['PROGM%'], mc['PROGM_END%']), (gsht, gsht + 3),
                        (mc['PFVA%'], mc['GLUE%'])):
-            game[lo:hi] = b'\1' * (hi - lo)     # page, UP, K% and the main RAM part
+            game[lo:hi] = b'\1' * (hi - lo)     # page, UP, K%, the main RAM part and
+                                                 # SHAND's workspace (GSHT, with it in
+                                                 # another main RAM part)
         self.okgame = game
         self.guard = ok
         self.bad = []

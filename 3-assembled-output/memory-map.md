@@ -12,7 +12,7 @@
 | main RAM | `&0D7A-&0D9D` | `CATD` | 36 | 0 |
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
-| main RAM (flight) | `&1100-&18FF` | the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it (after the fourth and second parts, over buffer 0) and `LOWLD` copies it down | 2046 | 2 |
+| main RAM (flight) | `&1100-&18FF` | the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it (after the fourth and second parts, over buffer 0) and `LOWLD` copies it down | 2048 | 0 |
 | main RAM (flight) | `&1900-&1E3F` | the main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass, then `hotm` | 477 | 867 |
 | main RAM (docked) | `&1900-&1E3F` | the main RAM part: the fast trampolines (`FT_GETW`, `FT_POLY`, `FT_LINE`, and the flight code's `FT_DPROWS`), the low pass, then `hotm` | 268 | 1076 |
 | main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
@@ -22,12 +22,12 @@
 | main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 28 | 66 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&244F` | the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`) | 0 | 1104 |
-| main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 1336 | 712 |
+| main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 2008 | 40 |
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 944 | 0 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
-| bank 4 (flight) | `&8000-&A7C3` | `S%` and the hot pass | 10180 | 0 |
-| bank 4 (flight) | `&A7C4-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2703 | 173 |
+| bank 4 (flight) | `&8000-&A690` | `S%` and the hot pass | 9873 | 0 |
+| bank 4 (flight) | `&A691-&B2FF` | the planet's surface (bank 4 passes: `PF_HOOK`, `pc_circ`) | 2703 | 480 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 93 | 1 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
@@ -36,9 +36,9 @@
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
 | bank 4 (docked) | `&BBA2-&BBFF` | (free) | 0 | 94 |
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 7 (flight) | `&8000-&9C64` | the cold pass, `QQ18` | 7269 | 0 |
-| bank 7 (flight) | `&9C65-&A0AE` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&A0AF-&B3FF` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc, their operands' patch) | 4774 | 171 |
+| bank 7 (flight) | `&8000-&9AF0` | the cold pass, `QQ18` | 6897 | 0 |
+| bank 7 (flight) | `&9AF1-&9F3A` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
+| bank 7 (flight) | `&9F3B-&B3FF` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc, their operands' patch) | 4774 | 543 |
 | bank 7 (flight) | `&B400-&BFFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
 | bank 7 (docked) | `&8000-&BFFF` | the set's face lists, the cold pass, `QQ18` | 11362 | 5022 |
 | bank 5 | `&8000-&8BFF` | the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables | 2459 | 613 |
@@ -57,4 +57,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT`, the dispatcher | 48 | 16 |
 
-Free, by place: main RAM 1179, main RAM (flight) 1581, main RAM (docked) 1076, bank 4 (flight) 174, bank 4 (docked) 2696, bank 7 (flight) 171, bank 7 (docked) 5022, bank 5 831, bank 6 135.
+Free, by place: main RAM 1179, main RAM (flight) 907, main RAM (docked) 1076, bank 4 (flight) 481, bank 4 (docked) 2696, bank 7 (flight) 543, bank 7 (docked) 5022, bank 5 831, bank 6 135.
