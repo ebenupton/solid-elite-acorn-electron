@@ -104,6 +104,7 @@ d_mx = RZB7 + &1E
   ORA d_fl
   ORA d_pwr
   BNE wo
+.^d2_nx
 .nx
   INX
   INY
@@ -131,8 +132,7 @@ d_mx = RZB7 + &1E
 .cr
   JSR d2ld
   JSR row
-  JSR dp_st
-  JMP nx                  \ (NMOS: no BRA)
+  JMP dp_st               \ (back to nx)
 .wo                       \ recoloured: every row
   BIT d_fl
   BMI ch
@@ -174,8 +174,7 @@ d_mx = RZB7 + &1E
   JSR d2put
   JSR d2fin
 .w5
-  JSR dp_st
-  JMP nx
+  JMP dp_st               \ (back to nx)
 
 .all
   STX d_c                 \ the old span black (none if empty) ... (X = 0:

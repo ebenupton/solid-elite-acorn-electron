@@ -334,8 +334,10 @@ ENDMACRO
   RTS
 }
 
-\ dp_st: (the second disc's) what the row wrote into its slot, and X = the
-\ row, Y = the slot back
+\ dp_st: (the second disc's) what the row wrote into its slot, and back to
+\ DP_DISC2's next row (d2_nx) with X = the row, Y = the slot. Port: jumped
+\ to and back, not called (its two callers, in DP_DISC2, each went on to the
+\ next row)
 
 .dp_st
   LDY dp_s
@@ -344,7 +346,7 @@ ENDMACRO
   LDA rw_r
   STA DB_WR,Y
   LDX dp_x
-  RTS
+  JMP d2_nx
 
 \ ============================================================================
 \ The row loops: rows X on to dp_xe, their records from DB_R + Y on. Each
@@ -672,6 +674,61 @@ ENDMACRO
 \ what was written is noted for the rest of the frame (r_fin).
 \ ============================================================================
 
+\ R_NOTE: A = cg_np, not zero: the row's bytes written (from cg_fw's to the
+\ one before cg_np's) noted for the rest of the frame, as r_nf has it for
+\ the row's character row (r_rowq): bit 7 (a text row's, or any with a
+\ second disc: DP_BEGIN), into the bytes written on the character row (c_fw,
+\ c_np: dp_flush); bit 6 (the sights' rows are among its rows, and nothing
+\ has met them yet), whether they met the sights, which are on row QSGY
+\ from QSGX - QSGIN to QSGX + QSGIN + 1 and at QSGX and QSGX + 1 on the
+\ rows that far above and below (gfx-rws.asm). Clobbers A, X
+
+MACRO R_NOTE
+  LDX r_nf
+  BEQ n9
+  BPL n2
+  CMP c_np
+  BCC n1
+  STA c_np
+.n1
+  LDA cg_fw
+  AND #&F8
+  CMP c_fw
+  BCS n2
+  STA c_fw
+.n2
+  BIT r_nf
+  BVC n9
+  LDX RZ_Y
+  CPX #QSGY-QSGIN
+  BCC n9
+  CPX #QSGY+QSGIN+1
+  BCS n9
+  LDA cg_fw
+  AND #&F8
+  CMP #QSGX+2
+  BCS n3
+  LDX cg_np
+  CPX #QSGX+1
+  BCS n5
+.n3
+  LDX RZ_Y
+  CPX #QSGY
+  BNE n9
+  CMP #QSGX+QSGIN+2
+  BCS n9
+  LDX cg_np
+  CPX #QSGX-QSGIN+1
+  BCC n9
+.n5
+  LDA #&80
+  STA pw_sg
+  LDA r_nf
+  AND #&BF
+  STA r_nf
+.n9
+ENDMACRO
+
 MACRO PEGO ret            \ pe's way back
   LDA #LO(ret)
   STA pe_x+1
@@ -706,8 +763,8 @@ ENDMACRO
   AND #&F8
   CMP r_pcrw
   BEQ en1
-  JSR r_rowq              \ (another character row: once in eight rows)
-.en1
+  JMP r_rowq              \ (another character row: once in eight rows;
+.en1                      \ back to en1)
   LDA rn_n                \ 2 x the row's parity + colour B first
   ASL A
   TXA
@@ -718,7 +775,7 @@ ENDMACRO
   STA cg_np
   CPX r_nd
   BNE en2
-  JSR r_dty
+  JMP r_dty               \ (back to en2)
 .en2
   LDA r_md
   BEQ r_p1
@@ -813,64 +870,11 @@ ENDMACRO
 .p1x
   JMP r_fin
 
-\ R_NOTE: A = cg_np, not zero: the row's bytes written (from cg_fw's to the
-\ one before cg_np's) noted for the rest of the frame, as r_nf has it for
-\ the row's character row (r_rowq): bit 7 (a text row's, or any with a
-\ second disc: DP_BEGIN), into the bytes written on the character row (c_fw,
-\ c_np: dp_flush); bit 6 (the sights' rows are among its rows, and nothing
-\ has met them yet), whether they met the sights, which are on row QSGY
-\ from QSGX - QSGIN to QSGX + QSGIN + 1 and at QSGX and QSGX + 1 on the
-\ rows that far above and below (gfx-rws.asm). Clobbers A, X
-
-MACRO R_NOTE
-  LDX r_nf
-  BEQ n9
-  BPL n2
-  CMP c_np
-  BCC n1
-  STA c_np
-.n1
-  LDA cg_fw
-  AND #&F8
-  CMP c_fw
-  BCS n2
-  STA c_fw
-.n2
-  BIT r_nf
-  BVC n9
-  LDX RZ_Y
-  CPX #QSGY-QSGIN
-  BCC n9
-  CPX #QSGY+QSGIN+1
-  BCS n9
-  LDA cg_fw
-  AND #&F8
-  CMP #QSGX+2
-  BCS n3
-  LDX cg_np
-  CPX #QSGX+1
-  BCS n5
-.n3
-  LDX RZ_Y
-  CPX #QSGY
-  BNE n9
-  CMP #QSGX+QSGIN+2
-  BCS n9
-  LDX cg_np
-  CPX #QSGX-QSGIN+1
-  BCC n9
-.n5
-  LDA #&80
-  STA pw_sg
-  LDA r_nf
-  AND #&BF
-  STA r_nf
-.n9
-ENDMACRO
 
 \ r_dty: (r_ent) row RZ_Y, the next dirty row: its dirty extent's bytes as
 \ the new list has them (a byte of them that a change then writes is
-\ written twice), noted, and r_nd the dirty row after. Returns X = the row
+\ written twice), noted, and r_nd the dirty row after; back to r_ent's en2
+\ with X = the row. Port: jumped to and back, not called (its one caller)
 
 .r_dty
 {
@@ -901,7 +905,7 @@ ENDMACRO
   LDA #0
   STA cg_np
   LDX RZ_Y
-  RTS
+  JMP en2
 }
 
 \ r_rpt: row RZ_Y, both spans there: the bytes of both
@@ -1809,11 +1813,29 @@ ENDMACRO
 \ r_rowq: (r_ent, another character row) X = the row, A = row AND &F8: the
 \ writes on the last one noted (dp_flush), and the
 \ character row's address in the buffer, its byte in column 0, line 0, in
-\ the layer's stores' operands (as r_rowp's, for r_sw)
+\ the layer's stores' operands (as r_rowp's, for r_sw); back to r_ent's en1
 
 .r_rowq
   STA cg_t
-  JSR dp_flush            \ (the last character row's writes)
+  LDA c_np                \ the last character row's writes (Port: dp_flush
+  BEQ rqf                 \ in line, hot)
+  LDA r_pcrw
+  LSR A
+  LSR A
+  LSR A
+  TAY
+  LDA c_fw
+  STA pw_l,Y
+  LDA c_np
+  SEC
+  SBC #1
+  ORA #7
+  STA pw_r,Y
+  LDA #0
+  STA c_np
+  LDA #&FF
+  STA c_fw
+.rqf
   LDA #0                  \ what R_NOTE keeps of this one's
   LDY cg_t
   CPY r_n0
@@ -1880,7 +1902,8 @@ ENDMACRO
   STA r_gg+2
   STA r_gh+2
   STA r_gi+2
-  RTS
+  JMP en1                 \ (Port: jumped to and back, not called: its
+                          \ one caller, r_ent)
 
 
 \ ******************************************************************************
