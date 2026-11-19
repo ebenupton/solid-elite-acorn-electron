@@ -105,3 +105,6 @@
 .dp_hpb1 EQUB HI(R_BDX10), HI(R_BDX11)
 .dp_hpb2 EQUB HI(R_BDX20), HI(R_BDX21)
 .dp_hscr EQUB HI(BUF0), HI(SCREEN%)
+
+ ASSERT P% <= DPV%      \ (the painter's arrays after the window's code:
+                        \ gfx-raster_disc.asm)

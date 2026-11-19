@@ -65,11 +65,16 @@
 
  CPU 0                  \ NMOS 6502: no 65C02 instructions in this file
 
-.P7Z SKIP &14           \ the painter's scratch, in this bank: at RZB7 + the
-RZB7 = P7Z - &14        \ zero page address each once had (the rasteriser's
-                        \ names), first, as the code takes it as absolute
-
 DPST% = DFSSAVE% - &C00 \ the disc state, to DFSSAVE%
+DPV% = DPST% - &74      \ Port: the painter's arrays that need no value in
+                        \ the image (its scratch, dq, pw_l, pw_r), not in the
+                        \ window's code but in the room after it, below the
+                        \ disc state (gfx-raster_dpatch.asm, the window's
+                        \ last pass, checks that they are clear of it)
+
+P7Z = DPV%              \ the painter's scratch, in this bank: at RZB7 + the
+RZB7 = P7Z - &14        \ zero page address each once had (the rasteriser's
+                        \ names), as the code takes it as absolute
  ASSERT LO(DPST%) = 0
  ASSERT OVSTASH = DPST% AND OVSTASH + &2E2 <= DPST% + &300   \ (ovload's stash:
                         \ buffer 0's spans, which the load makes dead, elite-map.asm)
@@ -1567,6 +1572,10 @@ ENDMACRO
 .cg9
   RTS
 
+.cg3e                     \ (cg3's: an edge before the byte, passed; Port:
+  {                       \ in line, as cg_byte's b0 loop does)
+  CGADV
+  }
 .cg3                      \ the bytes Y .. cg_ye, of columns 1 to 30
   CPX cg_n
   BCS cg3a                \ (no more edges: to the end)
@@ -1576,10 +1585,7 @@ ENDMACRO
   STA cg_eb
   CPY cg_eb
   BCC cg4                 \ whole bytes up to the next edge's
-  BEQ cg3b
-  JSR cg_byte             \ (an edge before the byte)
-  JMP r_gd
-.cg3b
+  BNE cg3e                \ (an edge before the byte)
   STY cg_t                \ a byte with an edge. Port: cg_byte's b1 to b7
   LDA cg_cur              \ in line (hot: a call saved for each such byte;
   STA cg_acc              \ cg_bw still calls cg_byte)
@@ -2041,11 +2047,12 @@ ENDMACRO
 .r_nd    EQUB 0         \ the next dirty row (none: &FF), its place in dq, dq's
 .dq_i    EQUB 0         \ end, and the dirty rows in hand: row, left, right
 .dq_e    EQUB 0         \ (dp_fill)
-.dq      SKIP 3 * DB_DM
+dq = DPV% + &14         \ (3 * DB_DM bytes: DPV%)
 .c_np    EQUB 0         \ the bytes written on the character row in hand: as
 .c_fw    EQUB &FF       \ cg_np (none: 0) and the first's pixel (R_NOTE)
-.pw_l    SKIP 24        \ the frame's writes by character row (dp_flush;
-.pw_r    SKIP 24        \ none: pw_r = 0) and bit 7 if any met the sights
+pw_l = dq + 3 * DB_DM   \ the frame's writes by character row (dp_flush;
+pw_r = pw_l + 24        \ none: pw_r = 0) and bit 7 if any met the sights
+ ASSERT pw_r + 24 = DPST%   \ (24 each: DPV%)
 .pw_sg   EQUB 0
 .r_n0    EQUB 0         \ R_NOTE: the rows whose bytes written are kept (from
 .r_n1    EQUB 0         \ r_n0 to r_n1 - 1), and for the character row in hand
