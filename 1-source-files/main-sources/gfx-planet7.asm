@@ -178,6 +178,19 @@
  RTS
 .pfs_c EQUB 247, 241, 232, 222
 
+                        \ pf_tilt's variables, after PF_HOOK in its page (bank
+                        \ 4, where the code is; pc_circ reads pcv and pcn)
+.pcv    SKIP 6          \ the axis (three sign-magnitude words: pf_tilt)
+.pcn    SKIP 2          \ 2^24 / the axis' nominal length (>> 3)
+.pft_f  SKIP 1          \ pf_tilt's own
+.pft_x  SKIP 1
+.pft_y  SKIP 1
+.pft_k  SKIP 1
+.pft_k2 SKIP 1
+.pft_n  SKIP 1
+.pft_r  SKIP 2
+.pft_s  SKIP 2
+
 
 
 
@@ -310,19 +323,7 @@
  STA pft_r+1
  RTS
 
-                        \ pf_tilt's (in bank 4 with the code: pc_circ reads
-                        \ pcv and pcn)
-.pcv    SKIP 6          \ the axis (three sign-magnitude words: pf_tilt)
-.pcn    SKIP 2          \ 2^24 / the axis' nominal length (>> 3)
-.pft_f  SKIP 1          \ pf_tilt's own
-.pft_x  SKIP 1
-.pft_y  SKIP 1
-.pft_k  SKIP 1
-.pft_k2 SKIP 1
-.pft_n  SKIP 1
-.pft_r  SKIP 2
-.pft_s  SKIP 2
 
 \       Area: main high
 
-                        \ (nothing: pf_tilt's variables are in bank 4, above)
+                        \ (nothing: pf_tilt's variables are in bank 4, after PF_HOOK)

@@ -67,13 +67,8 @@
 
 \       Area: bank 4, bank 6
 
-pm_a  = &10             \ zero page workspace (Elite's, saved and restored):
-pm_b  = &14             \ multiplicand, dividend; multiplier, divisor;
-pm_p  = &18             \ product, quotient; temporary
-pm_tt = &20
-pm_ql = &1C             \ PMQ's pointers into QSL and QSH (&1C-&1F)
-pm_qh = &1E
-pm_t8 = &22             \ its product's low byte
+pm_p  = &18             \ zero page workspace (Elite's, saved and restored):
+pm_tt = &20             \ product, quotient; temporary
 pmi_n = &23             \ pm_isqrt's: n' (&23-&24) and a square (&25-&26)
 pmi_c = &25
 pc_xs = &23             \ pcl4's X (NMOS: for PHX, PLX; pmi_n's byte, as pcl4
@@ -775,7 +770,10 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  STA pm_a
  LDA pm_p+3
  STA pm_a+1
- JSR pms_bt
+ LDA pm_tq              \ (pm_b = t, for this product and the next: pm_mul16
+ STA pm_b               \ keeps it)
+ LDA pm_tq+1
+ STA pm_b+1
  JSR pm_mul16
  CLC
  LDA pm_p
@@ -794,7 +792,6 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  STA pm_a
  LDA pm_ulo+1
  STA pm_a+1
- JSR pms_bt
  JSR pm_mul16
  CLC
  LDA pm_K2
@@ -808,12 +805,6 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  BNE pms8
  INC pm_K2+3
 .pms8
- RTS
-.pms_bt                  \ pm_b = t
- LDA pm_tq
- STA pm_b
- LDA pm_tq+1
- STA pm_b+1
  RTS
 
 .pms_stp                 \ pm_P+X (4 bytes) = pm_p
@@ -1077,51 +1068,58 @@ ENDMACRO
 \ products (Elite's quarter-square tables), or from two when one operand's
 \ high byte is zero and one when both are (the short paths pma0 and pmz join
 \ the four products' code); pm_sq16: pm_p (4) = pm_a (2) squared, from two
-\ squares and one product. Each product is PMQ's: the multiplier b's byte
-\ is the low byte of the pointers pm_ql and pm_qh (QSL + b and QSH + b: the
-\ tables are page aligned), so that (pm_ql),Y is QS(Y + b)
+\ squares and one product. Each product is PMQ's: Y times the multiplier b,
+\ a byte of pm_b (or pm_a), which is patched into the low bytes of PMQ's two
+\ table reads (QSL + b and QSH + b: the tables are page aligned), so that
+\ they read QS(Y + b), at PMQ_L and PMQ_H from the macro's start
+\
+\ Port (Electron): b was the low byte of two pointers in zero page, read
+\ with (zp),Y; and pm_a, pm_b and pm_t8 were in zero page too. They are in
+\ bank 4, with the code (pm_a, pm_b, pm_t8), and the table reads are abs,Y
+\ with their operands patched by the routine that runs them (in game
+\ context only, from pc_circ: nothing else runs them, and they do not call
+\ each other)
 
-MACRO PMQ               \ (pm_t8 A) = Y * b, Y kept: QS(Y + b) - QS(|Y - b|)
+MACRO PMQ bv            \ (pm_t8 A) = Y * b, Y kept: QS(Y + b) - QS(|Y - b|)
+.s                      \ (b is at bv as well)
  TYA
  SEC
- SBC pm_ql
+ SBC bv
  BCS pq1
  EOR #&FF
  ADC #1
  SEC
 .pq1
  TAX                    \ X = |Y - b|
- LDA (pm_ql),Y          \ (bankcheck: ok: game context)
+.l
+ LDA QSL,Y              \ (patched: QSL + b; bankcheck: ok: game context)
  SBC QSL,X              \ (bankcheck: ok)
  STA pm_t8
- LDA (pm_qh),Y          \ (bankcheck: ok)
+.h
+ LDA QSH,Y              \ (patched: QSH + b; bankcheck: ok)
  SBC QSH,X              \ (bankcheck: ok)
+ ASSERT l + 1 - s = PMQ_L AND h + 1 - s = PMQ_H
 ENDMACRO
 
-MACRO PMQB b            \ b, a byte at zero page address b, as the multiplier
- LDA b
- STA pm_ql
- STA pm_qh
-ENDMACRO
-
-MACRO PMQH              \ the pointers' high bytes
- LDA #HI(QSL)
- STA pm_ql+1
- LDA #HI(QSH)
- STA pm_qh+1
-ENDMACRO
+PMQ_L = 14              \ (PMQ's table reads' operands' low bytes, from its
+PMQ_H = 23              \ start)
 
 .pm_mul16
- PMQH
- PMQB pm_b              \ al bl
- LDY pm_a
- PMQ
+ LDA pm_b               \ al bl, ah bl
+ STA pmu1+PMQ_L
+ STA pmu1+PMQ_H
+ STA pmu2+PMQ_L
+ STA pmu2+PMQ_H
+ LDY pm_a               \ al bl
+.pmu1
+ PMQ pm_b
  STA pm_p+1
  LDA pm_t8
  STA pm_p
  LDY pm_a+1             \ ah bl
  BEQ pma0
- PMQ
+.pmu2
+ PMQ pm_b
  TAX
  LDA pm_t8
  CLC
@@ -1141,13 +1139,16 @@ ENDMACRO
  STY pm_p+3
  LDA pm_b+1
  BEQ pmr
- STA pm_ql
- STA pm_qh
+ STA pmu4+PMQ_L
+ STA pmu4+PMQ_H
  BNE pmal               \ (always)
 .pmah
- STA pm_ql
- STA pm_qh
- PMQ
+ STA pmu3+PMQ_L
+ STA pmu3+PMQ_H
+ STA pmu4+PMQ_L
+ STA pmu4+PMQ_H
+.pmu3
+ PMQ pm_b+1
  TAX
  LDA pm_t8
  CLC
@@ -1158,7 +1159,8 @@ ENDMACRO
  STA pm_p+3
 .pmal
  LDY pm_a               \ al bh
- PMQ
+.pmu4
+ PMQ pm_b+1
  TAX
  LDA pm_t8
  CLC
@@ -1170,22 +1172,32 @@ ENDMACRO
  BCC P%+4
  INC pm_p+3
  RTS
+
 .pm_sq16
- PMQH
- PMQB pm_a              \ al^2 = QS(2 al)
- LDY pm_a
- LDA (pm_ql),Y          \ (bankcheck: ok: game context)
+ LDY pm_a               \ al^2 = QS(2 al)
+ STY psq1+1
+ STY psq2+1
+ LDA pm_a+1             \ (ah^2, and ah as 2 al ah's b)
+ STA psq3+1
+ STA psq4+1
+ STA pmu5+PMQ_L
+ STA pmu5+PMQ_H
+.psq1
+ LDA QSL,Y              \ (patched: QSL + al; bankcheck: ok: game context)
  STA pm_p
- LDA (pm_qh),Y          \ (bankcheck: ok)
+.psq2
+ LDA QSH,Y              \ (patched: QSH + al; bankcheck: ok)
  STA pm_p+1
- PMQB pm_a+1            \ ah^2
- LDY pm_a+1
- LDA (pm_ql),Y          \ (bankcheck: ok)
+ LDY pm_a+1             \ ah^2
+.psq3
+ LDA QSL,Y              \ (patched: QSL + ah; bankcheck: ok)
  STA pm_p+2
- LDA (pm_qh),Y          \ (bankcheck: ok)
+.psq4
+ LDA QSH,Y              \ (patched: QSH + ah; bankcheck: ok)
  STA pm_p+3
  LDY pm_a               \ 2 al ah
- PMQ
+.pmu5
+ PMQ pm_a+1
  ASL pm_t8
  ROL A
  TAX
@@ -1201,6 +1213,10 @@ ENDMACRO
  BCC P%+4
  INC pm_p+3
  RTS
+
+.pm_a   SKIP 2          \ the multiplicand (pm_mul16, pm_sq16)
+.pm_b   SKIP 2          \ the multiplier
+.pm_t8  SKIP 1          \ a product's low byte (PMQ)
 
 .pm_mul8                \ (A pm_m8) = A * X by quarter squares: QS(A + X) -
  STA pm_m8              \ QS(|A - X|), QS(n) = n^2 DIV 4 (QSL, QSH)
