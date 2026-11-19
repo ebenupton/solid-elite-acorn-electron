@@ -331,8 +331,6 @@ r_dr1 = R_DIRTYR1
   LDA r_sbh_s0a,X          \ group r_s0a
   STA r_pt32+2
   STA r_pt36+2
-  STA r_pt416+2
-  STA r_pt418+2
   LDA r_sbh_s0b,X          \ group r_s0b
   STA r_pt33+2
   STA r_pt419+2
@@ -344,6 +342,7 @@ r_dr1 = R_DIRTYR1
   LDA r_sbh_s0y,X          \ group r_s0y
   STA r_pt30+2
   STA r_pt34+2
+  STA r_pt38+2
   STA r_pt414+2
   LDA r_sbl_ypg,X         \ the screen's row pages, r_ypg0 (buffer 0, BUF0) or
   STA r_yp1+1             \ r_ypg (buffer 1, SCREEN%)
@@ -742,6 +741,7 @@ ENDMACRO
 .fl_m1    SKIP 1
 .fl_m2    SKIP 1
 .r_c4     SKIP 4         \ R_POLY's colour bytes for rows y AND 3 = 0, 1, 2, 3
+.r_scol   SKIP 1         \ R_STARPLOT's colour byte
  R_RUNEND 2
  R_RUN 3
 .rl_lct  SKIP 8         \ R_LINE's: colour byte by row AND 7 (y-major), the
@@ -842,7 +842,13 @@ ASSERT r_s1a = r_s0a + &100 AND r_s1b = r_s0b + &100
 
 \ ============================================================================
 \ R_STARERASE: black the pixels R_STARPLOT set last time in this buffer.
-\ Records: row (+&80: also the next byte), x, mask set in x's byte.
+\ Records: the byte's address (bit 7 of its high byte: one byte, which was
+\ black but for the star: R_STARPLOT's fast path) and, for the others, the
+\ inverse masks of the pixels set in it and in the next column's byte.  A
+\ one-byte record's byte holds the star's pixels and nothing else (it was
+\ all black when the star was set, and the stars are a frame's last
+\ drawing, erased first in the buffer's next frame), so it is blacked by a
+\ store, without reading the screen.
 \ ============================================================================
 .R_STARERASE
 {
@@ -851,15 +857,28 @@ ASSERT r_s1a = r_s0a + &100 AND r_s1b = r_s0b + &100
   BEQ edone               \ (none: the count is 0 already)
   LDA #0
   STA R_PRSCNT,Y
+  TAY                     \ (Y = 0: the one-byte records' store)
   DEX
 .el
-.^r_pt30 LDA r_s0y,X      \ byte address (bit 7 of the high byte: one byte)
-  STA e1a+1
-  STA e1b+1
-.^r_pt31 LDA r_s0x,X
-  BMI e1
+.^r_pt31 LDA r_s0x,X      \ the byte's address (bit 7 of the high byte: one byte)
+  BPL e2
+  AND #&7F
+  STA e1d+2
+.^r_pt30 LDA r_s0y,X
+  STA e1d+1
+.e1d
+  STY &FFFF
+.en
+  DEX
+  BPL el                  \ (fewer than 48 records)
+.edone
+  RTS
+.e2
   STA e1a+2
   STA e1b+2
+.^r_pt38 LDA r_s0y,X
+  STA e1a+1
+  STA e1b+1
 .e1a
   LDA &FFFF
 .^r_pt32 AND r_s0a,X      \ inverse mask
@@ -883,23 +902,6 @@ ASSERT r_s1a = r_s0a + &100 AND r_s1b = r_s0b + &100
 .e2b
   STA &FFFF
   JMP en
-.e1
-  AND #&7F
-  STA e1c+2
-  STA e1d+2
-  LDA e1a+1
-  STA e1c+1
-  STA e1d+1
-.e1c
-  LDA &FFFF
-.^r_pt418 AND r_s0a,X
-.e1d
-  STA &FFFF
-.en
-  DEX
-  BPL el                  \ (fewer than 48 records)
-.edone
-  RTS
 }
 
 ASSERT LO(SCREEN%) = 0 AND LO(BUF0) = 0
@@ -931,6 +933,9 @@ ASSERT LO(SCREEN%) = 0 AND LO(BUF0) = 0
   LDX r_cb                \ (NMOS: CB + 1 by INX, not INC A)
   INX
   STX cb1+1
+  LDA R_SCOL              \ the stars' colour byte into this bank
+  STA sc1+1
+  STA r_scol
   LDA R_SN                \ star count (only ever 0 or 19, so <= 24)
   STA sl+1                \ (patched: the loop limit)
   STA nl+1                \ (and its copy at .nl)
@@ -990,18 +995,16 @@ ASSERT LO(SCREEN%) = 0 AND LO(BUF0) = 0
   LDA &FFFF               \ the whole byte black?
   BNE nx
   LDX r_k                 \ (< 48 always: R_SN <= 24, <= 2 records a star)
-  LDA R_SCOL
+.sc1
+  LDA #0                  \ (R_SCOL)
   AND RZ_SB
 .sp2
   STA &FFFF
   LDA sp2+1
 .^r_pt414 STA r_s0y,X
   LDA sp2+2
-  ORA #&80                \ (bit 7: no second byte)
-.^r_pt415 STA r_s0x,X
-  LDA RZ_SB
-  EOR #&FF
-.^r_pt416 STA r_s0a,X
+  ORA #&80                \ (bit 7: one byte, black but for the star: R_STARERASE
+.^r_pt415 STA r_s0x,X      \ stores 0 there)
   INC r_k
 .nx
   LDA RZ_TA               \ size 3: the next row
@@ -1137,7 +1140,7 @@ ASSERT LO(SCREEN%) = 0 AND LO(BUF0) = 0
 .ba1
   LDA &FFFF               \ (the whole byte black)
   BNE ba
-  LDA R_SCOL
+  LDA r_scol
   AND RZ_SB
 .ba2
   STA &FFFF
@@ -1160,7 +1163,7 @@ ASSERT LO(SCREEN%) = 0 AND LO(BUF0) = 0
 .bb1
   LDA &FFFF               \ (the whole byte black)
   BNE bf
-  LDA R_SCOL
+  LDA r_scol
   AND RZ_SB+1
 .bb2
   STA &FFFF

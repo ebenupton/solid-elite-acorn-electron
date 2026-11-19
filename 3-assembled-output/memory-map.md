@@ -57,12 +57,12 @@
 | bank 5 | `&8C00-&90FF` | the row tables (made at start by `R_INIT`), the stars' records, the bank's copies of its inputs and its scratch (`r_zb`), the variables (not in `R.BANK`); and the sound engine in three gaps (`gfx-sound.asm`, `SND5A`, `SND5B`, `SND5D`: copied there by the loader) | 1257 | 23 |
 | bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE`, the lens flare | 5616 | 272 |
 | bank 5 | `&A800-&ADFF` | the state: the dirty and written extents, `R_POLY`'s edge tables | 1536 | 0 |
-| bank 5 | `&AE00-&B11D` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 798 | 0 |
-| bank 5 | `&B11E-&B1A2` | (free: the room below the per-x tables, to the common block) | 0 | 133 |
+| bank 5 | `&AE00-&B11A` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 795 | 0 |
+| bank 5 | `&B11B-&B1A2` | (free: the room below the per-x tables, to the common block) | 0 | 136 |
 | bank 5 | `&B1A3-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 92 | 1 |
 | bank 5 | `&B200-&B3FF` | the room below the per-x tables: `r_gl`, `r_wq`, `rp_div32`, the interrupt handler (`RIRQ`, `gfx-irq.asm`) | 487 | 25 |
-| bank 5 | `&B400-&BF4F` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2896 | 0 |
-| bank 5 | `&BF50-&BFFF` | `RJT`, the jump table | 42 | 134 |
+| bank 5 | `&B400-&BF44` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2885 | 0 |
+| bank 5 | `&BF45-&BFFF` | `RJT`, the jump table | 42 | 145 |
 | bank 6 | `&8000-&AA4D` | the frame layer's code (bank 6 passes) | 10830 | 0 |
 | bank 6 | `&AA4E-&AECB` | the faces' and the lighting's tables | 1150 | 0 |
 | bank 6 | `&AECC-&B199` | the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept | 718 | 0 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1491, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 1201, bank 6 10.
+Free, by place: main RAM 1491, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 1215, bank 6 10.
