@@ -1491,7 +1491,7 @@ PR_E1 = 16                \ second
 \ the first byte. A byte with no edge in it is cg_cur, a run of them up to
 \ the next edge's byte or the end (four bytes a pass while there are
 \ four); a byte with edges is mixed
-\ from the colours either side of each (cg_byte). The first and last
+\ from the colours either side of each (cg3c, cg_bw). The first and last
 \ columns hold the border's pixels, which are kept (cg_bw: the only bytes
 \ the painter reads). Clobbers A, X, Y.
 \ ============================================================================
@@ -1607,7 +1607,7 @@ ENDMACRO
   BNE cg3e                \ (an edge before the byte)
   STY cg_t                \ a byte with an edge. Port: cg_byte's b1 to b7
   LDA cg_cur              \ in line (hot: a call saved for each such byte;
-  STA cg_acc              \ cg_bw still calls cg_byte)
+  STA cg_acc              \ cg_bw has its own copy)
 .cg3c
   LDA ce,X
   AND #7
@@ -1699,30 +1699,12 @@ ENDMACRO
 
 \ cg_bw: byte Y, in the first or the last column, written but for the
 \ border's pixel (A = the mask of the others); X = the place in the list,
-\ passed on
+\ passed on over the edges before the byte and in it. Port: cg_byte (the
+\ byte as the list has it), its one caller's, in line
 
 .cg_bw
-  STA cg_bm
-  JSR cg_byte
-.r_ga EOR &FFFF,Y
-  AND cg_bm
-.r_gb EOR &FFFF,Y
-.r_gc STA &FFFF,Y
-  LDA #8                  \ the next byte's pixels: the second column's, or
-  CPY #8                  \ none after the last column
-  BCC P%+4
-  LDA #&FF
-  STA cg_np
-  RTS
-
-\ cg_byte: A = byte Y of the row as the list has it, X = the place in the
-\ list (the next edge), passed on over the edges before the byte and in it
-
 {
-.b8
-  LDA cg_cur
-  RTS
-.^cg_byte
+  STA cg_bm
 .b0
   CPX cg_n
   BCS b8
@@ -1737,6 +1719,9 @@ ENDMACRO
   CGADV                   \ (an edge before the byte)
   }
   JMP b0
+.b8
+  LDA cg_cur              \ (no edge in the byte)
+  JMP b9
 .b1
   STY cg_t
   LDA cg_cur              \ the colour at the byte's start, then each edge's
@@ -1764,6 +1749,16 @@ ENDMACRO
 .b7
   LDY cg_t
   LDA cg_acc
+.b9                       \ A = the byte as the list has it
+.^r_ga EOR &FFFF,Y
+  AND cg_bm
+.^r_gb EOR &FFFF,Y
+.^r_gc STA &FFFF,Y
+  LDA #8                  \ the next byte's pixels: the second column's, or
+  CPY #8                  \ none after the last column
+  BCC P%+4
+  LDA #&FF
+  STA cg_np
   RTS
 }
 
