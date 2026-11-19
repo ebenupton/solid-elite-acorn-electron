@@ -1,117 +1,117 @@
-hot &8000-&A698: 64 units, 9873 bytes, 8 free
+hot &8000-&A698: 51 units, 9881 bytes, 0 free
   &8000    22 S%
   &8016    13 INBAY
-  &8023     9 LTLI
-  &802C    11 DEEOR
-  &8037    20 DOENTRY..DEATH2
-  &804B   554 Main flight loop (Part 1 of 16)..Main flight loop (Part 8 of 16)
-  &8275   204 Main flight loop (Part 11 of 16)..Main flight loop (Part 12 of 16)
-  &8341    10 CTWOS
-  &834B     1 FLKB
-  &834C   130 PIX1..PIXEL2
-  &83CE  1258 STARS..STARS1
-  &88B8   258 STARS6
-  &89BA    92 MVT3
-  &8A16   172 MVS5
-  &8AC2   216 DIALS (Part 1 of 4)..DIALS (Part 4 of 4)
-  &8B9A    16 PZW
-  &8BAA   127 DILX
-  &8C29   125 DIL2
-  &8CA6   266 MU5..MULT3
-  &8DB0    76 MLS2..MLS1
-  &8DFC   100 SQUA..MU11
-  &8E60   257 FMLTU2..MLTU2
-  &8F61     1 MUT2
-  &8F62    77 MUT1..MULT1
-  &8FAF    10 MULT12
-  &8FB9   131 TAS3..ADD
-  &903C    33 TIS1
-  &905D    43 DV42..DVID4
-  &9088   180 DVID3B2
-  &913C    23 cntr
-  &9153   109 CPIX4..CPIX2
-  &91C0   136 PROJ..PL9 (Part 3 of 3)
-  &9248     1 PLS1
-  &9249     1 PLS2
-  &924A    98 CHKON..PLS6
-  &92AC   202 ZINF..Main game loop (Part 6 of 6)
-  &9376    13 FAROF..FAROF2
-  &9383   145 SPS1..NORM
-  &9414   357 DKJ1..DK4
-  &9579    86 TIS2
-  &95CF    70 TIS3..DVIDT
-  &9615    60 LL5
-  &9651   110 LL28
-  &96BF   119 L5SET
-  &9736     4 SHCOL
-  &973A     6 RECM
-  &9740    28 MFRAME
-  &975C    11 LL42F
-  &9767    78 H_LL42..H_EE31
-  &97B5    84 S_SHIP
-  &9809   716 L_REC
-  &9AD5  1650 LL9 (Part 1 of 12)..LL9 (Part 6 of 12)
-  &A147   282 LL61..LL9 (Part 9 of 12)
-  &A261     1 LL9 (Part 9 of 12), drawing
-  &A262     6 LL9 (Part 10 of 12)
-  &A268     1 LL9 (Part 11 of 12)
-  &A269     2 LL9 (Part 12 of 12)
-  &A26B     1 LL9 (Part 12 of 12), drawing
-  &A26C   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
-  &A410    87 MVT1
-  &A467   103 MVS4
-  &A4CE    53 MVT6
-  &A503   190 MV40
-  &A5C1   208 LYN..SCAN
-hotm &1A58-&1E3F: 0 units, 0 bytes, 1000 free
-hotx &1100-&18FF: 10 units, 2048 bytes, 0 free
+  &8023    11 DEEOR
+  &802E    20 DOENTRY..DEATH2
+  &8042   946 Main flight loop (Part 1 of 16)..Main flight loop (Part 8 of 16)
+  &83F4   204 Main flight loop (Part 11 of 16)..Main flight loop (Part 12 of 16)
+  &84C0    10 CTWOS
+  &84CA     1 FLKB
+  &84CB   130 PIX1..PIXEL2
+  &854D  1258 STARS..STARS1
+  &8A37   258 STARS6
+  &8B39    92 MVT3
+  &8B95   172 MVS5
+  &8C41   127 DILX
+  &8CC0   266 MU5..MULT3
+  &8DCA    76 MLS2..MLS1
+  &8E16   100 SQUA..MU11
+  &8E7A   257 FMLTU2..MLTU2
+  &8F7B    77 MUT1..MULT1
+  &8FC8    10 MULT12
+  &8FD2   131 TAS3..ADD
+  &9055    33 TIS1
+  &9076    43 DV42..DVID4
+  &90A1   180 DVID3B2
+  &9155    23 cntr
+  &916C   109 CPIX4..CPIX2
+  &91D9   136 PROJ..PL9 (Part 3 of 3)
+  &9261    98 CHKON..PLS6
+  &92C3   202 ZINF..Main game loop (Part 6 of 6)
+  &938D    13 FAROF..FAROF2
+  &939A   145 SPS1..NORM
+  &942B   357 DKJ1..DK4
+  &9590    86 TIS2
+  &95E6    70 TIS3..DVIDT
+  &962C    60 LL5
+  &9668   110 LL28
+  &96D6   119 L5SET
+  &974D     6 RECM
+  &9753    28 MFRAME
+  &976F    11 LL42F
+  &977A    78 H_LL42..H_EE31
+  &97C8    84 S_SHIP
+  &981C   716 L_REC
+  &9AE8  1650 LL9 (Part 1 of 12)..LL9 (Part 6 of 12)
+  &A15A   282 LL61..LL9 (Part 9 of 12)
+  &A274   420 MVEIT (Part 1 of 9)..MVEIT (Part 9 of 9)
+  &A418    87 MVT1
+  &A46F   103 MVS4
+  &A4D6    53 MVT6
+  &A50B   190 MV40
+  &A5C9   208 LYN..SCAN
+hotm &1A58-&1E3F: 27 units, 357 bytes, 643 free
+  &1A58     9 LTLI
+  &1A61    41 SUNSC
+  &1A8A    26 UNIV
+  &1AA4    15 HLOIN2
+  &1AB3    38 MAS3
+  &1AD9    16 PZW
+  &1AE9    24 TAS6
+  &1B01     1 MUT2
+  &1B02    16 SHD..DENGY
+  &1B12    18 SPS3
+  &1B24    14 GINF
+  &1B32    17 SUNUP
+  &1B43    12 SUNE
+  &1B4F     1 PLS1
+  &1B50     1 PLS2
+  &1B51    14 DPLT
+  &1B5F    23 DKS3
+  &1B76     4 SHCOL
+  &1B7A    11 LL9F
+  &1B85    14 H_PTCLS
+  &1B93    14 H_PTCLSE
+  &1BA1    17 H_DOT
+  &1BB2     1 LL9 (Part 9 of 12), drawing
+  &1BB3     6 LL9 (Part 10 of 12)
+  &1BB9     1 LL9 (Part 11 of 12)
+  &1BBA     2 LL9 (Part 12 of 12)
+  &1BBC     1 LL9 (Part 12 of 12), drawing
+hotx &1100-&18FF: 10 units, 2047 bytes, 1 free
   &1100   349 Main flight loop (Part 13 of 16)..SPIN
-  &125D   187 DOCKIT
-  &1318   255 STARS2..QSMUL
-  &1417     5 MU6
-  &141C   277 GCASH..DOEXP
-  &1531   231 COMPAS..SP2
-  &1618   171 NWSHP
-  &16C3   165 TT102
-  &1768   268 LS_SEED
-  &1874   140 PU1
+  &125D   216 DIALS (Part 1 of 4)..DIALS (Part 4 of 4)
+  &1335   187 DOCKIT
+  &13F0   255 STARS2..QSMUL
+  &14EF   277 GCASH..DOEXP
+  &1604   231 COMPAS..SP2
+  &16EB   171 NWSHP
+  &1796     7 MAS4
+  &179D    86 H_CIRC
+  &17F3   268 LS_SEED
 hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free
   &2C50    14 MAS2
   &2C5E   579 TACTICS (Part 1 of 7)..TACTICS (Part 7 of 7)
   &2EA1   351 KS3..SFX
-hots &2450-&2C4F: 35 units, 2019 bytes, 29 free
-  &2450    41 SUNSC
-  &2479    26 UNIV
-  &2493    15 HLOIN2
-  &24A2   146 BLINE
-  &2534    38 MAS3
-  &255A    59 VCSU1..TAS1
-  &2595    24 TAS6
-  &25AD    70 HITCH
-  &25F3    70 ANGRY
-  &2639   123 BUMP2..REDU2
-  &26B4   113 SUNLAU
-  &2725     3 DET1
-  &2728    16 SHD..DENGY
-  &2738    59 OOPS
-  &2773    18 SPS3
-  &2785    14 GINF
-  &2793    17 SUNUP
-  &27A4    12 SUNE
-  &27B0    45 PLS22..CIRCLE
-  &27DD   126 WPLS2..WPLS
-  &285B    78 TT17
-  &28A9     7 MAS4
-  &28B0    14 DPLT
-  &28BE   112 RDKEY
-  &292E   109 EXNO3..KYTB
-  &299B   136 DKS1..DKS2
-  &2A23    23 DKS3
-  &2A3A   162 TIDY
-  &2ADC    73 SHPPT
-  &2B25    86 H_CIRC
-  &2B7B    11 LL9F
-  &2B86    14 H_PTCLS
-  &2B94    14 H_PTCLSE
-  &2BA2    17 H_DOT
-  &2BB3   128 SHAND
+hots &2450-&2C4F: 21 units, 2047 bytes, 1 free
+  &2450   146 BLINE
+  &24E2   125 DIL2
+  &255F    59 VCSU1..TAS1
+  &259A    70 HITCH
+  &25E0    70 ANGRY
+  &2626     5 MU6
+  &262B   123 BUMP2..REDU2
+  &26A6   113 SUNLAU
+  &2717     3 DET1
+  &271A    59 OOPS
+  &2755    45 PLS22..CIRCLE
+  &2782   126 WPLS2..WPLS
+  &2800    78 TT17
+  &284E   165 TT102
+  &28F3   112 RDKEY
+  &2963   109 EXNO3..KYTB
+  &29D0   136 DKS1..DKS2
+  &2A58   162 TIDY
+  &2AFA    73 SHPPT
+  &2B43   128 SHAND
+  &2BC3   140 PU1

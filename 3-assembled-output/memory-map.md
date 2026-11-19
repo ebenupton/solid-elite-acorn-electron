@@ -12,8 +12,8 @@
 | main RAM | `&0D7A-&0D9D` | `CATD` | 36 | 0 |
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
-| main RAM (flight) | `&1100-&18FF` | the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it (after the fourth and second parts, over buffer 0) and `LOWLD` copies it down | 2048 | 0 |
-| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` | 344 | 1000 |
+| main RAM (flight) | `&1100-&18FF` | the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it (after the fourth and second parts, over buffer 0) and `LOWLD` copies it down | 2047 | 1 |
+| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` | 701 | 643 |
 | main RAM (docked) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` | 173 | 1171 |
 | main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
 | main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
@@ -22,12 +22,12 @@
 | main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 0 | 94 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&244F` | the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`) | 0 | 1104 |
-| main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 2019 | 29 |
+| main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 2047 | 1 |
 | main RAM (flight) | `&2C50-&2FFF` | the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`) | 944 | 0 |
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
-| bank 4 (flight) | `&8000-&A690` | `S%` and the hot pass | 9873 | 0 |
-| bank 4 (flight) | `&A691-&B138` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2712 | 16 |
+| bank 4 (flight) | `&8000-&A698` | `S%` and the hot pass | 9881 | 0 |
+| bank 4 (flight) | `&A699-&B138` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2712 | 8 |
 | bank 4 (flight) | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 4 (flight) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 4 (flight) | `&B200-&B2FF` | `PF_HOOK` (bank 4 high pass) | 235 | 21 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1362, main RAM (flight) 1029, main RAM (docked) 1171, bank 4 (flight) 38, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.
+Free, by place: main RAM 1362, main RAM (flight) 645, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.
