@@ -31357,6 +31357,12 @@ ENDMACRO
  SKIP 5                 \ Part 5: the ship's (x_hi x_lo), (y_hi y_lo) and z_lo,
                         \ scaled down (low bytes first)
 
+.GFAR
+
+ EQUB 0                 \ Non-zero: LL9 has shown a face of the ship it is
+                        \ drawing without testing its normal (part 5; S_SHIP
+                        \ reads it and clears it)
+
 .l8d
 
  SKIP 3                 \ Part 5: the magnitudes of dot_sidev, dot_roofv and
@@ -31763,6 +31769,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Port: record the ship as LL9's part 6 starts
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31926,6 +31933,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Port: record the ship for the renderer, lit, with its handedness
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31998,10 +32006,8 @@ ENDIF
 
  RTS
 
-.GFAR
-
- EQUB 0                 \ Non-zero: LL9 has shown a face of the ship it is
-                        \ drawing without testing its normal (part 5)
+                        \ Port: GFAR is with L5SET's variables, in bank 4, as
+                        \ part 5 writes it
 
 \ ******************************************************************************
 \
@@ -33774,12 +33780,33 @@ LIGHT_SUN = TRUE
  BCS ll60f              \ division, which returns to ll60s with the result in
                         \ (Y R)
 
- JSR LL31               \ Call LL28's division (as A < Q, and its steps set
-                        \ every bit of R) to calculate:
-                        \
-                        \   R = 256 * A / Q
-                        \
-                        \ which keeps X
+ FOR I%, 1, 7           \ Port: LL31's division in line (a copy of LL28's
+                        \ unrolled steps, for this, its hot caller), to
+ ASL A                  \ calculate:
+ BCS l6s                \
+ CMP Q                  \   R = 256 * A / Q
+ BCC l6n                \
+.l6s                    \ The first seven steps gather their result bits in
+ SBC Q                  \ the operand of the LDA at ll60q, in bank 4, rather
+ SEC                    \ than in R in zero page, and the eighth puts the
+.l6n                    \ result in R with one store; X is kept, and A, the
+ ROL ll60q+1            \ remainder, is not needed (as in LL31, a step that
+                        \ shifts a bit out of A subtracts Q, and the result
+ NEXT                   \ bit is 1; otherwise the bit is A >= Q, and then Q
+                        \ is subtracted)
+
+ ASL A                  \ The eighth step, which leaves its result bit in C
+ BCS P%+6
+ CMP Q
+ BCC ll60q
+ SBC Q
+ SEC
+
+.ll60q
+
+ LDA #0                 \ Set R = the seven bits gathered here (the operand,
+ ROL A                  \ shifted by the seven ROLs, has lost its old bits but
+ STA R                  \ the top one) and the eighth bit from C
 
  LDY #0                 \ Set Y = 0, the high byte of the result (the original's
                         \ U)
