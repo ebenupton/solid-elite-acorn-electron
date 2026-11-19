@@ -13,7 +13,7 @@
 | main RAM | `&0E00-&0FD2` | `WP` | 467 | 0 |
 | main RAM (flight) | `&0FD3-&0FF8` | the parked sun, `SUNPK` and `SUNPF`, in `WP`'s tail (DFS's catalogue's end between disc commands: `CATD` reads it back before each one, and `ovload` keeps `WP` across an overlay's load) | 38 | 0 |
 | main RAM (flight) | `&1100-&18FF` | the third main RAM part (`hotx`: more of the hot pass's blocks tagged `Area: hot, main`), in DFS's pages for open files, which the game never has; `D.LOW` carries it (after the fourth and second parts, over buffer 0) and `LOWLD` copies it down | 2047 | 1 |
-| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` | 834 | 510 |
+| main RAM (flight) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` | 844 | 500 |
 | main RAM (docked) | `&1900-&1E3F` | the main RAM part: the low pass, then `hotm` | 173 | 1171 |
 | main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
 | main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
@@ -34,7 +34,7 @@
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 94 | 0 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 4 (docked) | `&8000-&ABF8` | `S%` and the hot pass | 9176 | 2081 |
+| bank 4 (docked) | `&8000-&ABF8` | `S%` and the hot pass | 9186 | 2071 |
 | bank 4 (docked) | `&ABF9-&B138` | the main RAM part's image | 1344 | 0 |
 | bank 4 (docked) | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 4 (docked) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1362, main RAM (flight) 511, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.
+Free, by place: main RAM 1362, main RAM (flight) 501, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.

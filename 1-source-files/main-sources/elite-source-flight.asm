@@ -4334,6 +4334,7 @@ ENDIF
 \       Type: Variable
 \   Category: Drawing pixels
 \    Summary: Ready-made single-pixel character row bytes for mode 5
+\       Area: hot, main
 \  Deep dive: Drawing colour pixels on the BBC Micro
 \
 \ ------------------------------------------------------------------------------
