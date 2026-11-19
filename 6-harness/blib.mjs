@@ -100,7 +100,8 @@ export function loadSyms(path) {
 // A build with a common block (d.common: common-entry.asm, the labels of the
 // code that every bank holds at the same address) has its labels with the
 // loader's: they are live whatever game bank is paged, as the resident
-// code's are.
+// code's are; and so are bank 5's entries (d.entries: bank5-entry.asm), the
+// interrupt handler's among them, which runs with its bank paged in.
 export function loadBuild(file) {
     const d = JSON.parse(readFileSync(file, "utf8"));
     const p = f => resolve(dirname(file), f);
@@ -119,7 +120,7 @@ export function loadBuild(file) {
     };
     return {
         file, disc: p(d.disc), progs: { flight: prog("flight", d.flight), docked: prog("docked", d.docked) },
-        loader: { ...common, ...loadSyms(p(d.loader)) }, common, banks: d.banks || {}, patches: d.patches || [],
+        loader: { ...entries(d.entries), ...common, ...loadSyms(p(d.loader)) }, common, banks: d.banks || {}, patches: d.patches || [],
     };
 }
 

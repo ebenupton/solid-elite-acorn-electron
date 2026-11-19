@@ -19,8 +19,9 @@
 //    key's number with bit 7 set if it is down, as at the original's
 //    DKS4+17), or DKS4+17 for a build without it, and at DKSL, the same
 //    point of DOKEY's own read of the seven primary flight keys;
-//  * the interrupt's DEC LASCT is LASDEC (loader symbols), its bytes DEC
-//    LASCT with the build's own LASCT;
+//  * the interrupt's DEC LASCT is LASDEC (the loader's symbols, or bank 5's
+//    entries, where the handler is), its bytes DEC LASCT with the build's
+//    own LASCT;
 //  * the write tracking (the filing system's bytes over the compared regions,
 //    the bytes written since the game's entry, the page &0D guard, page 1) is
 //    done in clkh, as blib's debugWrite handlers do it; the overlay loader's

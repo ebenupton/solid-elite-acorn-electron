@@ -322,6 +322,7 @@ Then `2-build-files/mapcheck.py` checks the map ("The map", below).
 | `PCLI` (the programs' `OSCLI`) | the resident block | loads a program or a blueprint file into its banks through `STAGE%`, or passes the command to the MOS from main RAM |
 | `GCALL` (the game's hooks into the frame layer) | the common block | bank 6 in, the entry in X (`FG_*`: its jump in `FJT%`), then the caller's bank back |
 | `C_POLY`, `C_T5`, `C_T7`, `C_HOME` (the frame layer's calls, and the painter's: `gfx-glue.asm`) | the common block | bank 5, the flight code's bank 7 or the home bank in, the entry in X (in `RJT`, `DPENT%`, `S%`), then the caller's bank back |
+| `IRQG` (IRQ1V) | the resident block | bank 5 in, for the handler there (`RIRQ`, `gfx-irq.asm`), which goes out through `IRQE%` or `IRQM%` in main RAM: the interrupted ROM back in, from `&F4` |
 
 The common block (`elite-common.asm`, `COMMON%` to `COMMON_END%`) is the same
 bytes at the same address in every bank's image (bank 5's assembly makes

@@ -10,5 +10,6 @@
                          ["T.CODEM.bin", "m", "1900"]] },
   "loader": "loader-symbols.txt",
   "common": "common-entry.asm",
+  "entries": "bank5-entry.asm",
   "banks": { "H": "BANK4", "C": "BANK7", "6": "BANK6" }
 }

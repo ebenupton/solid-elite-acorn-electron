@@ -169,6 +169,8 @@ IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
 ENDIF
 
 
+ ASSERT DL = DL% AND LASCT = LASCT%   \ (the interrupt handler's, in bank 5:
+                        \ elite-map.asm)
 
  PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", COMMON%-HOME_END%, ", the common block ", ~COMMON%, "-", ~COMMON_END%-1, ", PF_HOOK to ", ~HOME_TOP%-1, " (free ", BPSLOT%-HOME_TOP%, ")"
  PRINT "Flight main RAM part: low pass ", ~PROGM%, "-", ~LOW_END%-1, ", hot pass to ", ~PROGM_USED%-1, ", free ", PROGM_END%-PROGM_USED%

@@ -714,135 +714,41 @@ ENDIF
 \       Name: IRQG
 \       Type: Subroutine
 \   Category: Drawing the screen
-\    Summary: The game's interrupt handler: the display end, and the flip
+\    Summary: The game's interrupt handler's entry: page bank 5 in, and go on
+\             to the handler there
 \
 \ ------------------------------------------------------------------------------
 \
-\ Port: the Electron's ULA raises the display-end interrupt once a field, at
-\ the end of the last displayed line (line 256 in MODE 5). The handler does
-\ what the original's vertical sync handler did, without the mode switch: it
-\ sets DL for WSCAN and decrements LASCT; it writes the CMYK palette back
-\ (which the energy bomb's flash changes); and it carries out the frame
-\ layer's flip: if the frame layer has asked for one (GFLIP), buffer GPEND is
-\ shown from the next field on (the ULA latches the screen start address at
-\ the field's start, so the buffer that was on show is not read again), but
-\ not in the field after a flip (rflip), so that a frame is on show for two
-\ fields at least: 25 frames a second at most, as the BBC Master port's.
-\ The handler clears the display end itself and returns: the MOS's handler
-\ for it would write the game's workspace in page 3 (the MOS's VDU variables
-\ there) and the screen start address. Every other interrupt (the MOS's 100
-\ Hz clock among them) goes on to the MOS. The loader's LOAD routine installs
-\ it.
+\ Port: IRQ1V points here, in main RAM, as an interrupt can come with any ROM
+\ paged in. The handler itself is RIRQ, in bank 5 (gfx-irq.asm), so that only
+\ these eight bytes, and the six of its way out at IRQE%, are fetched from
+\ main RAM. &F4 is left alone: it names the interrupted ROM, which the way
+\ out pages back in.
 \
-\ Port: every interrupt first ticks the sound engine (gfx-sound.asm, in bank
-\ 6, through the hook SNDH), which runs on this one and on the real-time
-\ clock interrupt, about half a field later: 100 times a second.
+\ The ULA ignores a write of a slot from 0 to 7 while the keyboard or BASIC
+\ (8 to 11) is paged in, so with bank 5 in such a slot IRQ1V points at IRQGL
+\ instead, which pages slot 12 first (the loader's LOAD sets the bank's
+\ number in the code and chooses the entry).
 \
 \ ******************************************************************************
 
+.IRQGL
+
+ LDA #12                \ (bank 5 in slots 0 to 7: through slot 12)
+ STA ROMSEL
+
 .IRQG
 
- JSR SNDH               \ Port: tick the sound engine (SNDH pages bank 6 in,
-                        \ calls SND_TICK, which acts on the display end and the
-                        \ real-time clock only and keeps X and Y, and pages the
-                        \ interrupted bank back in)
+ LDA #0                 \ Page bank 5 in (IRQG+1: its number, which LOAD sets)
+ STA ROMSEL
 
- LDA &FE00              \ If this is not the display end (bit 2 of the ULA's
- AND #%00000100         \ interrupt status), jump to irqn
- BEQ irqn
-
- TXA                    \ Store X on the stack
- PHA
-
- LDA #30                \ Set the line scan counter to a non-zero value, as
- STA DL                 \ LINSCN did, so WSCAN can wait for it to change
-
- LDA #ULAPAL0           \ Write the palette (black, cyan, magenta, yellow)
- STA &FE08
- LDA #ULAPAL1
- STA &FE09
-
- LDA LASCT              \ Decrement the value of LASCT, but if we go too far
- BEQ P%+5               \ and it becomes negative, bump it back up again (this
-                        \ controls the pulsing of pulse lasers)
-
-.LASDEC
-
- DEC LASCT
-
- LDX #0                 \ If the frame layer has asked for a flip (GFLIP), and
- LDA GFLIP              \ the last field did not flip (rflip), show buffer
- BEQ irq3               \ GPEND from the next field on, and note that it is
- LDA rflip              \ done
- BNE irq3
- LDA GPEND
- STA GFRONT
- STX GFLIP
- INX
-
-.irq3
-
- STX rflip              \ (rflip: 1 if this field flipped)
-
- LDX GFRONT             \ The screen start for the buffer on show, GFRONT (0
- LDA ssa,X              \ for BUF0, 1 for SCREEN%)
- STA &FE03
-
- LDA &F4                \ Clear the display-end interrupt (bit 4 of &FE05),
- ORA #%00010000         \ writing the paged bank's number with it, so that the
- STA &FE05              \ paging is unchanged (&F4, below 16, always matches
-                        \ the paged bank, and is written first)
-
- PLA                    \ Restore X from the stack
- TAX
-
- LDA &FC                \ Restore A from the MOS's save register and return:
- RTI                    \ the display end is not passed to the MOS, whose
-                        \ handler for it would write the game's workspace
-                        \ (DLY, at &034A, is its VDU workspace there) and the
-                        \ screen start address
-
-.irqn
-
- LDA &FE00              \ If this is not the real-time clock (bit 3), pass it
- AND #%00001000         \ on to the MOS
- BEQ irqm
-
- BIT GMODE              \ In direct mode (GMODE bit 7 clear), pass it on to the
- BPL irqm               \ MOS, whose tick scans the keyboard into its buffer
-                        \ for the game's text input
-
- LDA &F4                \ In space mode nothing needs the MOS's tick (the game
- ORA #%00100000         \ reads the keyboard itself, through KEYV, and the
- STA &FE05              \ sound engine has been ticked above), and it costs
-                        \ about 700 cycles a time: clear the interrupt (bit 5
-                        \ of &FE05, with the paged bank's number, as below)
-
- LDA &FC                \ Restore A from the MOS's save register and return
- RTI
-
-.irqm
-
- JMP (IRQMOS)           \ Every other interrupt goes on to the MOS's handler
-
-.ssa
-
- EQUB SSA0, SSA1        \ The screen start address register &FE03 for each
-                        \ buffer (&FE02 stays 0)
-
-.rflip
-
- EQUB 0                 \ 1 if the last field flipped
+ JMP RIRQ               \ Go on to the handler, which returns from the interrupt
+                        \ through IRQE%
 
 .PANR
 
  EQUB 7                 \ The dashboard rows to show (the original's DET1 hides
                         \ the dashboard; on the Electron it stays)
-
-.IRQMOS
-
- EQUW 0                 \ The MOS's IRQ1V handler, which IRQG passes interrupts
-                        \ on to (the loader's LOAD routine sets it from VEC)
 
 .pbank
 

@@ -120,6 +120,8 @@
  INCBIN "3-assembled-output/COMMON.bin"   \ pages the banks, the same bytes in
  ASSERT P% = COMMON_END% AND COMMON_END% <= BPSLOT%   \ every bank (bank 5's
                         \ assembly made them)
+ ASSERT DL = DL% AND LASCT = LASCT%   \ (the interrupt handler's, in bank 5:
+                        \ elite-map.asm)
 
  SAVE "3-assembled-output/T.CODEH.bin", HOME%, BPSLOT_END%, HOME%   \ (to the
                         \ slot's end, below the quarter squares, which the

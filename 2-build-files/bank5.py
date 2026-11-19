@@ -35,7 +35,9 @@ open('3-assembled-output/bank5-symbols.txt', 'w').write(
 sy = {k: int(v) for k, v in re.findall(r"'([^']+)':(\d+)", d.stdout)}
 ENTRY = (('RJT', 'bank 5\'s jump table (gfx-bank5.asm), for the frame layer\'s calls'),
          ('R_DOTX', 'R_DOT and R_GETW with X from GX, in its page (gfx-glue.asm)'),
-         ('R_GETWX', ''))
+         ('R_GETWX', ''),
+         ('RIRQ', 'the interrupt handler (gfx-irq.asm), for the resident block\'s IRQG'),
+         ('LASDEC', 'its DEC LASCT, for the harness'))
 open('3-assembled-output/bank5-entry.asm', 'w').write(   # (and where its image goes: the loader)
     '\\ bank5-entry.asm -- written by 2-build-files/bank5.py; do not edit.\n\n' +
     ''.join(('%-8s = &%04X' % (k, sy[k])).ljust(24) + ('\\ ' + c if c else '').rstrip() + '\n' for k, c in ENTRY) +

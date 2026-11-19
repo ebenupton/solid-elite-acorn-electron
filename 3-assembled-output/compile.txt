@@ -2896,6 +2896,71 @@ End macro R_IN2
      B371   20
      B372   40
      B373   80
+.RIRQ
+     B374   8E F4 B3   STX &B3F4
+     B377   A2 00      LDX #&00
+     B379   AD 91 1F   LDA &1F91
+     B37C   F0 05      BEQ &B383
+     B37E   20 90 90   JSR &9090
+     B381   A2 08      LDX #&08
+.rirq1
+     B383   AD 00 FE   LDA &FE00
+     B386   29 04      AND #&04
+     B388   F0 52      BEQ &B3DC
+     B38A   A9 1E      LDA #&1E
+     B38C   85 8B      STA &8B
+     B38E   A9 97      LDA #&97
+     B390   8D 08 FE   STA &FE08
+     B393   A9 D3      LDA #&D3
+     B395   8D 09 FE   STA &FE09
+     B398   AD 46 03   LDA &0346
+     B39B   F0 03      BEQ &B3A0
+.LASDEC
+     B39D   CE 46 03   DEC &0346
+     B3A0   8A         TXA
+     B3A1   2C 80 1F   BIT &1F80
+     B3A4   30 02      BMI &B3A8
+     B3A6   A9 08      LDA #&08
+     B3A8   09 04      ORA #&04
+     B3AA   8D 00 FE   STA &FE00
+     B3AD   A2 00      LDX #&00
+     B3AF   AD 82 1F   LDA &1F82
+     B3B2   F0 0F      BEQ &B3C3
+     B3B4   AD F5 B3   LDA &B3F5
+     B3B7   D0 0A      BNE &B3C3
+     B3B9   AD 83 1F   LDA &1F83
+     B3BC   8D 81 1F   STA &1F81
+     B3BF   8E 82 1F   STX &1F82
+     B3C2   E8         INX
+.rirq3
+     B3C3   8E F5 B3   STX &B3F5
+     B3C6   A9 18      LDA #&18
+     B3C8   AE 81 1F   LDX &1F81
+     B3CB   F0 02      BEQ &B3CF
+     B3CD   A9 2C      LDA #&2C
+     B3CF   8D 03 FE   STA &FE03
+     B3D2   A5 F4      LDA &F4
+     B3D4   09 30      ORA #&30
+.rirq4
+     B3D6   AE F4 B3   LDX &B3F4
+     B3D9   4C 92 1F   JMP &1F92
+.rirq5
+     B3DC   AD 00 FE   LDA &FE00
+     B3DF   29 08      AND #&08
+     B3E1   F0 0B      BEQ &B3EE
+     B3E3   2C 80 1F   BIT &1F80
+     B3E6   10 06      BPL &B3EE
+     B3E8   A5 F4      LDA &F4
+     B3EA   09 20      ORA #&20
+     B3EC   D0 E8      BNE &B3D6
+.rirq6
+     B3EE   AE F4 B3   LDX &B3F4
+     B3F1   4C 98 1F   JMP &1F98
+.irqx
+     B3F4   00
+.rflip
+     B3F5   00
+.RIRQ_END
 .R_GAPEND
 .R_IMAGE
 .R_POLY
@@ -5775,7 +5840,7 @@ Macro FLHW:
      A7EE   04
 End macro FLHW
 .R_LOEND
-Bank 5 (rasteriser): the row runs &8000-&90FF  (made at start), &9100 -&A7EE  (free 17 ), &AE00 -&BF90  (the jump table &&BF67 -&BF90 ; free 111 ), free 70 , the common block &B1A3 -&B1FE  (free 1 ), R_DOT and r_wq to &B373  (free 140 )
+Bank 5 (rasteriser): the row runs &8000-&90FF  (made at start), &9100 -&A7EE  (free 17 ), &AE00 -&BF90  (the jump table &&BF67 -&BF90 ; free 111 ), free 70 , the common block &B1A3 -&B1FE  (free 1 ), R_DOT, r_wq and the interrupt handler to &B3F5  (free 10 )
 Saving file '3-assembled-output/BANK5.bin'
 Including file 1-source-files/main-sources/elite-map.asm
 Processed file '1-source-files/main-sources/elite-map.asm' ok
@@ -5805,6 +5870,8 @@ Including file 3-assembled-output/gfx-raster-bank5gap.asm
 Processed file '3-assembled-output/gfx-raster-bank5gap.asm' ok
 Including file 3-assembled-output/gfx-raster_dq-bank5gap.asm
 Processed file '3-assembled-output/gfx-raster_dq-bank5gap.asm' ok
+Including file 1-source-files/main-sources/gfx-irq.asm
+Processed file '1-source-files/main-sources/gfx-irq.asm' ok
 Including file 3-assembled-output/gfx-raster_poly-bank5.asm
 Processed file '3-assembled-output/gfx-raster_poly-bank5.asm' ok
 Including file 3-assembled-output/gfx-raster_line-bank5.asm
@@ -6437,12 +6504,13 @@ End macro FNE
      0B87   8D 02 FE   STA &FE02
      0B8A   A9 2C      LDA #&2C
      0B8C   8D 03 FE   STA &FE03
-     0B8F   AD FE 1F   LDA &1FFE
-     0B92   8D F4 06   STA &06F4
-     0B95   AD FF 1F   LDA &1FFF
-     0B98   8D F5 06   STA &06F5
-     0B9B   A9 87      LDA #&87
-     0B9D   8D 04 02   STA &0204
+     0B8F   A2 8C      LDX #&8C
+     0B91   AD 02 04   LDA &0402
+     0B94   8D 8D 06   STA &068D
+     0B97   C9 08      CMP #&08
+     0B99   B0 02      BCS &0B9D
+     0B9B   A2 87      LDX #&87
+     0B9D   8E 04 02   STX &0204
      0BA0   A9 06      LDA #&06
      0BA2   8D 05 02   STA &0205
      0BA5   58         CLI
@@ -6459,14 +6527,14 @@ End macro FNE
      0BBF   8D 05 FE   STA &FE05
      0BC2   4C 03 80   JMP &8003
 .sndh
-     0BC5   A9 00      LDA #&00
-     0BC7   F0 0B      BEQ &0BD4
-     0BC9   8D 05 FE   STA &FE05
-     0BCC   20 90 90   JSR &9090
-     0BCF   A5 F4      LDA &F4
-     0BD1   8D 05 FE   STA &FE05
-.sndr
-     0BD4   60         RTS
+     0BC5   00
+     0BC6   00
+     0BC7   8D 05 FE   STA &FE05
+     0BCA   A5 FC      LDA &FC
+     0BCC   40         RTI
+     0BCD   A5 F4      LDA &F4
+     0BCF   8D 05 FE   STA &FE05
+     0BD2   6C FE 1F   JMP (&1FFE)
 .cbset
      0BD5   8D F5 B1   STA &B1F5
      0BD8   A2 03      LDX #&03
@@ -6647,7 +6715,7 @@ LOAD: &B00 -&C29 , free 214
      04C0   8E D3 04   STX &04D3
      04C3   8C D4 04   STY &04D4
      04C6   A5 F4      LDA &F4
-     04C8   8D F6 06   STA &06F6
+     04C8   8D 95 06   STA &0695
      04CB   A9 FF      LDA #&FF
      04CD   8D 8D 1F   STA &1F8D
      04D0   A2 00      LDX #&00
@@ -6730,7 +6798,7 @@ LOAD: &B00 -&C29 , free 214
      0576   A0 B3      LDY #&B3
      0578   20 B9 05   JSR &05B9
 .prest
-     057B   AD F6 06   LDA &06F6
+     057B   AD 95 06   LDA &0695
      057E   85 F4      STA &F4
      0580   8D 05 FE   STA &FE05
      0583   60         RTS
@@ -6901,72 +6969,21 @@ LOAD: &B00 -&C29 , free 214
      0681   B1 FD      LDA (&FD),Y
      0683   D0 F8      BNE &067D
      0685   F0 FE      BEQ &0685
+.IRQGL
+     0687   A9 0C      LDA #&0C
+     0689   8D 05 FE   STA &FE05
 .IRQG
-     0687   20 90 1F   JSR &1F90
-     068A   AD 00 FE   LDA &FE00
-     068D   29 04      AND #&04
-     068F   F0 46      BEQ &06D7
-     0691   8A         TXA
-     0692   48         PHA
-     0693   A9 1E      LDA #&1E
-     0695   85 8B      STA &8B
-     0697   A9 97      LDA #&97
-     0699   8D 08 FE   STA &FE08
-     069C   A9 D3      LDA #&D3
-     069E   8D 09 FE   STA &FE09
-     06A1   AD 46 03   LDA &0346
-     06A4   F0 03      BEQ &06A9
-.LASDEC
-     06A6   CE 46 03   DEC &0346
-     06A9   A2 00      LDX #&00
-     06AB   AD 82 1F   LDA &1F82
-     06AE   F0 0F      BEQ &06BF
-     06B0   AD F2 06   LDA &06F2
-     06B3   D0 0A      BNE &06BF
-     06B5   AD 83 1F   LDA &1F83
-     06B8   8D 81 1F   STA &1F81
-     06BB   8E 82 1F   STX &1F82
-     06BE   E8         INX
-.irq3
-     06BF   8E F2 06   STX &06F2
-     06C2   AE 81 1F   LDX &1F81
-     06C5   BD F0 06   LDA &06F0,X
-     06C8   8D 03 FE   STA &FE03
-     06CB   A5 F4      LDA &F4
-     06CD   09 10      ORA #&10
-     06CF   8D 05 FE   STA &FE05
-     06D2   68         PLA
-     06D3   AA         TAX
-     06D4   A5 FC      LDA &FC
-     06D6   40         RTI
-.irqn
-     06D7   AD 00 FE   LDA &FE00
-     06DA   29 08      AND #&08
-     06DC   F0 0F      BEQ &06ED
-     06DE   2C 80 1F   BIT &1F80
-     06E1   10 0A      BPL &06ED
-     06E3   A5 F4      LDA &F4
-     06E5   09 20      ORA #&20
-     06E7   8D 05 FE   STA &FE05
-     06EA   A5 FC      LDA &FC
-     06EC   40         RTI
-.irqm
-     06ED   6C F4 06   JMP (&06F4)
-.ssa
-     06F0   18
-     06F1   2C
-.rflip
-     06F2   00
+     068C   A9 00      LDA #&00
+     068E   8D 05 FE   STA &FE05
+     0691   4C 74 B3   JMP &B374
 .PANR
-     06F3   07
-.IRQMOS
-     06F4   00 00
+     0694   07
 .pbank
-     06F6   00
+     0695   00
 .SREQ
-     06F7   00
-     06F8   00
-Resident block A: &0400-&6F8 , free 2  (then the circle engine's variables and table, SNE and ACT)
+     0696   00
+     0697   00
+Resident block A: &0400-&697 , free 99  (then the circle engine's variables and table, SNE and ACT)
 .pcb_o
      0724   00
      0725   18
@@ -7071,13 +7088,13 @@ The circle engine's table and cbcopy: &724 -&756 , free 105
      9098   90 02      BCC &909C
      909A   49 B8      EOR #&B8
      909C   8D F2 8F   STA &8FF2
-     909F   AD F8 06   LDA &06F8
+     909F   AD 97 06   LDA &0697
      90A2   20 DF 90   JSR &90DF
-     90A5   AD F7 06   LDA &06F7
+     90A5   AD 96 06   LDA &0696
      90A8   20 DF 90   JSR &90DF
      90AB   A9 00      LDA #&00
-     90AD   8D F7 06   STA &06F7
-     90B0   8D F8 06   STA &06F8
+     90AD   8D 96 06   STA &0696
+     90B0   8D 97 06   STA &0697
      90B3   A2 03      LDX #&03
 .stk1
      90B5   BD E6 8F   LDA &8FE6,X
@@ -10758,7 +10775,7 @@ Saving file '3-assembled-output/D.LOWK.bin'
      8000   4C 2C 80   JMP &802C
      8003   4C 2C 80   JMP &802C
      8006   4C BD 8A   JMP &8ABD
-     8009   87 06
+     8009   8C 06
      800B   4C 79 06   JMP &0679
      800E   00 53
      8010   4C 5C 97   JMP &975C
@@ -20589,9 +20606,9 @@ S.ELTC &9B32  &871E  &8000  &9B32
      9289   5A 29
 .SNDQ_C
      928B   09 80      ORA #&80
-     928D   AE F7 06   LDX &06F7
-     9290   8E F8 06   STX &06F8
-     9293   8D F7 06   STA &06F7
+     928D   AE 96 06   LDX &0696
+     9290   8E 97 06   STX &0697
+     9293   8D 96 06   STA &0696
      9296   AD 02 04   LDA &0402
      9299   8D 91 1F   STA &1F91
      929C   60         RTS
@@ -27950,7 +27967,7 @@ S.ELTC &89EF  &1910  &8000  &89EF
      8000   4C 2F 80   JMP &802F
      8003   4C 20 80   JMP &8020
      8006   4C A5 86   JMP &86A5
-     8009   87 06
+     8009   8C 06
      800B   4C 79 06   JMP &0679
      800E   63 4C
      8010   4C 93 9A   JMP &9A93
@@ -40107,9 +40124,9 @@ S.ELTE &976B  &98F2  &8000  &976B
      99E4   73 96
 .SNDQ_C
      99E6   09 80      ORA #&80
-     99E8   AE F7 06   LDX &06F7
-     99EB   8E F8 06   STX &06F8
-     99EE   8D F7 06   STA &06F7
+     99E8   AE 96 06   LDX &0696
+     99EB   8E 97 06   STX &0697
+     99EE   8D 96 06   STA &0696
      99F1   AD 02 04   LDA &0402
      99F4   8D 91 1F   STA &1F91
      99F7   60         RTS

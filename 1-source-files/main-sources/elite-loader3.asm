@@ -648,8 +648,8 @@ NEXT
  JSR b0fix              \ Make buffer 0 black, with a copy of buffer 1's last
                         \ eight rows (the staging has been through it)
 
- LDX #SNDHSZ - 1        \ Port: copy the interrupt's hook into the sound
-                        \ engine to SNDH
+ LDX #SNDHSZ - 1        \ Port: set up the interrupt's 16 bytes at RESH%
+                        \ (elite-map.asm)
 .lsh
 
  LDA sndh,X
@@ -664,15 +664,17 @@ NEXT
  LDA #SSA1
  STA &FE03
 
- LDA VEC                \ Copy the MOS's IRQ1V handler from VEC to IRQMOS, for
- STA IRQMOS             \ IRQG
- LDA VEC+1
- STA IRQMOS+1
+ LDX #LO(IRQG)          \ Point IRQ1V at the game's interrupt handler, IRQG (in
+ LDA BANK5              \ the resident block, and on in bank 5: gfx-irq.asm),
+ STA IRQG+1             \ which handles the display end (the flip) and passes
+ CMP #8                 \ the other interrupts on to the MOS (through VEC): at
+ BCS P%+4               \ IRQGL with bank 5 in slots 0 to 7, and with bank 5's
+ LDX #LO(IRQGL)         \ number in its code
+ STX IRQ1V
+ LDA #HI(IRQG)
+ STA IRQ1V+1
 
- LDA #LO(IRQG)          \ Point IRQ1V at the game's interrupt handler, IRQG
- STA IRQ1V              \ (in the resident block), which handles the display
- LDA #HI(IRQG)          \ end (the flip) and passes every interrupt on to the
- STA IRQ1V+1            \ MOS
+ ASSERT HI(IRQG) = HI(IRQGL)
 
  CLI                    \ Re-enable interrupts
 
@@ -694,31 +696,28 @@ NEXT
 
 .sndh
 
-                        \ Port: SNDH, the hook into the sound engine that IRQG
-                        \ calls first on every interrupt, copied to SNDH above
-                        \ (it refers to no address of its own, so it runs there
-                        \ as assembled here): if a sound plays or has been
-                        \ asked for, SNDH+1 holds the engine's bank (else 0, and
-                        \ it returns at once), which it pages in to call the
-                        \ engine's tick, SND_TICK, paging the interrupted bank
-                        \ back in from &F4 after. (The ULA would ignore a bank 0
-                        \ to 7 while the keyboard's ROM 8 is paged, but the game
-                        \ pages ROM 8 only with interrupts disabled, kbscan, and
-                        \ the MOS's own scan is in its interrupt handler, which
-                        \ runs after this)
+                        \ Port: the interrupt's 16 bytes, copied to RESH% above
+                        \ (elite-map.asm): SNDH+1, non-zero while a sound
+                        \ plays, then the handler's two ways out of bank 5
+                        \ (they refer to no address of their own, so they run
+                        \ there as assembled here): at IRQE%, the write to
+                        \ ROMSEL that pages the interrupted ROM back in and
+                        \ clears the ULA's interrupt (A, from the handler),
+                        \ and the return; at IRQM%, the interrupted ROM back
+                        \ in from &F4, and on to the MOS's handler through
+                        \ VEC, where the loader kept the MOS's IRQ1V
 
- LDA #0                 \ (SNDH+1: the engine's bank, or 0)
- BEQ sndr               \ (a branch: as relocatable as the rest)
+ EQUB 0, 0
+
+ STA ROMSEL             \ (IRQE%)
+ LDA &FC                \ A from the MOS's save register
+ RTI
+
+ LDA &F4                \ (IRQM%)
  STA ROMSEL
- JSR SND_TICK
- LDA &F4
- STA ROMSEL
+ JMP (VEC)
 
-.sndr
-
- RTS
-
- ASSERT P% - sndh = SNDHSZ
+ ASSERT P% - sndh = SNDHSZ AND IRQE% = RESH% + 2 AND IRQM% = RESH% + 8
 
 .cbset
 
@@ -1055,6 +1054,8 @@ NEXT
  SNDP% = P%
 
  INCLUDE "1-source-files/main-sources/gfx-sound.asm"
+
+ ASSERT SND_TICK = SND5A   \ (the interrupt handler calls it there: gfx-irq.asm)
 
  COPYBLOCK SND5A, SND_AEND, SNDP%
  COPYBLOCK SND5B, SND_BEND, SNDP% + SND_AEND - SND5A

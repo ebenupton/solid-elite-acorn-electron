@@ -3,7 +3,7 @@
 | main RAM | `&0000-&00FF` | zero page: the game's (the rasteriser's &06-&27 and the frame layer's &D2-&E1 during a frame, kept) | 256 | 0 |
 | main RAM | `&0100-&01FF` | the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched) | 256 | 0 |
 | main RAM | `&0300-&03CF` | `UP`, the game's workspace | 208 | 0 |
-| main RAM | `&0400-&06FA` | resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry: the handler is in the common block) | 761 | 2 |
+| main RAM | `&0400-&06FA` | resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 664 | 99 |
 | main RAM | `&06FB-&0723` | the circle engine's variables (main low: `gfx-merid.asm`) | 35 | 6 |
 | main RAM | `&0724-&07BF` | `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`); then `cbcopy` (`elite-resident.asm`) | 51 | 105 |
 | main RAM | `&07C0-&07FF` | `SNE`, `ACT` | 64 | 0 |
@@ -18,7 +18,7 @@
 | main RAM | `&1E40-&1EDF` | the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`) | 160 | 0 |
 | main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
 | main RAM | `&1F80-&1F8F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
-| main RAM | `&1F90-&1F9F` | `SNDH`, the interrupt's hook into the sound engine (copied there by the loader's `LOAD`) | 16 | 0 |
+| main RAM | `&1F90-&1F9F` | the interrupt's: `SNDH+1`, non-zero while a sound plays, and the handler's two ways out of bank 5 (`IRQE%`, `IRQM%`: set up by the loader's `LOAD`) | 16 | 0 |
 | main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 28 | 66 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&244F` | the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`) | 0 | 1104 |
@@ -56,7 +56,7 @@
 | bank 5 | `&AE00-&B15C` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 861 | 0 |
 | bank 5 | `&B15D-&B1A2` | (free: the room below the per-x tables, to the common block) | 0 | 70 |
 | bank 5 | `&B1A3-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 92 | 1 |
-| bank 5 | `&B200-&B3FF` | the room below the per-x tables: `R_DOT`, `r_wq` | 372 | 140 |
+| bank 5 | `&B200-&B3FF` | the room below the per-x tables: `R_DOT`, `r_wq`, the interrupt handler (`RIRQ`, `gfx-irq.asm`) | 502 | 10 |
 | bank 5 | `&B400-&BF66` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2919 | 0 |
 | bank 5 | `&BF67-&BFFF` | `RJT`, the jump table | 42 | 111 |
 | bank 6 | `&8000-&AA4D` | the frame layer's code (bank 6 passes) | 10830 | 0 |
@@ -68,4 +68,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1283, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 144, bank 4 (docked) 2604, bank 7 (flight) 422, bank 7 (docked) 4930, bank 5 975, bank 6 10.
+Free, by place: main RAM 1380, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 144, bank 4 (docked) 2604, bank 7 (flight) 422, bank 7 (docked) 4930, bank 5 845, bank 6 10.

@@ -320,15 +320,25 @@
                         \ nothing draws during a disc command
 
  RESH% = GVARS + 16     \ The interrupt's 16 bytes, after the renderer's
-                        \ shared variables: SNDH, its hook into the sound
-                        \ engine
+                        \ shared variables, which the loader's LOAD sets up
+                        \ (elite-loader3.asm): what the handler in bank 5
+                        \ (gfx-irq.asm) needs in main RAM
 
- SNDH = RESH%           \ IRQG's hook into the sound engine (gfx-sound.asm):
- SNDHSZ = 16            \ SNDHSZ bytes of code, which the loader's LOAD copies
-                        \ here (elite-loader3.asm); SNDH+1, the operand of its
-                        \ first instruction, is the engine's bank while a sound
-                        \ plays or has been asked for (NO3 sets it, the engine
-                        \ clears it), else 0, when SNDH returns at once
+ SNDH = RESH%           \ SNDH+1 is non-zero (the sound engine's bank) while a
+ SNDHSZ = 16            \ sound plays or has been asked for (NO3 sets it, the
+                        \ engine clears it: gfx-sound.asm), else 0, when the
+                        \ interrupt does not tick the engine
+
+ IRQE% = RESH% + 2      \ The handler's way out: the interrupted ROM paged
+                        \ back, and RTI (six bytes of code)
+
+ IRQM% = RESH% + 8      \ The handler's way on to the MOS's handler: the
+                        \ interrupted ROM paged back, and a jump through VEC
+                        \ (eight bytes of code)
+
+ DL% = &8B              \ The game's DL and LASCT, which the handler writes
+ LASCT% = &0346         \ (bank 5's assembly comes before the programs', which
+                        \ check them)
 
  SND5A = &9090          \ The sound engine in bank 5, in three gaps that R_INIT
  SND5ASZ = &70          \ leaves in the rasteriser's row tables' pages (not in

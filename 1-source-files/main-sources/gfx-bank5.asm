@@ -20,8 +20,8 @@
 \   &AE00 on     the shared region (gfx-raster.asm): R_SETBUF and r_pgfix,
 \                the spans' core, the arithmetic; in the room below the
 \                per-x tables, the common block (elite-common.asm, at
-\                COMMON%, the same in every bank), R_DOT and the frame
-\                layer's query (r_wq);
+\                COMMON%, the same in every bank), R_DOT, the frame layer's
+\                query (r_wq) and the interrupt handler (gfx-irq.asm);
 \                the per-x tables at R_TAB% (&B400); the stars; then r_setup, the repair (R_REPAIR and r7_rowrep:
 \                gfx-raster_rep.asm), the disc layer's requests
 \                (gfx-raster_dq.asm), the code a span's rows run (r_pclip,
@@ -116,7 +116,7 @@
 
  CLEAR r_tfree, r_tables \ (gfx-raster.asm skips it)
  ORG r_tfree             \ the room below the per-x tables: the common block,
-.R_GAPMID                \ then R_DOT and r_wq
+.R_GAPMID                \ then R_DOT, r_wq and the interrupt handler
  ASSERT R_GAPMID <= COMMON%
 
  INCLUDE "1-source-files/main-sources/elite-common.asm"   \ (at COMMON%: the code
@@ -128,6 +128,9 @@
  ORG COMMON_END%
  INCLUDE "3-assembled-output/gfx-raster-bank5gap.asm"
  INCLUDE "3-assembled-output/gfx-raster_dq-bank5gap.asm"
+ INCLUDE "1-source-files/main-sources/gfx-irq.asm"   \ (the interrupt handler,
+                        \ RIRQ: the resident block's IRQG pages this bank in
+                        \ for it)
 .R_GAPEND
  ASSERT R_GAPEND <= r_tables
 
@@ -139,6 +142,6 @@
  INCLUDE "3-assembled-output/gfx-flare-bank5.asm"
 .R_LOEND
 
- PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), free ", COMMON%-R_GAPMID, ", the common block ", ~COMMON%, "-", ~COMMON_USED%-1, " (free ", COMMON_END%-COMMON_USED%, "), R_DOT and r_wq to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"
+ PRINT "Bank 5 (rasteriser): the row runs &8000-", ~R_IMG%-1, " (made at start), ", ~R_IMG%, "-", ~R_LOEND-1, " (free ", R_ST%-R_LOEND, "), ", ~R_ST%+&600, "-", ~R_HIEND-1, " (the jump table &", ~RJT, "-", ~RJT_END-1, "; free ", &C000-R_HIEND, "), free ", COMMON%-R_GAPMID, ", the common block ", ~COMMON%, "-", ~COMMON_USED%-1, " (free ", COMMON_END%-COMMON_USED%, "), R_DOT, r_wq and the interrupt handler to ", ~R_GAPEND-1, " (free ", r_tables-R_GAPEND, ")"
 
  SAVE "3-assembled-output/BANK5.bin", R_IMG%, &C000, R_IMG%
