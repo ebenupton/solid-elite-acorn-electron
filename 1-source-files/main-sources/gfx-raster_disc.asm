@@ -729,12 +729,14 @@ MACRO R_NOTE
 .n9
 ENDMACRO
 
-MACRO PEGO ret            \ pe's way back
-  LDA #LO(ret)
-  STA pe_x+1
-  LDA #HI(ret)
-  STA pe_x+2
-ENDMACRO
+MACRO SAMEPAGE a, b       \ a and b in one page (but in the measure's copy,
+  ASSERT OVL_END% = &BE00 OR HI(a) = HI(b) \ elite-measure-flight.asm, at
+ENDMACRO                  \ another address, whose OVL_END% is &BE00)
+
+MACRO PEGO ret            \ pe's way back. Port: its low byte only, as the
+  LDA #LO(ret)            \ ways back of each of pe's two callers are in one
+  STA pe_x+1              \ page (r_p1's, which pe_x's high byte holds but
+ENDMACRO                  \ while r_gen's set it: r_gen's own, ge7 to ge13)
 
 MACRO PEROLE              \ A = the role of the end after the right end: after
   LDA rn_n                \ an even number of boundaries the first colour is
@@ -867,6 +869,10 @@ ENDMACRO
   LDX RZ_Y
   LDA rn_r
 .r_psr51 STA R_DISCR0,X
+ SAMEPAGE p1ar, p1br     \ (PEGO: r_p1's ways back in one page)
+ SAMEPAGE p1ar, p1cr
+ SAMEPAGE p1ar, p1dr
+ SAMEPAGE p1ar, p1er
 .p1x
   JMP r_fin
 
@@ -998,6 +1004,8 @@ ENDMACRO
   INY
   CPY #6
   BCC ge6
+  LDA #HI(ge7)            \ (PEGO: pe's ways back from here, to ge13, which
+  STA pe_x+2              \ puts back r_p1's)
   LDY ao                  \ the new left end: from the old one to its left
   CPY rn_l                \ ...
   BCS ge7
@@ -1065,7 +1073,13 @@ ENDMACRO
   LDX r_je
   JMP pe
 .ge13
+  LDA #HI(p1ar)
+  STA pe_x+2
   JMP r_sta
+ SAMEPAGE ge7, ge8       \ (PEGO: r_gen's in one page)
+ SAMEPAGE ge7, ge10
+ SAMEPAGE ge7, ge12
+ SAMEPAGE ge7, ge13
 
 \ r_p3: row X, a span appearing or going (or neither there)
 
@@ -1336,7 +1350,8 @@ PR_E1 = 16                \ second
   TAX
   JSR cgs
 .pe_x
-  JMP &FFFF               \ (patched: PEGO)
+  JMP p1ar                \ (patched: PEGO; its high byte r_p1's ways back's
+                          \ but in r_gen)
 
 .pe_l                     \ moved left (A = the old place)
   CMP ce+1,X
