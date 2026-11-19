@@ -1308,10 +1308,36 @@ ENDMACRO
  STA pmi_c
  RTS
 
-.pis_t                  \ floor(sqrt(256 h)), h = 64..255 (pm_isqrt)
- FOR h, 64, 255
-  EQUB INT(SQR(256 * h))
- NEXT
+\ The engine's variables in bank 4 with its code (the operands of pc_mul,
+\ pc_sq and the nodes): what one pc_circ call makes and uses
+
+.pv                     \ pc_circ's 16-bit operands (pc_mul: offsets O_ from pv)
+.pv_m   SKIP 6          \ |mx|, |my|, |mz| >> 2
+.pv_hx  SKIP 2          \ the unit axis' x and y (0.8)
+.pv_hy  SKIP 2
+.pv_d   SKIP 2          \ d = r c (8.8)
+.pv_r   SKIP 2          \ r
+.pm_tq  SKIP 2          \ t = mz^2 / rho2, 0.16
+.pm_v   SKIP 2          \ v = mx^2 / (mx^2 + my^2), 0.16
+.pv_cn  SKIP 2          \ pcn / 2
+.pv_rc  SKIP 2          \ r^2 - (d^2 >> 16), r^2 - e2
+.pv_r2  SKIP 2          \ r^2
+.pv_dd  SKIP 2          \ d^2 >> 16
+O_M = pv_m - pv
+O_HX = pv_hx - pv
+O_HY = pv_hy - pv
+O_D = pv_d - pv
+O_R = pv_r - pv
+O_T = pm_tq - pv
+O_V = pm_v - pv
+O_CN = pv_cn - pv
+O_RC = pv_rc - pv
+.pc_o   SKIP 3          \ } 24-bit signed, at pc_o + X for pc_sgn: an offset
+.pc_a9  SKIP 3          \ } (16.8); A, sqrt(B) and the two nodes, in 1/512
+.pc_s9  SKIP 3          \ } pixels
+.pc_n   SKIP 6          \ the two nodes, in 1/512 pixels
+.pc_tw  SKIP 4          \ the record's thresholds T1, T2 before clamping (16-bit:
+                        \ each slot's into PC_TU, for the frame's f_hrec)
 
 
 
@@ -2210,47 +2236,17 @@ ASSERT pra1 = pra0 + 7 AND pra3 = pra0 + 21 AND prk1 = prk0 + 7 AND prk3 = prk0 
 
 
 
-\ The engine's variables: pc_circ's in bank 4 after the blueprint slot, at
-\ PFVS% (bank 4 top: what one call makes and uses, and reads and writes
-\ most), and the rest in main RAM, at PFVH% after gfx-planet7.asm's (main
-\ high) and at PFVA% (main low), so that the code at the home bank's end has
-\ the room, each placed by the flight code's layout (elite-map.asm's
-\ addresses); PC_ROWS' in bank 6 (bank
-\ 6's pass); and the records' slots' offsets, which both read (pcb_o, five
-\ bytes, in main RAM after the glue: the resident block A's main passes)
+\ The engine's variables: pc_circ's in bank 4, with its code (above) and
+\ after the blueprint slot, at PFVS% (bank 4 top: what one call makes and
+\ uses, and reads and writes most), placed by the flight code's layout
+\ (elite-map.asm's addresses); PC_ROWS' in bank 6 (bank 6's pass); and in
+\ main RAM after the glue (the resident block A's main passes) the records'
+\ slots' offsets, which both read (pcb_o, five bytes), and pm_isqrt's table
+\ (pis_t, read once a call)
 
-\       Area: main high
+\       Area: main high, main low
 
-.pc_n   SKIP 6          \ the two nodes, in 1/512 pixels
-.pc_tw  SKIP 4          \ the record's thresholds T1, T2 before clamping (16-bit:
-                        \ each slot's into PC_TU, for the frame's f_hrec)
-
-\       Area: main low
-
-.pv                     \ pc_circ's 16-bit operands (pc_mul: offsets O_ from pv)
-.pv_m   SKIP 6          \ |mx|, |my|, |mz| >> 2
-.pv_hx  SKIP 2          \ the unit axis' x and y (0.8)
-.pv_hy  SKIP 2
-.pv_d   SKIP 2          \ d = r c (8.8)
-.pv_r   SKIP 2          \ r
-.pm_tq  SKIP 2          \ t = mz^2 / rho2, 0.16
-.pm_v   SKIP 2          \ v = mx^2 / (mx^2 + my^2), 0.16
-.pv_cn  SKIP 2          \ pcn / 2
-.pv_rc  SKIP 2          \ r^2 - (d^2 >> 16), r^2 - e2
-.pv_r2  SKIP 2          \ r^2
-.pv_dd  SKIP 2          \ d^2 >> 16
-O_M = pv_m - pv
-O_HX = pv_hx - pv
-O_HY = pv_hy - pv
-O_D = pv_d - pv
-O_R = pv_r - pv
-O_T = pm_tq - pv
-O_V = pm_v - pv
-O_CN = pv_cn - pv
-O_RC = pv_rc - pv
-.pc_o   SKIP 3          \ } 24-bit signed, at pc_o + X for pc_sgn: an offset
-.pc_a9  SKIP 3          \ } (16.8); A, sqrt(B) and the two nodes, in 1/512
-.pc_s9  SKIP 3          \ } pixels
+                        \ (nothing: the engine's variables are in its banks)
 
 \       Area: bank 4 top
 
@@ -2311,3 +2307,8 @@ O_RC = pv_rc - pv
 .pcb_o  EQUB 0, RSZ, 2*RSZ, 3*RSZ, 4*RSZ \ the slots' offsets in PCB (and the end):
 ASSERT HI(pcb_o) = HI(pcb_o + 4)         \ in main RAM, as both pc_circ (bank 4) and
                                          \ the frame's PC_ROWS (bank 6) read it
+
+.pis_t                  \ floor(sqrt(256 h)), h = 64..255 (pm_isqrt; in main
+ FOR h, 64, 255         \ RAM, where the bank 4 code's room is not spent on
+  EQUB INT(SQR(256 * h))  \ it, for one read a call)
+ NEXT

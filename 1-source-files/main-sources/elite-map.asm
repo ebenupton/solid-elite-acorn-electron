@@ -360,21 +360,22 @@
  SND_ECMA = &30         \ ECMA, which the engine reads (each program's layout
                         \ checks it)
 
- GLUE% = &0724          \ The circle engine's table that banks 4 and 6 both
-                        \ read (pcb_o, gfx-merid.asm's main pass): at a fixed
-                        \ address at the end of the resident block A, which
-                        \ includes it there, so that bank 6 can be built
-                        \ against it
+ GLUE% = &06C0          \ The circle engine's table that banks 4 and 6 both
+                        \ read (pcb_o, gfx-merid.asm's main pass) and its
+                        \ pm_isqrt's table: at a fixed address at the end of
+                        \ the resident block A, which includes it there, so
+                        \ that bank 6 can be built against it
 
- PFVA% = &06FB          \ The circle engine's variables (gfx-merid.asm and
+ PFVA% = GLUE%          \ The circle engine's variables (gfx-merid.asm and
  PFVH% = RESH% + 16     \ gfx-planet7.asm, the flight code's planet surface in
- PFVS% = BPSLOT_END%    \ a build with _CIRCLES): 62 bytes at the end of the
-                        \ resident block A, before the glue, and 62 after the
-                        \ high resident block, to VEC, in main RAM, and what one
-                        \ PF_HOOK call makes and uses in the 94 bytes after
-                        \ the blueprint slot, to the quarter squares, which a
-                        \ set's file loads over (LOMOD) between iterations
- ASSERT PFVA% + 41 = GLUE%
+ PFVS% = BPSLOT_END%    \ a build with _CIRCLES): none in main RAM now (main
+                        \ low, at the end of the resident block A, before the
+                        \ glue, and main high, after the high resident block,
+                        \ to VEC, are empty), and what one PF_HOOK call makes
+                        \ and uses in the 94 bytes after the blueprint slot,
+                        \ to the quarter squares, which a set's file loads
+                        \ over (LOMOD) between iterations (the rest are in
+                        \ bank 4 with the code)
 
  LCOL = &A8             \ The colour of the next lines, pixels and characters
                         \ that the drawing routines draw on the space view: a

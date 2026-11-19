@@ -987,14 +987,19 @@ def pmath_tests(quick=False):
             bk[a - 0x8000] = v
         else:
             zp[a] = v
+
+    def get(a):                                  # (the engine's variables: zero page,
+        return bk[a - 0x8000] if 0x8000 <= a < 0xC000 else zp[a]   # or bank 4)
+    TT, PP, PA, PB = (F.get(k, d) for k, d in (('pm_tt', 0x20), ('pm_p', 0x18), ('pm_a', 0x10), ('pm_b', 0x14)))
     rnd = random.Random(7)
     rb = lambda n: rnd.getrandbits(n) if n else 0
     cy, bad = [], []
     for n in range(0, 65536, 7 if quick else 1):
-        zp[0x20], zp[0x21] = n & 255, n >> 8
+        put(TT, n & 255)
+        put(TT + 1, n >> 8)
         cy.append(m.gcall(F['pm_isqrt']))
         f = math.isqrt(n)
-        if m.mpu.a != f or zp[0x20] | zp[0x21] << 8 != n - f * f:
+        if m.mpu.a != f or get(TT) | get(TT + 1) << 8 != n - f * f:
             bad.append(n)
     check(not bad, 'pm_isqrt: every n (%.0f cycles)%s' % (sum(cy) / len(cy), ' (wrong for %r)' % bad[:6] if bad else ''))
     if 'pcv' in F:                               # pf_tilt
@@ -1012,8 +1017,8 @@ def pmath_tests(quick=False):
             cy.append(m.gcall_at(STUB, 9))
             inwk = [zp[F['INWK'] + k] for k in range(36)]
             want = PCM.pf_tilt(inwk, x, y, f)
-            got = [(zp[F['pcv'] + 2 * j], zp[F['pcv'] + 2 * j + 1]) for j in range(3)]
-            kn = zp[F['pcn']] | zp[F['pcn'] + 1] << 8
+            got = [(get(F['pcv'] + 2 * j), get(F['pcv'] + 2 * j + 1)) for j in range(3)]
+            kn = get(F['pcn']) | get(F['pcn'] + 1) << 8
             if got != want or kn != PCM.pf_kn(y, f):
                 bad.append((x, y, f, got, want))
         check(not bad, 'pf_tilt against planet_caps.pf_tilt (%.0f cycles)%s' % (sum(cy) / len(cy), ' (wrong for %r)' % bad[:2] if bad else ''))
@@ -1030,7 +1035,7 @@ def pmath_tests(quick=False):
         mem.main[STUB:STUB + 7] = bytes([0xA2, 0, 0xA0, 4, 0x20, F['pm_fdiv'] & 255, F['pm_fdiv'] >> 8])
         c = m.gcall_at(STUB, 7)
         cy.append(c)
-        got = sum(zp[0x18 + k] << 8 * k for k in range(4))
+        got = sum(get(PP + k) << 8 * k for k in range(4))
         if got != PCM.fdiv(u, v):
             bad.append((u, v, got))
     check(not bad, 'pm_fdiv against planet_caps.fdiv (%.0f cycles)%s' % (sum(cy) / len(cy), ' (wrong for %r)' % bad[:4] if bad else ''))
@@ -1042,9 +1047,10 @@ def pmath_tests(quick=False):
             u, v = rb(rnd.randrange(17)), rb(rnd.randrange(17))
             if not two:
                 v = u
-            zp[0x10], zp[0x11], zp[0x14], zp[0x15] = u & 255, u >> 8, v & 255, v >> 8
+            for a, b in ((PA, u & 255), (PA + 1, u >> 8), (PB, v & 255), (PB + 1, v >> 8)):
+                put(a, b)
             cy.append(m.gcall(F[name]))
-            got = sum(zp[0x18 + k] << 8 * k for k in range(4))
+            got = sum(get(PP + k) << 8 * k for k in range(4))
             if got != u * v:
                 bad.append((u, v, got))
         check(not bad, '%s against the product (%.0f cycles)%s' % (name, sum(cy) / len(cy), ' (wrong for %r)' % bad[:4] if bad else ''))

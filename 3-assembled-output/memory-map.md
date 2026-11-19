@@ -3,9 +3,9 @@
 | main RAM | `&0000-&00FF` | zero page: the game's (the rasteriser's &06-&27 and the frame layer's &D2-&E1 during a frame, kept) | 256 | 0 |
 | main RAM | `&0100-&01FF` | the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched) | 256 | 0 |
 | main RAM | `&0300-&03CF` | `UP`, the game's workspace | 208 | 0 |
-| main RAM | `&0400-&06FA` | resident block A (`elite-resident.asm`): `BANKS`, the far calls' variables and jump forms, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 553 | 210 |
-| main RAM | `&06FB-&0723` | the circle engine's variables (main low: `gfx-merid.asm`) | 35 | 6 |
-| main RAM | `&0724-&07BF` | `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`); then `cbcopy` (`elite-resident.asm`) | 51 | 105 |
+| main RAM | `&0400-&06BF` | resident block A (`elite-resident.asm`): `BANKS`, the far calls' variables and jump forms, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 553 | 151 |
+| main RAM | `&06C0-&06BF` | the circle engine's variables (main low: `gfx-merid.asm`) | 0 | 0 |
+| main RAM | `&06C0-&07BF` | `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`); then `cbcopy` (`elite-resident.asm`) | 243 | 13 |
 | main RAM | `&07C0-&07FF` | `SNE`, `ACT` | 64 | 0 |
 | main RAM | `&0880-&08BF` | `QQ16` | 64 | 0 |
 | main RAM | `&0900-&0CFF` | `K%` and the line heaps (the loader's `LOAD` at `&0B00` before the game) | 1024 | 0 |
@@ -19,7 +19,7 @@
 | main RAM | `&1EE0-&1F7F` | the missile's blueprint | 160 | 0 |
 | main RAM | `&1F80-&1F8F` | `GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's) | 16 | 0 |
 | main RAM | `&1F90-&1F9F` | the interrupt's: `SNDH+1`, non-zero while a sound plays, and the handler's two ways out of bank 5 (`IRQE%`, `IRQM%`: set up by the loader's `LOAD`) | 16 | 0 |
-| main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 28 | 66 |
+| main RAM | `&1FA0-&1FFD` | the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`) | 0 | 94 |
 | main RAM | `&1FFE-&1FFF` | `VEC` | 2 | 0 |
 | main RAM | `&2000-&244F` | the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`) | 0 | 1104 |
 | main RAM (flight) | `&2450-&2C4F` | the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place | 2019 | 29 |
@@ -27,7 +27,7 @@
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
 | bank 4 (flight) | `&8000-&A690` | `S%` and the hot pass | 9873 | 0 |
-| bank 4 (flight) | `&A691-&B138` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2720 | 8 |
+| bank 4 (flight) | `&A691-&B138` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2591 | 137 |
 | bank 4 (flight) | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 4 (flight) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 4 (flight) | `&B200-&B2FF` | `PF_HOOK` (bank 4 high pass) | 228 | 28 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1491, main RAM (flight) 1029, main RAM (docked) 1171, bank 4 (flight) 38, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.
+Free, by place: main RAM 1362, main RAM (flight) 1029, main RAM (docked) 1171, bank 4 (flight) 167, bank 4 (docked) 2498, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.

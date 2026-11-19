@@ -6,8 +6,8 @@
 \ hand-converted NMOS 6502 code of its Model B branch), at the end of the
 \ flight code's bank 4 with the circle engine's pc_circ (gfx-merid.asm's
 \ bank 4 pass) in a build with _CIRCLES (elite-layout-flight.asm): PF_HOOK
-\ from H_CIRC, in game context, with its pf_tilt, whose variables are in main
-\ RAM (each block's "Area:" line, streams.py's passes). Its class goes to PF_CLS (GVARS) and its
+\ from H_CIRC, in game context, with its pf_tilt and its variables (each
+\ block's "Area:" line, streams.py's passes). Its class goes to PF_CLS (GVARS) and its
 \ records to the mailbox (PCB, PC_N, pc_inv: gfx-rws.asm), for the frame's
 \ f_bounds (PC_ROWS, in bank 6).
 \
@@ -310,12 +310,8 @@
  STA pft_r+1
  RTS
 
-
-
-\       Area: main high
-
-                        \ pf_tilt's, in main RAM at PFVH% (gfx-merid.asm's
-                        \ follow)
+                        \ pf_tilt's (in bank 4 with the code: pc_circ reads
+                        \ pcv and pcn)
 .pcv    SKIP 6          \ the axis (three sign-magnitude words: pf_tilt)
 .pcn    SKIP 2          \ 2^24 / the axis' nominal length (>> 3)
 .pft_f  SKIP 1          \ pf_tilt's own
@@ -326,3 +322,7 @@
 .pft_n  SKIP 1
 .pft_r  SKIP 2
 .pft_s  SKIP 2
+
+\       Area: main high
+
+                        \ (nothing: pf_tilt's variables are in bank 4, above)
