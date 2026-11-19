@@ -44,7 +44,7 @@
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
 | bank 7 (flight) | `&8000-&9AF0` | the cold pass, `QQ18` | 6897 | 0 |
 | bank 7 (flight) | `&9AF1-&9F3A` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&9F3B-&B138` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc) | 4506 | 100 |
+| bank 7 (flight) | `&9F3B-&B138` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc) | 4594 | 12 |
 | bank 7 (flight) | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 7 (flight) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 7 (flight) | `&B200-&B3FF` | the painter's entries (`DPENT%`), which the common block calls, and its own call of bank 5; the painter's operands' patch | 297 | 215 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1362, main RAM (flight) 501, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 316, bank 7 (docked) 4824, bank 5 876, bank 6 5.
+Free, by place: main RAM 1362, main RAM (flight) 501, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 228, bank 7 (docked) 4824, bank 5 876, bank 6 5.

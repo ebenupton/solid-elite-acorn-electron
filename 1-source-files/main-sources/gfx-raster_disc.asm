@@ -1576,7 +1576,36 @@ ENDMACRO
   STA cg_eb
   CPY cg_eb
   BCC cg4                 \ whole bytes up to the next edge's
-  JSR cg_byte             \ a byte with an edge
+  BEQ cg3b
+  JSR cg_byte             \ (an edge before the byte)
+  JMP r_gd
+.cg3b
+  STY cg_t                \ a byte with an edge. Port: cg_byte's b1 to b7
+  LDA cg_cur              \ in line (hot: a call saved for each such byte;
+  STA cg_acc              \ cg_bw still calls cg_byte)
+.cg3c
+  LDA ce,X
+  AND #7
+  LSR A
+  TAY
+  LDA r_lm4,Y
+  STA cg_mk
+  {
+  CGADV
+  }
+  EOR cg_acc
+  AND cg_mk
+  EOR cg_acc
+  STA cg_acc
+  CPX cg_n
+  BCS cg3d
+  LDA ce,X                \ (another in the byte?)
+  EOR ce-1,X
+  AND #&F8
+  BEQ cg3c
+.cg3d
+  LDY cg_t
+  LDA cg_acc
 .r_gd STA &FFFF,Y
   JMP cg6
 .cg3a
