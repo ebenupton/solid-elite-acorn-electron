@@ -106,11 +106,14 @@
 \ ============================================================================
 .r_pf8
 {
-  \ rows ystart..ylast
+  \ rows ystart..ylast (Y: the edges' rows are all inside the window, 0,
+  \ or some are clipped: e_sel's branch to e_ch)
+  LDY #0
   LDA r_yminL
   CMP r_ct
   BCS y1
   LDA r_ct
+  LDY #LO(e_ch - (e_sel + 2))
 .y1
   STA r_ystart
   CMP r_ymaxL
@@ -124,10 +127,12 @@
   CPX r_cb
   BCC y3
   LDX r_cb
+  LDY #LO(e_ch - (e_sel + 2))
 .y3
   STX r_ylast
   INX
   STX r_yend
+  STY e_sel+1
   \ chain A: forward into r_ta
   LDA #HI(r_ta)
   STA r_lsh_t+2
@@ -140,20 +145,6 @@
   STA r_exj+2
   LDX r_top
   BPL ca                  \ (always: X < 16)
-.out
-  RTS
-.^r_ex                    \ an edge is done: on along its chain (or, for the
-  LDX r_i1                \ 16-bit path, back to r7_pf16b: r_exr)
-.^r_exj
-  JMP ca                  \ (patched: ca, cb or r_exr)
-.^r_exr
-  RTS
-.cl                       \ y0 < ystart: out if end row <= ystart, else clipped
-  LDA RZ_T2
-  CMP r_ystart
-  BEQ r_ex
-  BCC r_ex
-  JMP clipped
 .cad
   \ chain B: backward into r_tb
   LDA #HI(r_tb)
@@ -181,6 +172,32 @@
   JMP r_e8
 .cbd
   JMP r_pcbd
+.out
+  RTS
+.^r_ex                    \ an edge is done: on along its chain (or, for the
+  LDX r_i1                \ 16-bit path, back to r7_pf16b: r_exr)
+.^r_exj
+  JMP ca                  \ (patched: ca, cb or r_exr)
+.^r_exr
+  RTS
+.cl                       \ y0 < ystart: out if end row <= ystart, else clipped
+  LDA RZ_T2
+  CMP r_ystart
+  BEQ r_ex
+  BCC r_ex
+  JMP clipped
+.e_ch                     \ an edge of a polygon whose rows the window clips (A
+  CMP r_yend              \ = y1): its end row, and its start row if it is
+  BCC e1                  \ inside
+  LDA r_yend
+.e1
+  STA RZ_T2               \ end row (exclusive)
+  LDA r_vy,Y
+  CMP RZ_T2
+  BCS r_ex                \ y0 >= end row
+  CMP r_ystart
+  BCC cl                  \ y0 < ystart (if y0 >= ystart then RZ_T2 > y0 >= ystart)
+  BCS e2                  \ (always)
 .ca                       \ (from the top vertex, a vertex at ymax, the
   LDA r_vy,X              \ largest of the vertices' y, comes within n - 1
   CMP r_ymaxL             \ edges either way: no count is needed)
@@ -193,6 +210,7 @@
   LDX #0
 .ca1
   STX r_i1
+  ASSERT e_ch - (e_sel + 2) >= -128
 
 \ r_e8: the edge from vertex Y (i0) to vertex X (i1 = r_i1) of an 8-bit
 \ polygon into the chain's table, then r_ex
@@ -201,16 +219,11 @@
   CMP r_vy,Y
   BCC r_ex
   BEQ r_ex                \ not going down
-  CMP r_yend
-  BCC e1
-  LDA r_yend
-.e1
-  STA RZ_T2               \ end row (exclusive)
-  LDA r_vy,Y
-  CMP RZ_T2
-  BCS r_ex                \ y0 >= end row
-  CMP r_ystart
-  BCC cl                  \ y0 < ystart (if y0 >= ystart then RZ_T2 > y0 >= ystart)
+.e_sel
+  BNE P%+2                \ (always; patched: to e_ch if the window clips the
+  STA RZ_T2               \ polygon's rows, r_pf8) the end row is y1's
+  LDA r_vy,Y              \ (C = 1 still)
+.e2
   STA RZ_T3               \ start row (A = y0, C = 1)
   EOR #&FF
   ADC r_vy,X              \ dy = y1 - y0; C stays 1 (y1 > y0)

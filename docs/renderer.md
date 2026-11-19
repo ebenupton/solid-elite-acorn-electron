@@ -68,9 +68,11 @@ edge's set-up and its division are in line in its chain, and its DDA loop
 ends with a jump back to the chain: `r_lz` for an edge with no remainder,
 `r_sp` and `r_sn` for a steep one (x in X, the error in A, x stored
 through an operand whose low byte counts up the edge table, which is
-within a page), `r_lsh` for the rest. Phase B is one row loop: the row's
-colour from the four rows' colours by its line, its ends' bytes masked
-through the character row's address, its whole bytes through the run. A
+within a page), `r_lsh` for the rest; an edge of a polygon whose rows the
+window does not clip skips the clipping of its rows. Phase B is one row
+loop: the row's colour from the four rows' colours by its line, its ends'
+bytes masked through the character row's address, its whole bytes through
+the run; a character row's set-up is kept from one polygon to the next. A
 polygon with a coordinate outside 0..255 reads its vertices in the
 mailbox as it needs them (copying them costs more than its reads do).
 

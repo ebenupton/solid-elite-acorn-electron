@@ -55,7 +55,7 @@
 | bank 7 (docked) | `&B200-&BFFF` | (free) | 0 | 3584 |
 | bank 5 | `&8000-&8BFF` | the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables | 2459 | 613 |
 | bank 5 | `&8C00-&90FF` | the row tables (made at start by `R_INIT`), the stars' records, the bank's copies of its inputs and its scratch (`r_zb`), the variables (not in `R.BANK`); and the sound engine in three gaps (`gfx-sound.asm`, `SND5A`, `SND5B`, `SND5D`: copied there by the loader) | 1257 | 23 |
-| bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE`, the lens flare | 5771 | 117 |
+| bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE`, the lens flare | 5790 | 98 |
 | bank 5 | `&A800-&ADFF` | the state: the dirty and written extents, `R_POLY`'s edge tables | 1536 | 0 |
 | bank 5 | `&AE00-&B11D` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 798 | 0 |
 | bank 5 | `&B11E-&B1A2` | (free: the room below the per-x tables, to the common block) | 0 | 133 |
@@ -72,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1491, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 1066, bank 6 10.
+Free, by place: main RAM 1491, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 1047, bank 6 10.
