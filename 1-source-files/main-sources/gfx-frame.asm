@@ -76,6 +76,8 @@ R_CT    = &0C
 R_CB    = &0D
 R_DCE   = &0E           \ (the disc layer's colour pair, for the painter in
 R_DCO   = &0F           \ bank 7: f_ddraw)
+ ASSERT XX3 = R_VHEAP    \ (bank 5 reads a ship's faces' vertices in the heap:
+                        \ gfx-rws.asm, f_ship)
 RZ_T0   = &20           \ (DP_BEGIN's colour B pair)
 RZ_T1   = &21
 RZ_T2   = &22           \ (DP_BEGIN's rows of the layer)
@@ -2794,6 +2796,7 @@ fsd_zl = fz_p : fsd_zh = fz_p+1 : fsd_rl = fz_q : fsd_q = fz_q+1 : fsd_x = fz_u
  STA fz_n
  CMP #3
  BCC fsh_next
+ ORA #&80               \ (bit 7: its vertices are in the heap, below)
  STA R_PN
  LDA fz_t               \ the face's level
  AND #31
@@ -2812,24 +2815,26 @@ fsd_zl = fz_p : fsd_zh = fz_p+1 : fsd_rl = fz_q : fsd_q = fz_q+1 : fsd_x = fz_u
  LDA fz_ft+1
  ADC #0
  STA fsh_o+2
- LDX #0                 \ gather the vertices
-.fsh_v
-.fsh_o
- LDY &FFFF,X            \ XX3 offset (patched)
- LDA XX3,Y
- STA R_PXL,X
- LDA XX3+1,Y
- STA R_PXH,X
- LDA XX3+2,Y
- STA R_PYL,X
- LDA XX3+3,Y
- STA R_PYH,X
+ LDX #0                 \ the vertices: only each one's place in XX3 crosses
+.fsh_v                  \ to bank 5, a byte in the mailbox (R_PVO): R_POLY
+.fsh_o                  \ reads the vertex itself there, in page 1, which
+ LDA &FFFF,X            \ every bank sees (XX3 offset: patched)
+ STA R_PVO,X
  INX
  CPX fz_n
  BCC fsh_v
  BIT fz_t               \ far faces (XX2 = 255, bit 6 of the copy: Elite skipped
  BVC fsh_draw           \ the normal test) are culled by their winding on
-                        \ screen, in the ship's handedness (bit 5)
+                        \ screen, in the ship's handedness (bit 5): the
+ LDX #2                 \ first three vertices' low bytes, for f_winding
+.fsh_w
+ LDY R_PVO,X
+ LDA XX3,Y
+ STA R_PXL,X
+ LDA XX3+2,Y
+ STA R_PYL,X
+ DEX
+ BPL fsh_w
  JSR f_winding
  BCC fsh_next
 .fsh_draw

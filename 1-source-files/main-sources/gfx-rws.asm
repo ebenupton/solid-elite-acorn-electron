@@ -51,7 +51,12 @@ R_X0     = MBOX + &40   \ R_LINE: end points (signed 16-bit words, lo hi)
 R_Y0     = MBOX + &42
 R_X1     = MBOX + &44
 R_Y1     = MBOX + &46
-R_PN     = MBOX + &48   \ R_POLY: the vertex count (1..16)
+R_PN     = MBOX + &48   \ R_POLY: the vertex count (1..16); bit 7 set: the
+                        \ vertices are not in the mailbox but in the game's
+R_PVO    = R_PXH        \ heap of projected vertices (XX3: page 1, which
+R_VHEAP  = &0100        \ every bank sees, four bytes each: x low, x high,
+                        \ y low, y high), and R_PVO has each one's offset
+                        \ there (a ship's faces: the frame layer's f_ship)
 R_COL2   = MBOX + &49   \ R_POLY: the colours of rows y AND 3 = 2, 3
 R_COL3   = MBOX + &4A
 R_SN     = MBOX + &4B   \ R_STARPLOT: the star count (0..19)

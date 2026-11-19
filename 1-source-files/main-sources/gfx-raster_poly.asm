@@ -16,8 +16,18 @@
 \ colours, the count and each vertex's four bytes are read once each, here
 \ (the low bytes into this bank's r_vx and r_vy), and everything after
 \ reads the bank's copies.  A polygon with a coordinate outside 0..255
-\ (r7_pf16) reads its vertices in the mailbox, as copying them would cost
-\ more than its reads do.
+\ (r7_pf16) has all four bytes of each vertex copied into this bank first
+\ (r_vx, r_wxh, r_vy, r_wyh: phase A reads them many times over, and a
+\ read of the mailbox is a slow one).
+\
+\ Port (the Electron): a ship's face (R_PN's bit 7 set) has its vertices
+\ in the game's heap of projected vertices in page 1 (R_VHEAP, the game's
+\ XX3), and the mailbox holds only each one's offset there (R_PVO): vlv
+\ reads them from the heap as vl reads the mailbox's, a byte each once
+\ (vl's scan in line a second time, for the heap: the mailbox's four
+\ bytes a vertex no longer cross main RAM twice).  With a coordinate
+\ outside 0..255, r_pvg (gfx-raster.asm) copies the vertices from the heap
+\ for r7_pf16.
 \ ============================================================================
 .R_POLY
 {
@@ -33,6 +43,11 @@
   BNE pn1
   RTS
 .pn1
+  CLV                     \ V set: the vertices are in the heap (kept to vl:
+  BPL pn2                 \ nothing before it changes V)
+  AND #&7F
+  BIT pv_k
+.pn2
   CMP #17
   BCC n_ok
   LDA #16
@@ -49,6 +64,7 @@
   STA r_ymaxL
   LDA #&FF
   STA r_yminL
+  BVS vlv
 \ The vertices, last to first: while every high byte is zero (the 8-bit
 \ path), each vertex's y and x are copied and the top vertex (the last of
 \ the least y: the first met), the largest y and whether some x is outside
@@ -80,12 +96,46 @@
   DEX
   BPL vl
   JMP r_pf8
-.p16                      \ some coordinate outside 0..255: phase A (r7_pf16)
+.p16                      \ some coordinate outside 0..255: phase A (r7_pf16),
+  JMP r_pcp               \ which reads this bank's copies of the vertices
+                          \ (r_pcp, gfx-raster.asm, makes them and comes back)
+.^r_p16
   JSR r7_pf16
   BEQ out                 \ (A = 0: nothing to draw; NMOS: Z from its LDA)
   JMP r_pcbd
 .out
   RTS
+.vlv                      \ the same from the heap: vertex X is at R_PVO,X there
+  LDY R_PVO,X
+  LDA R_VHEAP+1,Y
+  ORA R_VHEAP+3,Y
+  BEQ P%+5
+  JMP r_pvg               \ (some coordinate outside 0..255: gfx-raster.asm)
+  LDA R_VHEAP+2,Y
+  STA r_vy,X
+  CMP r_yminL
+  BCS v1
+  STA r_yminL
+  STX r_top
+.v1
+  CMP r_ymaxL
+  BCC v2
+  STA r_ymaxL
+.v2
+  LDA R_VHEAP,Y
+  STA r_vx,X
+  CMP r_cl
+  BCC v3
+  CMP r_cr1
+  BCC v4
+.v3
+  INC r_xclip
+.v4
+  DEX
+  BPL vlv
+  JMP r_pf8
+.pv_k
+  EQUB &40                \ (BIT's operand, for V)
 }
 
 \ ============================================================================
@@ -712,7 +762,9 @@
 .r7_side4 EQUB 0        \ (only ever 0: NMOS: nothing stores it)
 .r7_e8c                   \ bank 5's r_e8, an edge starting above the window: Y = i0,
   LDX RZ_T7               \ RZ_T7 = i1, RZ_Y = ystart -> S in RZ_T0 (t in RZ_TA), dy
-  JSR r7_esgen            \ in RZ_T1, A = a, X = b (side r7_side4: always 0)
+  JSR r_pz2               \ in RZ_T1, A = a, X = b (side r7_side4: always 0);
+  JSR r7_esgen            \ r7_esgen reads the vertices' 16-bit copies in this
+                          \ bank (r_pz2, gfx-raster.asm: the two's high bytes)
   LDA RZ_SA
   STA RZ_T0
   LDA r7_edy
@@ -747,10 +799,10 @@ r7_eb = rp_ov + 15
   STA RZ_T0
   DEX
 .xl
-  LDA R_PXH,X
+  LDA r_wxh,X
   BMI xlt
   BNE xgt
-  LDA R_PXL,X
+  LDA r_wxl,X
   CMP r_cl
   BCC xlt
   CMP r_cr
@@ -774,10 +826,10 @@ r7_eb = rp_ov + 15
   LDA #0
   RTS
 .xok
-  LDA R_PYL
+  LDA r_wyl
   STA r7_yminL
   STA r7_ymaxL
-  LDA R_PYH
+  LDA r_wyh
   STA r7_yminH
   STA r7_ymaxH
   LDX #0                  \ (NMOS: no STZ)
@@ -786,32 +838,32 @@ r7_eb = rp_ov + 15
   CPX r7_n
   BEQ rows
 .vl
-  LDA R_PYL,X             \ y < ymin ?
+  LDA r_wyl,X             \ y < ymin ?
   CMP r7_yminL
-  LDA R_PYH,X
+  LDA r_wyh,X
   SBC r7_yminH
   BVC v1
   EOR #&80
 .v1
   BPL notless
-  LDA R_PYL,X
+  LDA r_wyl,X
   STA r7_yminL
-  LDA R_PYH,X
+  LDA r_wyh,X
   STA r7_yminH
   STX r7_top
   JMP notmore             \ (NMOS: no BRA)
 .notless
   LDA r7_ymaxL             \ ymax < y ?
-  CMP R_PYL,X
+  CMP r_wyl,X
   LDA r7_ymaxH
-  SBC R_PYH,X
+  SBC r_wyh,X
   BVC v2
   EOR #&80
 .v2
   BPL notmore
-  LDA R_PYL,X
+  LDA r_wyl,X
   STA r7_ymaxL
-  LDA R_PYH,X
+  LDA r_wyh,X
   STA r7_ymaxH
 .notmore
   INX
@@ -877,10 +929,10 @@ r7_eb = rp_ov + 15
   STA r7_cc
   LDX r7_top
 .ca
-  LDA R_PYL,X
+  LDA r_wyl,X
   CMP r7_ymaxL
   BNE ca0
-  LDA R_PYH,X
+  LDA r_wyh,X
   CMP r7_ymaxH
   BEQ cad
 .ca0
@@ -906,10 +958,10 @@ r7_eb = rp_ov + 15
   STA r7_cc
   LDX r7_top
 .cb
-  LDA R_PYL,X
+  LDA r_wyl,X
   CMP r7_ymaxL
   BNE cb0
-  LDA R_PYH,X
+  LDA r_wyh,X
   CMP r7_ymaxH
   BEQ cbd
 .cb0
@@ -937,28 +989,28 @@ r7_eb = rp_ov + 15
 {
   LDY r7_i0
   LDX r7_i1
-  LDA R_PYL,Y             \ going down? (y0 < y1)
-  CMP R_PYL,X
-  LDA R_PYH,Y
-  SBC R_PYH,X
+  LDA r_wyl,Y             \ going down? (y0 < y1)
+  CMP r_wyl,X
+  LDA r_wyh,Y
+  SBC r_wyh,X
   BVC v1
   EOR #&80
 .v1
   BPL out
-  LDA R_PYH,X             \ end row = min(y1, yend)
+  LDA r_wyh,X             \ end row = min(y1, yend)
   BMI out
   BNE e0
-  LDA R_PYL,X
+  LDA r_wyl,X
   CMP r_yend
   BCC e1
 .e0
   LDA r_yend
 .e1
   STA RZ_T2
-  LDA R_PYH,Y             \ start row = max(y0, ystart)
+  LDA r_wyh,Y             \ start row = max(y0, ystart)
   BMI s0
   BNE out
-  LDA R_PYL,Y
+  LDA r_wyl,Y
   CMP r_ystart
   BCS s1
 .s0
@@ -976,17 +1028,17 @@ r7_eb = rp_ov + 15
   LDX r7_i1                \ the 8-bit DDA
   LDA r7_edy+1
   BNE gen
-  LDA R_PXH,Y
-  ORA R_PXH,X
+  LDA r_wxh,Y
+  ORA r_wxh,X
   BNE gen
-  LDA R_PXL,Y
+  LDA r_wxl,Y
   CMP r_cl
   BCC gen
   CMP r_cr1
   BEQ x1
   BCS gen
 .x1
-  LDA R_PXL,X
+  LDA r_wxl,X
   CMP r_cl
   BCC gen
   CMP r_cr1
@@ -1024,9 +1076,9 @@ r7_eb = rp_ov + 15
   LDX r7_i1                \ so once inside, x stays inside: the 8-bit DDA
   LDA r7_edy+1
   BNE g1
-  LDA R_PXH,X
+  LDA r_wxh,X
   BNE g1
-  LDA R_PXL,X
+  LDA r_wxl,X
   CMP r_cl
   BCC g1
   CMP r_cr1
@@ -1133,29 +1185,29 @@ r7_eb = rp_ov + 15
 .r7_esgen                  \ Y = r7_i0, X = r7_i1
 {
   SEC
-  LDA R_PYL,X
-  SBC R_PYL,Y
+  LDA r_wyl,X
+  SBC r_wyl,Y
   STA r7_edy
-  LDA R_PYH,X
-  SBC R_PYH,Y
+  LDA r_wyh,X
+  SBC r_wyh,Y
   STA r7_edy+1
   SEC
   LDA RZ_Y
-  SBC R_PYL,Y
+  SBC r_wyl,Y
   STA r7_ek0
   LDA #0
-  SBC R_PYH,Y
+  SBC r_wyh,Y
   STA r7_ek0+1
-  LDA R_PXL,Y
+  LDA r_wxl,Y
   STA r7_ex0
-  LDA R_PXH,Y
+  LDA r_wxh,Y
   STA r7_ex0+1
   SEC
-  LDA R_PXL,X
-  SBC R_PXL,Y
+  LDA r_wxl,X
+  SBC r_wxl,Y
   STA r7_eadx
-  LDA R_PXH,X
-  SBC R_PXH,Y
+  LDA r_wxh,X
+  SBC r_wxh,Y
   STA r7_eadx+1
   STA r7_eneg             \ (NMOS: bit 7: dx < 0, from dx's high byte; no
   BPL pos                 \ STZ, DEC)

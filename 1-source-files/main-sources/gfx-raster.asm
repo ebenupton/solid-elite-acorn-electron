@@ -782,7 +782,15 @@ ENDMACRO
  R_RUN 6
 .r_vy    SKIP 16
  R_RUNEND 6
-FOR r, 7, 23
+ R_RUN 7
+.r_wxh   SKIP 16         \ a polygon's vertices' high bytes for phase A's
+ R_RUNEND 7              \ 16-bit path, this bank's copies (with r_vx and r_vy
+ R_RUN 8                 \ the low bytes: r_pcp and r_pvg fill all four, and
+.r_wyh   SKIP 16         \ nothing of r7_pf16 reads main RAM): x high, y high
+ R_RUNEND 8
+r_wxl = r_vx
+r_wyl = r_vy
+FOR r, 9, 23
  R_RUN r
  R_RUNEND r
 NEXT
@@ -1407,6 +1415,58 @@ ASSERT r_colo = r_cole + 1
 .done
   RTS
 }
+
+\ r_pvg: (R_POLY's vlv) a ship's face with some coordinate outside 0..255:
+\ every vertex from the heap into this bank's copies, for r7_pf16
+.r_pvg
+{
+  LDX r_n
+  DEX
+.g1
+  LDY R_PVO,X
+  LDA R_VHEAP,Y
+  STA r_wxl,X
+  LDA R_VHEAP+1,Y
+  STA r_wxh,X
+  LDA R_VHEAP+2,Y
+  STA r_wyl,X
+  LDA R_VHEAP+3,Y
+  STA r_wyh,X
+  DEX
+  BPL g1
+  JMP r_p16
+}
+
+\ r_pcp: (R_POLY's vl) a polygon with some coordinate outside 0..255: every
+\ vertex from the mailbox into this bank's copies, for r7_pf16
+.r_pcp
+{
+  LDX r_n
+  DEX
+.c1
+  LDA R_PXL,X
+  STA r_wxl,X
+  LDA R_PXH,X
+  STA r_wxh,X
+  LDA R_PYL,X
+  STA r_wyl,X
+  LDA R_PYH,X
+  STA r_wyh,X
+  DEX
+  BPL c1
+  JMP r_p16
+}
+
+\ r_pz2: (r7_e8c) an 8-bit polygon's edge from vertex Y to vertex X starts
+\ above the window: r7_esgen reads the vertices' 16-bit copies, whose low
+\ bytes are r_vx and r_vy, so the two's high bytes are made zero
+.r_pz2
+  LDA #0
+  STA r_wxh,Y
+  STA r_wyh,Y
+  STA r_wxh,X
+  STA r_wyh,X
+  RTS
 
 \       Area: bank 5
 

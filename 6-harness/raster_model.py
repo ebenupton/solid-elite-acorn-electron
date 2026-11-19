@@ -549,6 +549,24 @@ class Tester:
     def draw_poly(self, verts, ce, co):
         m = self.m
         n = len(verts)
+        if 'R_PVO' in m.syms and n <= 16 and self.rnd.random() < 0.5:
+            # a ship's face (the Electron port): the vertices in the heap of
+            # projected vertices in page 1, four bytes each at offsets the
+            # mailbox lists (R_PVO), bit 7 of R_PN set; the mailbox's vertex
+            # arrays hold anything
+            heap = m.s('R_VHEAP')
+            slots = self.rnd.sample(range(44), n)
+            for i in range(16):
+                for nm in ('R_PXL', 'R_PXH', 'R_PYL', 'R_PYH'):
+                    m.wr(nm, self.rnd.randrange(256), i)
+            m.wr('R_PN', n | 0x80)
+            for i, (x, y) in enumerate(verts):
+                o = 4 * slots[i]
+                m.wr('R_PVO', o, i)
+                for k, v in enumerate((x & 0xFF, (x >> 8) & 0xFF, y & 0xFF, (y >> 8) & 0xFF)):
+                    m.mem[heap + o + k] = v
+            self.set_col(ce, co)
+            return m.call('R_POLY')
         m.wr('R_PN', n)
         for i, (x, y) in enumerate(verts[:16]):
             m.wr('R_PXL', x & 0xFF, i)
