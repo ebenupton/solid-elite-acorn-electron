@@ -39,10 +39,10 @@
 
 \ ============================================================================
 \ R_INIT: make the 24 row runs (gfx-raster.asm), which R.BANK does not
-\ carry: the run of row r at r_run0 + &80 r, STA SCREEN% + 320 r + 32 + 8 c
-\ - 8 r, Y for c = 1 to 32, an RTS and a 0, for buffer 1 (as r_pgtag has
-\ them); row r + 1's first store is row r's first + 312. Then the row tables
-\ (r_ylo, r_ypg, r_ypg0), R_LINE's buffer (none yet) and the state.
+\ carry: the run of row r at r_run0 + &80 r, STA B + 8 m, Y for m = 30 down
+\ to 1, B = SCREEN% + 320 r + 32, then its exit (rx), for buffer 1 (as
+\ r_pgtag has them). Then the row tables (r_ylo, r_ypg, r_ypg0), R_LINE's
+\ buffer (none yet) and the state.
 \
 \       Area: bank 5 end
 \ ============================================================================
@@ -50,9 +50,9 @@
 {
   LDA #0                  \ (R_PRBUF, which r_setup's R_SETBUF calls compare, is
   STA R_PRBUF             \ not in the image)
-  LDA #LO(SCREEN% + 40)   \ RZ_T0(1 0) = row 0's first store's address
+  LDA #LO(SCREEN% + 32 + 240)   \ RZ_T0(1 0) = row 0's first store's address
   STA RZ_T0
-  LDA #HI(SCREEN% + 40)
+  LDA #HI(SCREEN% + 32 + 240)
   STA RZ_T1
   LDA #LO(r_run0)         \ RZ_PP(1 0) = row 0's run
   STA RZ_PP
@@ -64,13 +64,11 @@
   STA sw2+1
   STA sw3+1
   STA sw4+1
-  STA sw5+1
   LDA RZ_PP+1
   STA sw1+2
   STA sw2+2
   STA sw3+2
   STA sw4+2
-  STA sw5+2
   LDY #0
 .st
   LDA #r_opSTA            \ STA RZ_T0(1 0),Y
@@ -85,29 +83,29 @@
 .sw3
   STA &FFFF,Y
   INY
-  LDA RZ_T0               \ the next store's address, 8 on
-  CLC
-  ADC #8
+  LDA RZ_T0               \ the next store's address, 8 back
+  SEC
+  SBC #8
   STA RZ_T0
-  BCC nc
-  INC RZ_T1
+  BCS nc
+  DEC RZ_T1
 .nc
-  CPY #R_RUNSZ - 2
+  CPY #R_RUNX
   BNE st
-  LDA #r_opRTS            \ the RTS and the spare 0
+.ex
+  LDA rx - R_RUNX,Y       \ the exit
 .sw4
   STA &FFFF,Y
   INY
-  LDA #0
-.sw5
-  STA &FFFF,Y
-  LDA RZ_T0               \ the next row's first store: 312 on from this
-  CLC                     \ row's, 256 on already
-  ADC #312 - 256
+  CPY #R_RUNSZ
+  BNE ex
+  LDA RZ_T0               \ the next row's first store: 320 + 240 on from
+  CLC                     \ this row's address, where the stores ended
+  ADC #LO(320 + 240)
   STA RZ_T0
-  BCC nd
-  INC RZ_T1
-.nd
+  LDA RZ_T1
+  ADC #HI(320 + 240)
+  STA RZ_T1
   LDA RZ_PP               \ the next row's run, &80 on
   EOR #&80
   STA RZ_PP
@@ -147,4 +145,8 @@
   LDA #&FF                \ R_LINE's DIRTY operands are for no buffer yet
   STA rl_lbuf
   JMP r_setup
+.rx                       \ a run's exit: C = 1 to phase B's row, C = 0
+  BCC P%+5                \ through r_runx
+  JMP pb_ret
+  JMP r_runx
 }

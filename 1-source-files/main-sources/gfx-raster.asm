@@ -187,8 +187,8 @@ r_cb    = RZB + &0D
 r_dce   = RZB + &0E
 r_dco   = RZB + &0F
 r_line  = RZB + &10     \ the row's line (row AND 7: r_rowset)
-RZ_RB   = RZB + &12           \ the row's run base: 0 or &80 (r_rowset)
-RZ_PP   = RZB + &14           \ RTS plant pointer / pixel pointer
+RZ_RB   = RZB + &12           \ the row's run's base + R_RUNX (r_rowset, pb_cr)
+RZ_PP   = RZB + &14           \ pixel pointer
 RZ_COL  = RZB + &16           \ this row's colour byte
 RZ_Y    = RZB + &17           \ current row
 RZ_SA   = RZB + &18           \ edge A: x (16)            } side 0 (offset 0)
@@ -220,19 +220,17 @@ l_b  = RZB + &20
 l_x  = RZB + &21
 l_k  = RZB + &22              \ kind (0..3)
 
-r_opSTA = &99           \ STA abs,Y (the row runs are indexed by the row, as bank 7's)
-r_opRTS = &60
+r_opSTA = &99           \ STA abs,Y (the row runs' stores)
 
 
 .r_start
 
-\ Row set-up.  Y = row (0..191; kept).  Sets RZ_Y, r_line (Y AND 7), r_spc's
-\ screen operands (its character row's address in column 0, from the row
-\ tables r_ylo and the buffer's r_ypg / r_ypg0: patched only when the
-\ character row is not the last one's, r_crow), the run (character row Y
-\ DIV 8's: its page in RZ_PP+1, r_jsr+2, r_spl+2 and r_spr+2, its base in
-\ RZ_RB, r_spl+1 and r_spr+1).  Clobbers A, X; C = 0 on exit (R_POLY's phase
-\ B set-up relies on it).
+\ Row set-up.  Y = row (0..191; kept).  Sets RZ_Y and r_line (Y AND 7) and,
+\ when the character row is not the last one's (r_crow), r_spc's screen
+\ operands (the character row's address in column 0, from the row tables
+\ r_ylo and the buffer's r_ypg / r_ypg0), its run's stores for this buffer
+\ (r_pgtag: r_pgfix), the run's page in r_jsr+2 and its base + 93 in RZ_RB.
+\ Clobbers A, X.
 .r_rowset
   STY RZ_Y
   TYA
@@ -246,46 +244,38 @@ r_opRTS = &60
   TAY
 .^r_yp1
   LDA r_ypg,Y             \ (the buffer's: R_SETBUF)
-  TAX
+  STA r_sl1+2
+  STA r_sl2+2
+  STA r_sl3+2
+  STA r_sr1+2
+  STA r_sr2+2
+  STA r_sr3+2
   LDA r_ylo,Y
-  JSR r_spcb
-  LDY RZ_Y
-.rs1
+  STA r_sl1+1
+  STA r_sl2+1
+  STA r_sl3+1
+  STA r_sr1+1
+  STA r_sr2+1
+  STA r_sr3+1
   TYA
   LSR A
   LSR A
   LSR A
+  TAX                     \ the character row: its run's stores for this buffer
+  LDA r_pgtag,X
+  CMP R_PRBUF
+  BEQ rs0
+  JSR r_pgfix
+.rs0
+  TXA
   LSR A
-  ORA #HI(r_run0)         \ (= ADC: Y DIV 16 < 16)
-  STA RZ_PP+1
+  ORA #HI(r_run0)
   STA r_jsr+2
-  STA r_spl+2
-  STA r_spr+2
-  LDA #0                  \ C = Y bit 3: the base &80 for an odd character row
-  ROR A
+  LDA #2 * (R_RUNX + 3)   \ C = the character row's bit 0: the base &80 for an
+  ROR A                   \ odd one
   STA RZ_RB
-  STA r_spl+1
-  STA r_spr+1
-  TYA                     \ (C = 0) the run's stores for this buffer
-  LSR A
-  LSR A
-  LSR A
-  JMP r_pgfix
-
-\ r_spcb: r_spc's screen operands = X A (a character row's address)
-.r_spcb
-  STA r_sl1+1
-  STX r_sl1+2
-  STA r_sl2+1
-  STX r_sl2+2
-  STA r_sl3+1
-  STX r_sl3+2
-  STA r_sr1+1
-  STX r_sr1+2
-  STA r_sr2+1
-  STX r_sr2+2
-  STA r_sr3+1
-  STX r_sr3+2
+  LDY RZ_Y
+.rs1
   RTS
 .r_crow EQUB &FF          \ the character row (8 x) r_spc's operands are for
                           \ (&FF: none; R_SETBUF)
@@ -382,8 +372,7 @@ r_dr1 = R_DIRTYR1
   STA r_yp8+2
   STA r_yp9+2
   STA r_yp10+2
-  LDA #&FF                \ no run checked for this buffer yet (r_pgfix), no
-  STA r_pglast            \ character row's address in r_spc's operands
+  LDA #&FF                \ no character row's address in r_spc's operands
   STA r_crow
   JMP r_sbpoly             \ (phase B's operands)
 }
@@ -391,79 +380,69 @@ r_dr1 = R_DIRTYR1
 .r_sbh_ypg EQUB HI(r_ypg0), HI(r_ypg)
 
 \ ============================================================================
-\ r_pgfix: A = a character row (0..23).  The runs are made for
-\ buffer 1 (SCREEN%); buffer 0's screen (BUF0) is &2800 lower.  If this
-\ bank's copy of the row's run is not for the buffer R_SETBUF chose, the
-\ high byte of each of its 32 stores' addresses has &28 taken off or added,
-\ four stores a pass, by SBC or ADC #&28 with the carry left as it was set
-\ (the high bytes are &30-&57 or &58-&7F: nothing carries out), X counting
-\ the passes (about 12 cycles a store).  The row last checked for the buffer
-\ is noted, so a run of rows in one character row costs one test.  Keeps X
-\ and Y, and leaves C = 0 (as r_rowset must).
+\ r_pgfix: X = a character row (0..23) whose run's stores are not for the
+\ buffer R_SETBUF chose (r_pgtag: the callers test it in line).  The run's
+\ 30 stores are STA B + 8 m, Y for m = 30 down to 1, B the character row's
+\ address in column 0 (gfx-raster.asm's bank 5 runs): the high byte of each
+\ is B's, or one more from the m where B's low byte (32, 96, 160 or 224:
+\ the character row AND 3) + 8 m passes 256, that is in the run's first 3,
+\ 11, 19 or 27 stores.  They are written straight, 30 stores indexed by the
+\ run's base (X = 0 or &80) into the run's page, which is put into the
+\ stores' operands when it is not the last fix's (r_pgpg), Y counting down
+\ to the store where the high byte changes.  Keeps X and Y.
 \ ============================================================================
 .r_pgfix
 {
-  CMP r_pglast            \ the row last checked: nothing to do
-  BEQ same
-  STA r_pglast
   STX pfx
-  TAX
-  LDA r_pgtag,X
-  CMP R_PRBUF
-  BNE fix
-  LDX pfx                 \ the run's stores are for this buffer already
-.same
-  CLC
-  RTS
-.fix
+  STY pfy
   LDA R_PRBUF             \ the run is now for this buffer
   STA r_pgtag,X
-  STY pfy
-  TXA                     \ its page into the loop's loads and stores, its
-  LSR A                   \ base into the passes' offsets
+  TXA                     \ where the high byte changes: Y = the character row
+  AND #3                  \ AND 3, + 1
+  TAY
+  INY
+  TXA
+  ASL A
+  ASL A
+  ASL A
+  TAX
+.^r_yp10
+  LDA r_ypg,X             \ (the buffer's: R_SETBUF) B's high byte
+  STA pfh
+  LDA pfx                 \ the run's page
+  LSR A
   ORA #HI(r_run0)
-FOR k, 0, 3
-  STA lp + 9 + 8 * k
-  STA lp + 14 + 8 * k
+  CMP r_pgpg
+  BEQ pg
+  STA r_pgpg
+FOR j, 0, 29
+  STA st + 2 + 3 * j + 6 * ((j + 5) DIV 8)
 NEXT
+.pg
+  LDA pfx                 \ X = the run's base
+  LSR A
   LDA #0
   ROR A
-  STA pfb
-  LDX R_PRBUF
-  LDA r_pgop,X            \ buffer 0: SBC #&28, carry set; buffer 1: ADC #&28,
-FOR k, 0, 3               \ carry clear
-  STA lp + 10 + 8 * k
+  TAX
+  LDA pfh
+  ADC #1                  \ (C = 0 from the ROR)
+.st
+FOR j, 0, 29
+  IF j = 3 OR j = 11 OR j = 19 OR j = 27
+    DEY                   \ the high byte changes here in one run in four
+    BNE P%+5
+    LDA pfh
+  ENDIF
+  STA &FF02 + 3 * j,X     \ (the run's page)
 NEXT
-  TXA                     \ (the carry: set for SBC, clear for ADC)
-  EOR #1
-  LSR A
-  LDX #7                  \ the stores' high bytes: offsets 2, 5, .. 95, four
-.lp                       \ a pass, 12 apart
-  LDA r_pgy,X
-  ORA pfb
-  TAY
-FOR k, 0, 3
-  LDA &FF02 + 3 * k,Y
-  ADC #&28
-  STA &FF02 + 3 * k,Y
-NEXT
-  DEX
-  BPL lp
   LDY pfy
   LDX pfx
-  CLC                     \ (r_rowset's C = 0)
   RTS
 }
-.r_pglast EQUB &FF        \ the character row last checked for buffer R_PRBUF (&FF:
-                          \ none)
+.r_pgpg EQUB 0            \ the page r_pgfix's stores are for (0: none)
 .r_pgtag                  \ per character row: the buffer its run's stores are for (as
-FOR i, 0, 23              \ assembled: 1)
+FOR i, 0, 23              \ R_INIT makes them: 1)
   EQUB 1
-NEXT
-.r_pgop EQUB &E9, &69     \ to buffer 0: SBC #; to buffer 1: ADC #
-.r_pgy                    \ the loop's passes' Y
-FOR i, 0, 7
-  EQUB 12 * i
 NEXT
 ASSERT HI(SCREEN%) - HI(BUF0) = &28
 
@@ -472,10 +451,12 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
 \ X = R_XL = left pixel, R_XR = right pixel, R_XL <= R_XR (game x: a byte
 \ is eight, MODE 5 pixel x DIV 2 in column x DIV 8).  Clobbers A, X, Y.
 \ The ends' bytes are masked through the character row's address (r_rowset
-\ patches it in) indexed by Y = 8 * column + line; the
-\ whole bytes between run through the row run, the RTS planted and taken
-\ out again by STA run,X (r_spl, r_spr: the run's address, from r_rowset),
-\ X = the plant's offset, which the run keeps.
+\ patches it in) indexed by Y = 8 * column + line; the whole bytes between
+\ run through the row run, entered (a JMP, with Y the left end's index) at
+\ the store of the last of them, 3 bytes before the run's end for each
+\ (RZ_RB: the run's base + 93, less 3 for each column from the left end's to
+\ the right end's), and left through its exit with C = 0, r_runx, which
+\ comes back here.
 \ ============================================================================
 .r_spc
 {
@@ -493,7 +474,7 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   ORA r_line
   TAY
 .^r_sl1
-  LDA &FFFF,Y             \ (the character row's address: r_spcb)
+  LDA &FFFF,Y             \ (the character row's address: r_rowset)
   EOR RZ_COL
   AND RZ_TB
 .^r_sl2
@@ -503,23 +484,17 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   BCS run
   RTS
 .run
-  LDA r_j,X               \ entry: column xl DIV 8 + 1 (= the plant when no
-  ORA RZ_RB               \ whole byte lies between: the JSR hits the RTS)
+  LDA r_j3,X              \ the run's entry (C = 1; then 0, as the right end's
+  LDX r_xr                \ column is further right; then 1)
+  SBC r_j3,X
+  ADC RZ_RB
   STA r_jsr+1
-  LDY r_xr
-  LDX r_jm,Y              \ plant: column xr DIV 8
-  LDA #r_opRTS
-.^r_spl
-  STA &FF00,X             \ (the run's page and base)
-  LDY RZ_Y                \ (the run is indexed by the row)
   LDA RZ_COL
+  CLC                     \ (the run's exit to r_runx)
 .^r_jsr
-  JSR &FFFF
-  LDA #r_opSTA            \ (X = the plant still)
-.^r_spr
-  STA &FF00,X             \ (the run's page and base)
-  LDX r_xr                \ right edge
-  TXA
+  JMP &FFFF
+.^r_spret
+  TXA                     \ right edge (X = r_xr still)
   AND #&F8
   ORA r_line
   TAY
@@ -533,6 +508,8 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   STA &FFFF,Y
   RTS
 }
+.r_runx                   \ the runs' exit with C = 0: back to r_spc (the repair
+  JMP r_spret             \ points it at itself while it runs: r7_rowrep)
 
 \ ============================================================================
 \ R_SPAN: Y = row, R_XL..R_XR, colour pair R_COLE/R_COLO.
@@ -564,14 +541,10 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
 .r_sbpoly
   LDA r_sbh_dl,X          \ group r_dl
   STA r_pt60+2
-  STA r_pt410+2
   STA r_pt61+2
-  STA r_pt411+2
   LDA r_sbh_dr,X          \ group r_dr
   STA r_pt62+2
-  STA r_pt412+2
   STA r_pt63+2
-  STA r_pt413+2
   RTS
 
 
@@ -657,7 +630,8 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   STX r_v0
   JMP r_div8b             \ (RZ_T6 already holds the dividend: past r_div8's STA RZ_T6)
 }
-\ the 32-bit multiply and divide
+\ the 32-bit multiply and divide (the divide in the room below the per-x
+\ tables)
 .rp_mul16
 {
   LDA #0
@@ -684,6 +658,9 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   BNE lp
   RTS
 }
+
+\       Area: bank 5 gap
+
 .rp_div32
 {
   LDX #16
@@ -712,6 +689,8 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   RTS
 }
 
+\       Area: bank 5
+
 \ (free to the per-x tables)
 .r_tfree
 
@@ -723,16 +702,10 @@ ASSERT P% <= R_TAB%
 SKIP R_TAB% - P%
 .r_tables                 \ (game x 0..255: MODE 5 pixel x DIV 2, byte column
                           \ x DIV 8, pixel (x DIV 2) AND 3 in it)
-.r_jm                     \ 3 * (x DIV 8) - 3: the run's offset of column x DIV 8
-FOR x, 0, 255             \ (the plant for a right end xr: read as r_jm,Y)
-  IF x < 8
-    EQUB 0                \ (column 0 has no store: never read)
-  ELSE
-    EQUB 3 * (x DIV 8) - 3
-  ENDIF
+.r_j3                     \ 3 * (x DIV 8): a run's entry is 3 bytes earlier for
+FOR x, 0, 255             \ each column
+  EQUB 3 * (x DIV 8)
 NEXT
-r_j = r_jm + 8            \ r_j,X = 3 * (x DIV 8): the entry for column x DIV 8 + 1
-                          \ (X = xl <= 247: within the page)
 .r_lm                     \ pixels ((x DIV 2) AND 3)..3 of a byte
 FOR x, 0, 255
   EQUB ((&F0 >> ((x DIV 2) AND 3)) AND &F0) OR (&0F >> ((x DIV 2) AND 3))
@@ -745,22 +718,26 @@ NEXT
 \ ============================================================================
 \ The store runs: one per character row r (24), two to a page (the run of
 \ row r at r_run0 + &80 r: page HI(r_run0) + r DIV 2, its low byte &80 for
-\ an odd row, the row's run base), STA SCREEN% + 320 r + 32 + 8 c - 8 r, Y
-\ (Y = the row) for c = 1..32 (column 32's store is never run: it makes the
-\ stores a whole number of r_pgfix's passes of eight), then RTS and a spare
-\ 0 (the 'nothing planted' target, R_NOPL): R_RUNSZ bytes, which R_INIT
-\ makes at start (gfx-raster_init.asm), so that R.BANK does not carry them.
-\ Column 0 is never a whole byte between a span's ends, nor in the repair
-\ (its border pixel), so it has no store.  The runs' pages are at a page
-\ whose number is a multiple of 16 (the row's run page is Y DIV 16 OR
-\ HI(r_run0)), from bank 5's start (gfx-bank5.asm); after them, the state
-\ that is not in the image: the row tables (which R_INIT makes too), the
-\ stars' records and the variables.
+\ an odd row, the row's run base).  A run fills whole bytes leftwards from
+\ any column to the column after the one Y names: 30 stores, STA B + 8 m, Y
+\ for m = 30 down to 1, B the character row's address in column 0 (SCREEN%
+\ + 320 r + 32, or BUF0's: r_pgfix), entered with Y = 8 * column + line at
+\ the store of m = the number of bytes (R_RUNX - 3 * that many bytes from
+\ its base), A the byte; then its exit, where it is left with a jump and no
+\ return address: with C set to phase B's row code (pb_ret,
+\ gfx-raster_poly.asm), with C clear through r_runx (r_spc, the repair):
+\ R_RUNSZ bytes, which R_INIT makes at start (gfx-raster_init.asm), so
+\ that R.BANK does not carry them.  Columns 0 and 31 are never whole bytes
+\ between a span's ends, nor in the repair (their border pixels), so 30
+\ stores are the most.  The runs' pages are at a page whose number is a
+\ multiple of 16, from bank 5's start (gfx-bank5.asm); after them, the
+\ state that is not in the image: the row tables (which R_INIT makes too),
+\ the stars' records and the variables.
 \
 \       Area: bank 5 runs
 \ ============================================================================
-R_RUNSZ = 3 * 32 + 2
-R_NOPL = R_RUNSZ - 1
+R_RUNX = 3 * 30           \ a run's exit: BCC P%+5 : JMP pb_ret : JMP r_runx
+R_RUNSZ = R_RUNX + 8
 ASSERT R_RUNSZ <= &80
 
 MACRO R_RUN r              \ run r (made at start: R_INIT)
@@ -797,9 +774,9 @@ ENDMACRO
 .rp_v1    SKIP 1
 .rp_ma    SKIP 2         \ multiplicand
 .rp_mb    SKIP 2         \ multiplier
-.pfx      SKIP 1         \ r_pgfix's X, Y and run base
-.pfy      SKIP 1
-.pfb      SKIP 1
+.pfx      SKIP 1         \ r_pgfix's X, Y and the character row's address's
+.pfy      SKIP 1         \ high byte
+.pfh      SKIP 1
 .rmb_y    SKIP 1         \ R_MARKBOX's row
 .R_PRBUF  SKIP 1         \ the rasteriser's private state: the current buffer
 .R_PRDYT  SKIP 2         \ (R_INIT sets it to 0 first); per buffer the rows that
@@ -820,6 +797,7 @@ ENDMACRO
 .fl_q     SKIP 2
 .fl_m1    SKIP 1
 .fl_m2    SKIP 1
+.r_c4     SKIP 4         \ R_POLY's colour bytes for rows y AND 3 = 0, 1, 2, 3
  R_RUNEND 2
  R_RUN 3
 .rl_lct  SKIP 8         \ R_LINE's: colour byte by row AND 7 (y-major), the
@@ -1362,10 +1340,6 @@ ASSERT r_colo = r_cole + 1
   RTS
 }
 
-\ R_DOT, in the room below the per-x tables
-\
-\       Area: bank 5 gap
-
 .R_DOT
 {
   STA r_dsz
@@ -1397,8 +1371,6 @@ ASSERT r_colo = r_cole + 1
 .done
   RTS
 }
-
-\       Area: bank 5 end
 
 .R_MARKDIRTY
   R_IN2 R_XL, R_XR

@@ -142,7 +142,7 @@ row("bank 5", st, st + 0x600, "the state: the dirty and written extents, `R_POLY
 row("bank 5", st + 0x600, B5["r_tfree"], "`R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic")
 row("bank 5", B5["r_tfree"], com, "(free: the room below the per-x tables, to the common block)", 0)
 row("bank 5", com, com_end, COMMON, B5["COMMON_USED%"] - com)
-row("bank 5", com_end, B5["r_tables"], "the room below the per-x tables: `R_DOT`, `r_wq`, the interrupt handler (`RIRQ`, `gfx-irq.asm`)", B5["R_GAPEND"] - com_end)
+row("bank 5", com_end, B5["r_tables"], "the room below the per-x tables: `r_gl`, `r_wq`, `rp_div32`, the interrupt handler (`RIRQ`, `gfx-irq.asm`)", B5["R_GAPEND"] - com_end)
 row("bank 5", B5["r_tables"], rjt, "the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF`")
 row("bank 5", rjt, 0xC000, "`RJT`, the jump table", B5["RJT_END"] - rjt)
 

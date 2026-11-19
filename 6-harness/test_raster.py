@@ -25,9 +25,9 @@ of the current sources):
   * the write guard allows exactly the stack page, the two screen buffers,
     the mailbox and bank 5 (no zero page: the callers' inputs there, &06-&0F,
     are only read, and the scratch is bank 5's); and the row
-    runs must be left as they were (no RTS left planted), except that a
-    run's stores may have been moved to the other buffer (r_pgfix: the
-    high byte of each STA's operand, by &28);
+    runs must be left as they were, except that a run's stores may have
+    been moved to the other buffer (r_pgfix: the high byte of each STA's
+    operand, by &28);
   * there is no disc layer (no R_DISCROWS): the frames test runs its 'none'
     scenario (no disc), with R_REPAIR where the model calls R_DISCROWS;
   * R_POLY's 4-row colour: every polygon is drawn with R_COL2 = R_COLE and
@@ -54,7 +54,8 @@ FILES = ['gfx-raster.asm', 'gfx-raster_poly.asm', 'gfx-raster_line.asm', 'gfx-ra
 CONFIG = {}
 tr.NSTARS = int(re.search(r'^\s*NOST\s*=\s*(\d+)', open(os.path.join(MS, 'elite-source-flight.asm'),
                 encoding='latin-1').read(), re.M).group(1)) + 1   # (the stars the game records: MB_SX ..)
-RUNSZ = 3 * 32 + 2                               # a row run (gfx-raster.asm's R_RUNSZ)
+RUNX = 3 * 30                                    # a row run's stores (gfx-raster.asm's R_RUNX)
+RUNSZ = RUNX + 8                                 # and its exit (R_RUNSZ)
 ENTRIES = ['R_INIT', 'R_SETBUF', 'R_RESETBUF', 'R_REPAIR', 'R_SPAN', 'R_MARKDIRTY', 'R_DOT',
            'R_POLY', 'R_LINE', 'R_STARERASE', 'R_STARPLOT']
 
@@ -224,9 +225,9 @@ class Machine(tr.Machine):
         r0 = s['r_run0']
         for r in range(24 if name != 'R_INIT' else 0):   # (R_INIT makes them)
             b = r0 + 0x80 * r
-            for i in range(RUNSZ - 1):           # (the spare, R_NOPL, takes the STA put back)
+            for i in range(RUNSZ):
                 if mem[b + i] != snap[b + i]:
-                    if not (i % 3 == 2 and i < 96 and (mem[b + i] - snap[b + i]) & 255 in (0x28, 0xD8)):
+                    if not (i % 3 == 2 and i < RUNX and (mem[b + i] - snap[b + i]) & 255 in (0x28, 0xD8)):
                         raise AssertionError('%s left run %d modified at +%d' % (name, r, i))
 
     def screen(self):
@@ -458,12 +459,14 @@ def main():
     rnd = random.Random(a.seed)
     m.call('R_INIT')
     r0, scr, buf0 = m.syms['r_run0'], m.syms['SCREEN%'], m.syms['BUF0']   # (the row runs it
-    for r in range(24):                          # made: STA SCREEN% + 320 r + 32 + 8 c
-        run = []                                 # - 8 r, Y for c = 1..32, RTS, 0, at
-        for c in range(1, 33):                   # r_run0 + &80 r: gfx-raster.asm)
-            a_ = scr + 320 * r + 32 + 8 * c - 8 * r
+    ret, runx = m.syms['pb_ret'], m.syms['r_runx']   # made: STA SCREEN% + 320 r + 32 + 8 m, Y
+    for r in range(24):                          # for m = 30 down to 1, then the exit, BCC
+        run = []                                 # P%+5 : JMP pb_ret : JMP r_runx, at r_run0
+        for c in range(30, 0, -1):               # + &80 r: gfx-raster.asm)
+            a_ = scr + 320 * r + 32 + 8 * c
             run += [0x99, a_ & 255, a_ >> 8]
-        if m.mem[r0 + 0x80 * r:r0 + 0x80 * r + RUNSZ] != run + [0x60, 0]:
+        run += [0x90, 3, 0x4C, ret & 255, ret >> 8, 0x4C, runx & 255, runx >> 8]
+        if m.mem[r0 + 0x80 * r:r0 + 0x80 * r + RUNSZ] != run:
             raise SystemExit('R_INIT: row run %d is not as made' % r)
     for y in range(192):                         # (and the row tables)
         a_ = scr + 320 * (y >> 3) + 32 + (y & 7)

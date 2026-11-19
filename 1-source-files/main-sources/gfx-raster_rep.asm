@@ -22,7 +22,6 @@ c_NL  = RZB + &1A
 c_YE  = RZB + &1E
 c_M   = RZB + &23
 c_CO  = RZB + &22
-c_RP  = RZB + &1B
 
 \ ============================================================================
 \ R_REPAIR: the start of a frame on the current buffer, after R_STARERASE:
@@ -102,149 +101,121 @@ c_DZ  = RZB + &27
 
 \ ============================================================================
 \ r7_rowrep: rows Y .. c_YE - 1, each with a dirty extent blacked through its
-\ row run (the BBC Master port's, made NMOS, for two buffers: the run page
-\ checked for this buffer, r_pgfix, and the border bytes' row address from
-\ the buffer's row tables).  Columns 0 and 31 hold the border's pixels (game
-\ x 0-1 and 254-255) and are masked; columns 1 to 30 are whole bytes.
+\ row run (the BBC Master port's, made NMOS, for two buffers).  Columns 0
+\ and 31 hold the border's pixels (game x 0-1 and 254-255) and are masked
+\ (edge0, edge31); the whole bytes of columns 1 to 30 are one jump into the
+\ character row's run (gfx-raster.asm's bank 5 runs), whose exit with C = 0,
+\ r_runx, points back here while the rows are done.  A character row's
+\ set-up (its run's stores for this buffer, r_pgfix; its page and base) is
+\ done at the first row with an extent in it.
 \ ============================================================================
+c_LN  = RZB + &1C                 \ the row's line
+c_CR  = RZB + &1D                 \ the character row (8 x) set up (&FF: none)
+c_RB  = RZB + &1F                 \ its run's base + R_RUNX - 3
 .r7_rowrep
 {
   LDX R_PRBUF
   LDA dlh,X
-  STA ld1+2
-  STA sd1+2
   STA fl1+2
   STA fs1+2
   LDA drh,X
-  STA ld2+2
-  STA sd2+2
   STA fl2+2
   STA fs2+2
-.frow                     \ fast path: extent inside columns 1..30
+  LDA #LO(fret)           \ the runs' exit comes back to fret
+  STA r_runx+1
+  LDA #HI(fret)
+  STA r_runx+2
+  LDA #&FF
+  STA c_CR
+  BNE frow                \ (always)
+.done
+  LDA #LO(r_spret)        \ the runs' exit is r_spc's again
+  STA r_runx+1
+  LDA #HI(r_spret)
+  STA r_runx+2
+  RTS
+.fret
+  LDY RZ_Y
+.fnx
+  INY
+  CPY c_YE
+  BCS done
+.frow
 .fl2
   LDA R_DIRTYR0,Y
   BEQ fnx
-  CMP #248
-  BCS slow
-  TAX                     \ X = R
+  STA c_R
   ORA #7
   STA R_WR,Y
 .fl1
   LDA R_DIRTYL0,Y
-  AND #&F8                \ L AND &F8 = 0 <=> L < 8
-  BEQ slow
+  STA c_L
+  AND #&F8
   STA R_WL,Y
-  STX c_R                 \ (R)
-  STA c_NL                \ (L AND &F8)
+  STA c_NL                \ (the first whole column x 8)
   LDA #&FF
 .fs1
   STA R_DIRTYL0,Y
-  JSR runat               \ the row's run: A = its base (C = 0)
-  STA fpl+1
-  STA fpr+1
-  LDX c_NL
-  ORA r_jm,X              \ enter at column L DIV 8
-  STA fj+1
-  LDA c_RP
-  STA fj+2
-  STA fpl+2
-  STA fpr+2
-  LDX c_R                 \ plant the RTS after column R DIV 8 (X: its
-  LDA r_j,X               \ offset, which the run keeps)
-  TAX
-  LDA #r_opRTS
-.fpl
-  STA &FF00,X             \ (the run page)
   LDA #0
 .fs2
   STA R_DIRTYR0,Y
-.fj
-  JSR &FFFF               \ patched: straight into the row run (the run keeps
-  LDA #r_opSTA            \ X and Y)
-.fpr
-  STA &FF00,X             \ (the run page)
-.fnx
-  INY
-  CPY c_YE
-  BCC frow
-  RTS
-.slow                     \ an end in column 0 or 31: the general row code
-  JSR row1
-  JMP fnx
-
-\ row1: row Y, general (the border columns' bytes masked)
-.row1
-.ld2
-  LDA R_DIRTYR0,Y
-  STA c_R
-  ORA #7
-  STA R_WR,Y
-.ld1
-  LDX R_DIRTYL0,Y
-  STX c_L
-  TXA
-  AND #&F8
-  STA R_WL,Y
-  LDA #&FF
-.sd1
-  STA R_DIRTYL0,Y
-  LDA #0
-.sd2
-  STA R_DIRTYR0,Y
-  TXA                     \ first whole column x 8 (column 0: the border's)
-  AND #&F8
-  BEQ e0
-.nl1
-  STA c_NL
-  LDA c_R                 \ the column after the last whole one x 8 (column
-  AND #&F8                \ 31: the border's)
-  CMP #248
-  BEQ e31
-  CLC
-  ADC #8
-.nr1                      \ (A = 8 x that column)
-  CMP c_NL
-  BEQ nx                  \ (no whole byte)
-  BCC nx
-  TAX                     \ plant the RTS at that column
-  LDA r_jm,X
-  STA r1p+1               \ (its offset)
-  JSR runat               \ the row's run: A = its base (C = 0)
-  STA rpl+1
-  STA rpr+1
-  LDX c_NL
-  ORA r_jm,X
-  STA rj+1
-  LDA c_RP
-  STA rj+2
-  STA rpl+2
-  STA rpr+2
-.r1p
-  LDX #0                  \ (the plant's offset)
-  LDA #r_opRTS
-.rpl
-  STA &FF00,X
-  LDA #0
-  JSR rj
-  LDA #r_opSTA
-.rpr
-  STA &FF00,X
-.nx
-  RTS
-.rj
-  JMP &FFFF
-.e0
   STY RZ_Y
+  TYA
+  AND #&F8
+  CMP c_CR
+  BNE newcr
+.same
+  TYA
+  AND #7
+  STA c_LN
+  LDA c_NL                \ column 0: the border's
+  BNE n0
   JSR edge0
-  LDY RZ_Y
   LDA #8
-  BNE nl1                 \ (always)
-.e31
-  STY RZ_Y
+  STA c_NL
+.n0
+  LDA c_R                 \ column 31: the border's
+  CMP #248
+  BCC n31
   JSR edge31
-  LDY RZ_Y
-  LDA #248
-  BNE nr1                 \ (always)
+  LDA #247
+.n31
+  TAX                     \ columns c_NL DIV 8 .. X DIV 8, if any: the run's
+  LDY c_NL                \ entry, 3 bytes before its end for each
+  SEC
+  LDA r_j3,X
+  SBC r_j3,Y
+  BCC fret                \ (none)
+  EOR #&FF
+  ADC c_RB                \ (C = 1, and after it)
+  STA fj+1
+  TYA                     \ Y = the index of the column before the first
+  SBC #8
+  ORA c_LN
+  TAY
+  LDA #0
+  CLC                     \ (the run's exit to r_runx)
+.fj
+  JMP &FFFF               \ (the run)
+.newcr
+  STA c_CR                \ a new character row: its run
+  LSR A
+  LSR A
+  LSR A
+  TAX
+  LDA r_pgtag,X
+  CMP R_PRBUF
+  BEQ tagok
+  JSR r_pgfix             \ (keeps X and Y)
+.tagok
+  TXA
+  LSR A
+  ORA #HI(r_run0)
+  STA fj+2
+  LDA #2 * (R_RUNX - 3)   \ C = the character row's bit 0: the base &80 for an
+  ROR A                   \ odd one
+  STA c_RB
+  BNE same                \ (always: bit 0 set)
 \ edge0 / edge31: black pixels c_L .. c_R of row RZ_Y within column 0 / 31
 .edge0
   LDX c_R
@@ -285,24 +256,6 @@ c_DZ  = RZB + &27
   AND c_M
 .eg3
   STA &FFFF,Y
-  RTS
-\ runat: row Y's run: its page in c_RP, its base in A (C = 0), its stores
-\ for this buffer (r_pgfix); keeps X and Y
-.runat
-  TYA
-  LSR A
-  LSR A
-  LSR A
-  JSR r_pgfix
-  TYA
-  LSR A
-  LSR A
-  LSR A
-  LSR A
-  ORA #HI(r_run0)
-  STA c_RP
-  LDA #0
-  ROR A
   RTS
 .dlh EQUB HI(R_DIRTYL0), HI(R_DIRTYL1)
 .drh EQUB HI(R_DIRTYR0), HI(R_DIRTYR1)
