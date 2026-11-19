@@ -549,25 +549,30 @@
   LDA r_yend              \ phase B, from the first row
   STA pb_ye+1
   LDY r_ystart
-  STY RZ_Y
+  STY pb_y+1
   JMP pb_cr
 }
 
 \ ----------------------------------------------------------------------------
-\ Phase B: rows RZ_Y.., to the end row (pb_ye); left table r_pbl1, right
+\ Phase B: rows pb_y.., to the end row (pb_ye); left table r_pbl1, right
 \ (exclusive) r_pbr1/r_pbr2.  pb_cr sets up a character row (the polygon's
-\ first row's, then each one the rows reach): its address in the edges'
-\ operands (an edge's byte is that address + 8 * column + line), its run's
-\ stores for this buffer (r_pgtag: r_pgfix), the run's page in pb_j's
-\ operand and its base + R_RUNX in RZ_RB.  Each row has its line in r_line
+\ first row's, then each one the rows reach; nothing to do if it is the one
+\ set up last, pb_crow, which R_SETBUF forgets at a change of buffer): its
+\ address in the edges' operands (an edge's byte is that address + 8 *
+\ column + line), its run's stores for this buffer (r_pgtag: r_pgfix), the
+\ run's page in pb_j's operand and its base + R_RUNX + 3 in pb_rb's.  Each row has its line in r_line
 \ and its colour byte in RZ_COL (r_c4: a 4-row dither); its whole bytes run
 \ through the row run, entered by a jump at the store of the last of them
 \ (as r_spc's) with Y the left end's index, and the run's exit (C = 1) comes
 \ back to pb_ret: a row makes no call.
 \ ----------------------------------------------------------------------------
-.pb_cr                    \ Y = RZ_Y = the row
+.pb_cr                    \ Y = the row (pb_y's operand)
   TYA
   AND #&F8
+.^pb_crow
+  CMP #&FF                \ (the character row, 8 x, set up last: &FF none)
+  BEQ pb_cr2
+  STA pb_crow+1
   TAX
 .^r_yp9
   LDA r_ypg,X             \ (the buffer's: R_SETBUF)
@@ -600,7 +605,8 @@
   STA pb_j+2
   LDA #2 * (R_RUNX + 3)   \ C = the character row's bit 0: the base &80 for an
   ROR A                   \ odd one
-  STA RZ_RB
+  STA pb_rb+1
+.pb_cr2
   TYA
   AND #7
   JMP pb_ln
@@ -620,13 +626,14 @@
 .pbs5
   STA &FFFF,Y
 .pb_nx
-  LDY RZ_Y
+.pb_y
+  LDY #0                  \ (the row)
 .pb_nx0
   INY
 .pb_ye
   CPY #0                  \ (patched: the end row)
   BEQ pb_end
-  STY RZ_Y
+  STY pb_y+1
   TYA
   AND #7
   BEQ pb_cr               \ the next character row
@@ -640,7 +647,7 @@
   LDA &FF00 + LO(r_ta),Y  \ (the left table, the right: r_pcbd)
 .r_pbr1
   CMP &FF00 + LO(r_ta),Y
-  BCS pb_nx0              \ empty row (Y = RZ_Y still)
+  BCS pb_nx0              \ empty row (Y = the row still)
   TAX
 .r_pbr2
   LDA &FF00 + LO(r_ta),Y  \ NMOS: the right end first, while C = 0 (from
@@ -679,7 +686,8 @@
   LDA r_j3,X              \ the run's entry (C = 1; then 0, as the right end's
   LDX r_xr                \ column is further right; then 1, for the run's
   SBC r_j3,X              \ exit to pb_ret)
-  ADC RZ_RB
+.pb_rb
+  ADC #0                  \ (the run's base + R_RUNX + 3: pb_cr)
   STA pb_j+1
   LDA RZ_COL
 .pb_j

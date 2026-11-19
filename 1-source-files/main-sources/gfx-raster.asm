@@ -187,7 +187,7 @@ r_cb    = RZB + &0D
 r_dce   = RZB + &0E
 r_dco   = RZB + &0F
 r_line  = RZB + &10     \ the row's line (row AND 7: r_rowset)
-RZ_RB   = RZB + &12           \ the row's run's base + R_RUNX (r_rowset, pb_cr)
+RZ_RB   = RZB + &12           \ the row's run's base + R_RUNX + 3 (r_rowset)
 RZ_PP   = RZB + &14           \ pixel pointer
 RZ_COL  = RZB + &16           \ this row's colour byte
 RZ_Y    = RZB + &17           \ current row
@@ -366,8 +366,9 @@ r_dr1 = R_DIRTYR1
   STA r_yp8+2
   STA r_yp9+2
   STA r_yp10+2
-  LDA #&FF                \ no character row's address in r_spc's operands
-  STA r_crow
+  LDA #&FF                \ no character row's address in r_spc's operands,
+  STA r_crow              \ nor in phase B's
+  STA pb_crow+1
   JMP r_sbpoly             \ (phase B's operands)
 }
 .r_sbl_ypg EQUB LO(r_ypg0), LO(r_ypg)
