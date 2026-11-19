@@ -141,20 +141,15 @@ PCMAX = 3               \ the planet's records (slots 0-2)
  BNE pcl1
  TXA                    \ (no axis: no circle)
  BEQ pcc9
- JSR pms_core           \ sx, sy, inv, t, v, a, K2
- LDX #7                 \ (a, K2 into the record)
-.pcl2
- LDA pm_a32,X
- STA wr+R_A,X
- DEX
- BPL pcl2
+ JSR pms_core           \ sx, sy, inv, t, v, a, K2 (a and K2 in the record)
+ LDX #0                 \ (NMOS: X = 0, for the next)
  LDA pcn+1              \ (pcn / 2: the unit axis from the magnitudes >> 2)
  LSR A
  STA pv_cn+1
  LDA pcn
  ROR A
  STA pv_cn
- INX                    \ (d = 0: d^2 = 0, A9 = 0; NMOS: X = 0 from pcl2)
+                        \ (d = 0: d^2 = 0, A9 = 0)
  STX pm_p+2
  STX pm_p+3
  STX pc_a9
@@ -828,8 +823,8 @@ PCMAX = 3               \ the planet's records (slots 0-2)
 \ pm_fdiv16: the same clamped to 16 bits, in X (high) and A (low).
 \
 \ Port (Electron): U and V are normalised in line (PFN), in bank 4 (pfd_u,
-\ pfd_v), and q is shifted there too (pfd_q, pfd_qh, pfd_q2), so that only
-\ the result is written to zero page, once
+\ pfd_v: bank 4 top), and q is shifted there too (pfd_q, pfd_qh, pfd_q2), so
+\ that only the result is written to zero page, once
 
 MACRO PFN v             \ the 24-bit value at v (non-zero) shifted left until
  LDY #0                 \ bit 23 is set: A = its top byte, its next at v+1;
@@ -959,12 +954,6 @@ ENDMACRO
  LDY #1
  STY pfd_q
  BNE pfd7a              \ (always)
-.pfd_u  EQUB 0          \ U, normalised (its middle byte is the division's
-.pfd_rl EQUB 0, 0       \ R, low)
-.pfd_v  EQUB 0, 0, 0    \ V, normalised
-.pfd_q  EQUB 0          \ q (the quotient's bits as they are caught), then
-.pfd_qh EQUB 0          \ shifted: pfd_q, pfd_qh, pfd_q2 (low to high)
-.pfd_q2 EQUB 0
 .pfd7d
  LDY pm_eu              \ shift q (X = 0)
  BMI pfdr
@@ -2282,8 +2271,14 @@ ASSERT pra1 = pra0 + 7 AND pra3 = pra0 + 21 AND prk1 = prk0 + 7 AND prk3 = prk0 
 .pcneg  SKIP 1
 .pm_eu  SKIP 1
 .pm_ulo SKIP 2
-.pm_a32 SKIP 4          \ a, 16.16 signed } (in this order: the record's
-.pm_K2  SKIP 4          \ K2, 16.16       } first eight bytes)
+pm_a32 = wr + R_A       \ a, 16.16 signed (made in the record)
+pm_K2 = wr + R_K2       \ K2, 16.16
+.pfd_u  SKIP 1          \ pm_fdiv's U, normalised (its middle byte is the
+.pfd_rl SKIP 2          \ division's R, low)
+.pfd_v  SKIP 3          \ V, normalised
+.pfd_q  SKIP 1          \ q (the quotient's bits as they are caught), then
+.pfd_qh SKIP 1          \ shifted: pfd_q, pfd_qh, pfd_q2 (low to high)
+.pfd_q2 SKIP 1
 .pm_P                   \ 4-byte operands
 .pm_X2  SKIP 4
 .pm_Y2  SKIP 4
