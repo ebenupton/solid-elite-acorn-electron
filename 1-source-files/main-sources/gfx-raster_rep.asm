@@ -103,14 +103,15 @@ c_DZ  = RZB + &27
 \ r7_rowrep: rows Y .. c_YE - 1, each with a dirty extent blacked through its
 \ row run (the BBC Master port's, made NMOS, for two buffers).  Columns 0
 \ and 31 hold the border's pixels (game x 0-1 and 254-255) and are masked
-\ (edge0, edge31); the whole bytes of columns 1 to 30 are one jump into the
-\ character row's run (gfx-raster.asm's bank 5 runs), whose exit with C = 0,
-\ r_runx, points back here while the rows are done.  A character row's
-\ set-up (its run's stores for this buffer, r_pgfix; its page and base) is
-\ done at the first row with an extent in it.
+\ (edge0, edge31: the general row, slow); the whole bytes of columns 1 to
+\ 30 are one jump into the character row's run (gfx-raster.asm's bank 5
+\ runs), whose exit with C = 0, r_runx, points back here while the rows are
+\ done.  A character row's set-up (its run's stores for this buffer,
+\ r_pgfix; its page and base) is done at the first row with an extent in
+\ it (newcr).
 \ ============================================================================
-c_LN  = RZB + &1C                 \ the row's line
-c_CR  = RZB + &1D                 \ the character row (8 x) set up (&FF: none)
+c_LN  = RZB + &1C                 \ the row's line (the general row)
+c_CE  = RZB + &1D                 \ the row after the character row set up (0: none)
 c_RB  = RZB + &1F                 \ its run's base + R_RUNX - 3
 .r7_rowrep
 {
@@ -125,80 +126,21 @@ c_RB  = RZB + &1F                 \ its run's base + R_RUNX - 3
   STA r_runx+1
   LDA #HI(fret)
   STA r_runx+2
-  LDA #&FF
-  STA c_CR
-  BNE frow                \ (always)
+  LDA #0
+  STA c_CE
+  BEQ frow                \ (always)
 .done
   LDA #LO(r_spret)        \ the runs' exit is r_spc's again
   STA r_runx+1
   LDA #HI(r_spret)
   STA r_runx+2
   RTS
-.fret
-  LDY RZ_Y
-.fnx
-  INY
-  CPY c_YE
-  BCS done
-.frow
-.fl2
-  LDA R_DIRTYR0,Y
-  BEQ fnx
-  STA c_R
-  ORA #7
-  STA R_WR,Y
-.fl1
-  LDA R_DIRTYL0,Y
-  STA c_L
-  AND #&F8
-  STA R_WL,Y
-  STA c_NL                \ (the first whole column x 8)
-  LDA #&FF
-.fs1
-  STA R_DIRTYL0,Y
-  LDA #0
-.fs2
-  STA R_DIRTYR0,Y
-  STY RZ_Y
-  TYA
-  AND #&F8
-  CMP c_CR
-  BNE newcr
-.same
-  TYA
-  AND #7
-  STA c_LN
-  LDA c_NL                \ column 0: the border's
-  BNE n0
-  JSR edge0
-  LDA #8
-  STA c_NL
-.n0
-  LDA c_R                 \ column 31: the border's
-  CMP #248
-  BCC n31
-  JSR edge31
-  LDA #247
-.n31
-  TAX                     \ columns c_NL DIV 8 .. X DIV 8, if any: the run's
-  LDY c_NL                \ entry, 3 bytes before its end for each
-  SEC
-  LDA r_j3,X
-  SBC r_j3,Y
-  BCC fret                \ (none)
-  EOR #&FF
-  ADC c_RB                \ (C = 1, and after it)
-  STA fj+1
-  TYA                     \ Y = the index of the column before the first
-  SBC #8
-  ORA c_LN
-  TAY
-  LDA #0
-  CLC                     \ (the run's exit to r_runx)
-.fj
-  JMP &FFFF               \ (the run)
 .newcr
-  STA c_CR                \ a new character row: its run
+  STX c_R                 \ a new character row: the row after it, its run
+  TYA
+  ORA #7
+  STA c_CE
+  INC c_CE
   LSR A
   LSR A
   LSR A
@@ -215,7 +157,89 @@ c_RB  = RZB + &1F                 \ its run's base + R_RUNX - 3
   LDA #2 * (R_RUNX - 3)   \ C = the character row's bit 0: the base &80 for an
   ROR A                   \ odd one
   STA c_RB
-  BNE same                \ (always: bit 0 set)
+  LDX c_R
+  BCC same                \ (always: from the ROR)
+.fret
+  LDY RZ_Y
+.fnx
+  INY
+  CPY c_YE
+  BCS done
+.frow
+.fl2
+  LDA R_DIRTYR0,Y
+  BEQ fnx
+  TAX                     \ X = R
+  ORA #7
+  STA R_WR,Y
+.fl1
+  LDA R_DIRTYL0,Y
+  STA c_L
+  AND #&F8
+  STA R_WL,Y
+  STA c_NL                \ (the first whole column x 8)
+  LDA #&FF
+.fs1
+  STA R_DIRTYL0,Y
+  LDA #0
+.fs2
+  STA R_DIRTYR0,Y
+  STY RZ_Y
+  CPY c_CE
+  BCS newcr
+.same
+  LDY c_NL
+  BEQ slow                \ (column 0)
+  CPX #248
+  BCS slow                \ (column 31)
+  SEC                     \ columns Y DIV 8 .. X DIV 8: the run's entry, 3 bytes
+  LDA r_j3,X              \ before its end for each
+  SBC r_j3,Y
+  EOR #&FF
+  ADC c_RB                \ (C = 1, and after it)
+  STA fj+1
+  LDA RZ_Y                \ Y = the index of the column before the first
+  AND #7
+  ORA c_NL
+  SBC #8
+  TAY
+.fgo
+  LDA #0
+  CLC                     \ (the run's exit to r_runx)
+.fj
+  JMP &FFFF               \ (the run)
+.slow                     \ an end in column 0 or 31: the border's bytes masked
+  STX c_R
+  LDA RZ_Y
+  AND #7
+  STA c_LN
+  TYA                     \ column 0: the border's
+  BNE n0
+  JSR edge0
+  LDA #8
+  STA c_NL
+.n0
+  LDA c_R                 \ column 31: the border's
+  CMP #248
+  BCC n31
+  JSR edge31
+  LDA #247
+.n31
+  TAX                     \ columns c_NL DIV 8 .. X DIV 8, if any
+  LDY c_NL
+  SEC
+  LDA r_j3,X
+  SBC r_j3,Y
+  BCS P%+5
+  JMP fret                \ (none)
+  EOR #&FF
+  ADC c_RB                \ (C = 1, and after it)
+  STA fj+1
+  TYA
+  SBC #8
+  ORA c_LN
+  TAY
+  BCS fgo                 \ (always)
 \ edge0 / edge31: black pixels c_L .. c_R of row RZ_Y within column 0 / 31
 .edge0
   LDX c_R
