@@ -43,16 +43,36 @@ address in column 0 (`r_ylo`, and `r_ypg` or `r_ypg0` for the buffer:
 `SCREEN%` or `BUF0` + 320 (y DIV 8) + 32 + (y AND 7)), with Y = 8 x the
 column, reaches all of them; a character row's address's low byte is 32,
 96, 160 or 224, so its lines never cross a page. The per-x tables (`r_xo`
-= 8 x the column, the masks `r_lm` and `r_rm`, the runs' offsets `r_jm`
-and `r_j`) take the game's x and absorb the halving. Columns 0 and 31 hold
+= 8 x the column, the masks `r_lm` and `r_rm`, and `r_j3`, 3 x the column:
+a run's entry is 3 bytes earlier for each) take the game's x and absorb
+the halving. Columns 0 and 31 hold
 the border's MODE 5 pixels (game x 0-1, 254-255): the repair masks them,
 and the frame's window is 2..253.
 
-The row runs, one per character row, are `STA abs,Y` stores (Y = the row)
-of columns 1 to 31 (and a 32nd, never run, so that `r_pgfix` patches them
-in passes of eight), made for buffer 1; a run used for buffer 0 has `&28`
-taken off each store's high byte (`r_pgfix`), as the buffers are `&2800`
-apart.
+The row runs, one per character row, fill a row's whole bytes leftwards
+from any column to the column after the one Y names: 30 stores, `STA B +
+8 m, Y` for m = 30 down to 1 (B the character row's address, Y = 8 x the
+left end's column + the row's line, which the edge code has anyway), then
+an exit. A run is entered by a jump at the store of the last whole byte
+and left by its exit's jump, to `R_POLY`'s row code with the carry set or
+through `r_runx` with it clear (the spans' core and the repair): a row's
+whole bytes cost no call, and nothing is planted in the run. The runs are
+made for buffer 1; a run used for buffer 0 has its stores' high bytes
+rewritten (`r_pgfix`: two values a run, written straight, about 300
+cycles), as the buffers are `&2800` apart.
+
+`R_POLY` reads an 8-bit polygon's inputs from the mailbox once (4 n + 5
+bytes for n vertices: one loop copies each vertex's y and x into the bank
+and finds the top vertex, the largest y and the clip flag on the way). An
+edge's set-up and its division are in line in its chain, and its DDA loop
+ends with a jump back to the chain: `r_lz` for an edge with no remainder,
+`r_sp` and `r_sn` for a steep one (x in X, the error in A, x stored
+through an operand whose low byte counts up the edge table, which is
+within a page), `r_lsh` for the rest. Phase B is one row loop: the row's
+colour from the four rows' colours by its line, its ends' bytes masked
+through the character row's address, its whole bytes through the run. A
+polygon with a coordinate outside 0..255 reads its vertices in the
+mailbox as it needs them (copying them costs more than its reads do).
 
 ### The memory
 
@@ -64,9 +84,9 @@ apart.
 | zero page `&06-&0F` | the callers' inputs: the colour pair, span ends, clip window and disc colours, which bank 5 only reads (each entry copies what it needs into the bank, `r_cole` and so on; the clip window at `R_SETBUF`); the frame layer saves and restores the game's bytes there around a frame |
 | bank 5 `&8000-&8BFF` | the 24 row runs, two a page (row r's at `r_run0` + `&80` r: `gfx-raster.asm`'s bank 5 runs pass, at a page whose number is a multiple of 16), which `R_INIT` makes at start |
 | bank 5 `&8C00-&90FF` | the row tables `r_ypg`, `r_ypg0`, `r_ylo` (each at a page's start), which `R_INIT` makes too; the inputs' copies and the scratch (`r_zb`: `RZB` + the zero page address each once had); the stars' records (buffer 1's: buffer 0's + `&100`), and the variables, `R_LINE`'s too (and more in the 30 bytes after each of the first three runs) |
-| bank 5 `&9100-&A7FF` | `R_POLY` (both phases) and `R_LINE` |
+| bank 5 `&9100-&A7FF` | `R_POLY` (both phases), `R_LINE` with its cold part (`gfx-raster_lcold.asm`) and the lens flare |
 | bank 5 `&A800-&ADFF` | the state: both buffers' dirty extents (`R_DIRTYL0`, `R_DIRTYR0`, `R_DIRTYL1` = `R_DIRTYL0` + `&300`, `R_DIRTYR1`), this frame's written extents (`R_WL`, `R_WR`), `R_POLY`'s edge tables |
-| bank 5 `&AE00-&BFFF` | `R_SETBUF` and `r_pgfix`, the spans' core, the per-x tables at `&B400` (`R_TAB%`), the stars, `r_setup`, the repair (`R_REPAIR`, `r7_rowrep`), the disc layer's transfer (`R_GETW`: `gfx-raster_dq.asm`), then the bank 5 end passes: `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY` and `R_INIT`, and `RJT`, the jump table; below the per-x tables, `R_LINE`'s cold part, the private state, `R_RESETBUF`, the painter's list of dirty rows, `r_gl`, and the frame layer's query, `r_wq` (`gfx-raster_dq.asm`'s bank 5 gap pass), and `pf_tilt` |
+| bank 5 `&AE00-&BFFF` | `R_SETBUF` and `r_pgfix`, the spans' core, the per-x tables at `&B400` (`R_TAB%`), the stars, `r_setup`, the repair (`R_REPAIR`, `r7_rowrep`), the disc layer's transfer (`R_GETW`: `gfx-raster_dq.asm`), then the bank 5 end passes: `r_pclip`, `r_pset`, `R_SPAN`, `R_DOT`, `R_MARKDIRTY` and `R_INIT`, and `RJT`, the jump table; below the per-x tables, the private state, `R_RESETBUF`, the painter's list of dirty rows, `r_gl`, and the frame layer's query, `r_wq` (`gfx-raster_dq.asm`'s bank 5 gap pass), and `pf_tilt` |
 
 Nothing of the rasteriser's state is in main RAM (1 MHz on the Electron)
 but the mailbox: bank 5 writes no zero page, and reads only its callers'
@@ -143,7 +163,7 @@ instruction naming buffer 0's state is a patch site `R_SETBUF` patches, and
 that nothing outside the zero page `&06-&27`, the stack page, the two
 buffers, the mailbox and bank 5 is written, that `R_INIT` makes the 24 row
 runs (in bank pages that start with what the RAM held), and that every
-other call leaves them as they were (but for `r_pgfix` moving a page's
+other call leaves them as they were (but for `r_pgfix` moving a run's
 stores to the other buffer). The gate runs it with `--quick`.
 
 ## The frame layer's bank 6
@@ -899,9 +919,9 @@ repairs it on the next: the Master port's kept solid rows take that cost
 away (7.6% to 10.6% over a docking there), and bank 5 has no room for them.
 
 * **`r_pgfix`.** The row runs are unrolled stores made for buffer 1;
-  each time a run page is used for the other buffer, its 63 stores'
-  addresses are patched. Two sets of runs would end this, but bank 5 has
-  no room for a second set (4.5K).
+  each time a run is used for the other buffer, its 30 stores' high bytes
+  are rewritten. Two sets of runs would end this, but bank 5 has no room
+  for a second set (3K).
 * **The frames' gain** is the Master port's: no ship line heap, clipping or
   projection in the game's iteration (the frame projects only the ships it
   draws), and text drawn only where it changed or was drawn over. The cold

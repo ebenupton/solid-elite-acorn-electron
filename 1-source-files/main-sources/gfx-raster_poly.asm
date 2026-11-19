@@ -3,7 +3,7 @@
 \ phase A for 16-bit coordinates, r7_pf16, came from bank 7), in ANDY
 \ (ROMSEL &85: ANDY over bank 5's &8000-&8FFF; bank 5's &9000-&BFFF, the
 \ shared region gfx-raster.asm, stays visible: its arithmetic, r_div8,
-\ r_dvq, rp_mul16 and rp_div32, is there).  The frame layer's T_POLY
+\ rp_mul16 and rp_div32, is there).  The frame layer's T_POLY
 \ pages it in.  R_SETBUF (shared) pages it in to patch phase B's DIRTY
 \ operands.  INCLUDE it at &8000 in an assembly of its own (ANDY), after
 \ gfx-raster.asm.
@@ -101,8 +101,8 @@
 \ r_lz for an edge with no remainder (x += a each row), r_sp and r_sn for a
 \ steep edge (|dx| < dy: x in X steps by one when the error in A wraps, and
 \ is stored through an operand whose low byte counts up the table, which is
-\ within a page: gfx-bank5.asm), and r_lsh for the rest.  Phase B (r_pcbd) fills
-\ each row from the left table to the right one (exclusive).
+\ within a page: gfx-bank5.asm), and r_lsh for the rest.  Phase B (r_pcbd)
+\ fills each row from the left table to the right one (exclusive).
 \ ============================================================================
 .r_pf8
 {

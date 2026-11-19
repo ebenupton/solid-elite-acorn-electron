@@ -14,9 +14,9 @@
 \ and Y = 8 * column reach them all.  Columns 0 and 31 hold the border's
 \ pixels (game x 0-1, 254-255).  It references no Elite symbol but the
 \ map's (BUF0, SCREEN%, MBOX); all labels start with r_ / R_ / RZ_ (and r7_
-\ for code that came from the Master port's bank 7).  The store runs are
-\ self-modified (an RTS is planted and removed again), so it must run from
-\ RAM.
+\ for code that came from the Master port's bank 7).  Operands are
+\ self-modified throughout (the buffer's arrays, the row's addresses, the
+\ runs' stores), so it must run from RAM.
 \
 \ ---------------------------------------------------------------- zero page
 \ &06-&27 are used (the caller saves/restores them around rendering).
