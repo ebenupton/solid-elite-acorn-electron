@@ -55,11 +55,7 @@ R_PN     = MBOX + &48   \ R_POLY: the vertex count (1..16)
 R_COL2   = MBOX + &49   \ R_POLY: the colours of rows y AND 3 = 2, 3
 R_COL3   = MBOX + &4A
 R_SN     = MBOX + &4B   \ R_STARPLOT: the star count (0..19)
-R_PYS    = MBOX + &4C   \ R_POLY's own: its first row, last row, last row + 1,
-R_PYL1   = MBOX + &4D   \ non-zero if some x is outside CL..CR (8-bit
-R_PYE    = MBOX + &4E   \ polygons), CR + 1
-R_PXC    = MBOX + &4F
-R_PCR1   = MBOX + &50
+                        \ (&4C to &50: free)
 R_BY1    = MBOX + &51   \ R_MARKBOX: the last row
 FLM_DX   = MBOX + &52   \ R_FLARE (gfx-flare.asm, from the frame layer's f_flt):
 FLM_DY   = MBOX + &53   \ the sun's centre less (128, 96), signed (FLM_DY =

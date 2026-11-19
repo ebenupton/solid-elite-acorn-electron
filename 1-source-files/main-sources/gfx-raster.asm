@@ -285,11 +285,6 @@ r_opSTA = &99           \ STA abs,Y (the row runs' stores)
 \ the high byte of every operand naming them).
 \ ============================================================================
 r_ta = R_PTA            \ polygon edge tables (raster_scr)
-r_ystart = R_PYS        \ polygon rows ystart..ylast, yend = ylast + 1, any x
-r_ylast = R_PYL1        \ outside CL..CR (raster_scr: bank 7's phase A sets
-r_yend = R_PYE          \ them for 16-bit polygons), CR + 1
-r_xclip = R_PXC
-r_cr1 = R_PCR1
 r_tb = R_PTB
 
 \ the API arrays live in raster_vars.asm; the rasteriser's private state,
@@ -550,7 +545,7 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
 
 \ ----------------------------------------------------------------------------
 \ The polygon window's arithmetic (R_POLY's phase A, gfx-raster_poly.asm),
-\ here for room: r_div8, r_dvq and the 32-bit multiply and divide with their
+\ here for room: r_div8 and the 32-bit multiply and divide with their
 \ variables (none uses anything of the polygon window's)
 \ ----------------------------------------------------------------------------
 \ r_div8: A / r_v0 -> r_m0 quotient (and X: r7_esgen uses it), A remainder.
@@ -579,57 +574,6 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   RTS
 }
 
-\ r_dvq: A / RZ_T1 (A >= RZ_T1 >= 1) -> r_m0 quotient, A remainder.
-\ Repeated subtraction when the quotient is small (divisor >= 16).
-.r_dvq
-{
-  LDX RZ_T1
-  CPX #16
-  BCC small
-  LDX #&FF                \ divisor >= 16: quotient < 16
-  SEC
-.lp
-  INX
-  SBC RZ_T1
-  BCS lp
-  ADC RZ_T1
-  STX r_m0
-  RTS
-.small
-  STA RZ_T6               \ divisor < 16: quotient < 16 unless A >= 16 * d
-  TXA
-  ASL A
-  ASL A
-  STA RZ_T7               \ 4d
-  ASL A
-  ASL A                   \ 16d (< 256)
-  CMP RZ_T6
-  BEQ long
-  BCC long
-  LDA RZ_T6
-  LDX #&FC
-  SEC
-.l4
-  INX
-  INX
-  INX
-  INX
-  SBC RZ_T7
-  BCS l4
-  ADC RZ_T7
-  DEX
-.l1
-  INX
-  SBC RZ_T1
-  BCS l1
-  ADC RZ_T1
-  STX r_m0
-  RTS
-.long
-  LDX RZ_T1
-  STX r_v0
-  JMP r_div8b             \ (RZ_T6 already holds the dividend: past r_div8's STA RZ_T6)
-}
 \ the 32-bit multiply and divide (the divide in the room below the per-x
 \ tables)
 .rp_mul16
@@ -827,7 +771,18 @@ ENDMACRO
 .rl_j    SKIP 2
 .rl_t    SKIP 2
  R_RUNEND 4
-FOR r, 5, 23
+ R_RUN 5
+.r_vx    SKIP 16         \ an 8-bit polygon's vertices, this bank's copies: x
+.r_ystart SKIP 1         \ and y; R_POLY's rows ystart..ylast, yend = ylast +
+.r_ylast SKIP 1          \ 1, non-zero if some x is outside CL..CR (8-bit
+.r_yend  SKIP 1          \ polygons), CR + 1
+.r_xclip SKIP 1
+.r_cr1   SKIP 1
+ R_RUNEND 5
+ R_RUN 6
+.r_vy    SKIP 16
+ R_RUNEND 6
+FOR r, 7, 23
  R_RUN r
  R_RUNEND r
 NEXT
@@ -842,7 +797,7 @@ ASSERT (HI(r_run0) AND 15) = 0
 .r_dx    SKIP 1
 .r_dy    SKIP 1
 .r_k     SKIP 1           \ stars
-.r_m0    SKIP 1           \ r_div8, r_dvq: quotient
+.r_m0    SKIP 1           \ r_div8: quotient
 .r_v0    SKIP 1           \ r_div8: divisor
 .r_n     SKIP 1
 .r_i0    SKIP 1
