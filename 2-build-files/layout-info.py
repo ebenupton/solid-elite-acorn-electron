@@ -38,7 +38,7 @@ OUT = "3-assembled-output/"
 WINDOW7 = {"flight": ("gfx-raster_disc-bank7.asm", "gfx-raster_disc2-bank7.asm",
                       "gfx-raster_dpatch-bank7.asm", "gfx-glue-bank7.asm")}   # (bank 7's renderer window, the renderer's
                                                         # bank 7 passes: elite-layout-flight.asm)
-NAMES = ("farC", "farCj", "farC6", "farH", "farHj", "BANK4", "BANK7", "BANK5", "BANK6", "PCLI",
+NAMES = ("farC", "farCj", "farH", "farHj", "BANK4", "BANK7", "BANK5", "BANK6", "PCLI",
          "IRQG", "NA%", "CHK2", "CHK", "BRBR1", "PANR", "dfsin", "dfsout", "pload",
          "pcb_o", "SREQ")   # (SREQ: the sound engine's queue)
 

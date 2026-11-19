@@ -3,7 +3,15 @@
 \ elite-far.asm - far calls between a program's home bank and its cold bank
 \
 \ Port (docs/memory-map.md): INCLUDEd in the loader's resident block A, in main
-\ RAM at &0400, so that it is visible whatever is paged at &8000-&BFFF.
+\ RAM at &0400, which holds the bank numbers, the far calls' variables and
+\ the jump forms (farCj, farHj). The calls themselves (farC, farH) are
+\ assembled here for the far block, FAR% (elite-map.asm), which the
+\ programs' home and cold banks hold just below the common block, the same
+\ bytes in each (FAR.bin, which their assemblies take in): a far call runs
+\ in its caller's bank's copy up to the write to ROMSEL, and on in its
+\ target's bank's from the next instruction, so none of it is fetched from
+\ main RAM (the Electron runs main RAM at half speed). Banks 5 and 6 have
+\ no copy: no far call is made from them or into them.
 \
 \ Each of the game's two programs (the flight code and the docked code) runs
 \ with its home bank (ROMSEL = BANK4) paged in at &8000-&BFFF. Its cold code
@@ -31,7 +39,7 @@
 \ stub works the same in either bank.
 \
 \ farC / farH page the target's bank in and call it, then page the caller's
-\ bank (&F4 at the call) back in. farCj / farHj jump to the target (the
+\ bank (the copy's own number, CBME) back in. farCj / farHj jump to the target (the
 \ stub's return address is dropped). A, X, Y and all the flags reach the
 \ target as they were at the stub, and come back from it unchanged. &F4
 \ always matches ROMSEL (the MOS restores ROMSEL from &F4 after paged ROM
@@ -45,7 +53,8 @@
 \ (6-harness/blib.mjs) sees through these frames by the label farret.
 \
 \ This is the BBC Master port's elite-far.asm, with the banks read from
-\ BANKS rather than fixed.
+\ BANKS (the jump forms) or from the common block's copy of it (CB7, CB4:
+\ elite-common.asm) rather than fixed.
 \
 \ ******************************************************************************
 
@@ -61,67 +70,6 @@
 .fX     EQUB 0
 .fB     EQUB 0
 .ft     EQUW 0          \ the target
-
-.farC
- PHP
- STA fA
- LDA BANK7
- BNE farc               \ Jump to farc (BANK7 is never 0: it is the highest of
-                        \ the four slots found, so at least 3)
-
-.farC6
- PHP                    \ (farC6: the flight code's cold 6 pass, in bank 6)
- STA fA
- LDA BANK6
- BNE farc               \ Jump to farc (BANK6 is never 0, as in farC)
-
-.farH
- PHP
- STA fA
- LDA BANK4
-
-.farc
- STA fB
- STX fX
- TSX                    \ &101,X = flags, &102,X / &103,X = the stub's return
- LDA &102,X             \ address (the JSR's last byte)
- STA fpc+1
- LDA &103,X
- STA fpc+2
- LDA &101,X             \ the flags and the caller's bank replace it:
- STA &102,X             \ the stack is (caller's return), bank, flags
- LDA &F4
- STA &103,X
- PLA
- LDX #2                 \ Copy the EQUW's two bytes, high byte first
-.fpc
- LDA &FFFF,X            \ (patched) the EQUW after the JSR, read while the
- STA ft-1,X             \ caller's bank is still paged in
- DEX
- BNE fpc
- LDA fB
- STA &F4
- STA ROMSEL
- LDA fA
- LDX fX
- PLP
- JSR fjmp
-.farret
- STA fA
- PHP
- PLA
- STA fB
- PLA                    \ the caller's bank
- STA &F4
- STA ROMSEL
- LDA fB
- PHA
- LDA fA
- PLP
- RTS
-
-.fjmp
- JMP (ft)
 
 .farCj
  PHP
@@ -159,3 +107,79 @@
  LDX fX
  PLP
  JMP (ft)
+
+\ ******************************************************************************
+\
+\ The far block: farC and farH, at FAR% in each program's home and cold
+\ banks
+\
+\ ******************************************************************************
+
+ FARM% = P%             \ (the resident block goes on after this)
+
+ ORG FAR%
+
+.farC
+ PHP
+ STA fA
+ LDA CB7
+ BNE farc               \ Jump to farc (BANK7 is never 0: it is the highest of
+                        \ the four slots found, so at least 3)
+
+.farH
+ PHP
+ STA fA
+ LDA CB4
+
+.farc
+ STA farb+1             \ the target's bank, into the LDA below
+ STX fX
+ TSX                    \ &101,X = flags, &102,X / &103,X = the stub's return
+ LDA &102,X             \ address (the JSR's last byte)
+ STA fpc+1
+ LDA &103,X
+ STA fpc+2
+ LDA &101,X             \ the flags and the caller's bank replace it:
+ STA &102,X             \ the stack is (caller's return), bank, flags
+ LDA CBME
+ STA &103,X
+ PLA
+ LDX #2                 \ Copy the EQUW's two bytes, high byte first
+.fpc
+ LDA &FFFF,X            \ (patched) the EQUW after the JSR, read while the
+ STA ft-1,X             \ caller's bank is still paged in
+ DEX
+ BNE fpc
+.farb
+ LDA #0                 \ (patched: the target's bank)
+ STA &F4
+ STA ROMSEL
+ LDA fA                 \ (from here on in the target's bank's copy)
+ LDX fX
+ PLP
+ JSR fjmp
+.farret
+ STA fA
+ PHP
+ PLA
+ STA fB
+ PLA                    \ the caller's bank
+ STA &F4
+ STA ROMSEL
+ LDA fB                 \ (and on in the caller's bank's copy)
+ PHA
+ LDA fA
+ PLP
+ RTS
+
+.fjmp
+ JMP (ft)
+
+.FAR_USED%
+
+ PRINT "The far block: ", ~FAR%, "-", ~FAR_USED%-1, ", free ", COMMON%-FAR_USED%
+ ASSERT FAR_USED% <= COMMON%
+
+ SAVE "3-assembled-output/FAR.bin", FAR%, COMMON%, FAR%
+
+ ORG FARM%

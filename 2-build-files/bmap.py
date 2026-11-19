@@ -63,7 +63,7 @@ resa_end, = printed(r"Resident block A: &0400-&([0-9A-F]+)")
 row("main RAM", 0x0000, 0x0100, "zero page: the game's (the rasteriser's &06-&27 and the frame layer's &D2-&E1 during a frame, kept)")
 row("main RAM", 0x0100, 0x0200, "the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched)")
 row("main RAM", 0x0300, 0x03D0, "`UP`, the game's workspace")
-row("main RAM", 0x0400, C["PFVA_P"], "resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`)", resa_end + 1 - 0x0400)
+row("main RAM", 0x0400, C["PFVA_P"], "resident block A (`elite-resident.asm`): `BANKS`, the far calls' variables and jump forms, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`)", resa_end + 1 - 0x0400)
 pfva_used = FL.get("PFVA_END%", C["PFVA_P"]) - C["PFVA_P"]
 row("main RAM", C["PFVA_P"], C["GLUE_P"], "the circle engine's variables (main low: `gfx-merid.asm`)", pfva_used)
 row("main RAM", C["GLUE_P"], 0x07C0, "`pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`); then `cbcopy` (`elite-resident.asm`)", LD["RESG_END%"] - C["GLUE_P"])
@@ -93,8 +93,11 @@ qsl, bp, bp_end = C["QSL"], C["BPSLOT_P"], C["BPSLOT_END_P"]
 circ = FL["CIRC_START%"]
 row("bank 4 (flight)", 0x8000, circ, "`S%` and the hot pass")
 com, com_end = C["COMMON_P"], C["COMMON_END_P"]
+far = C["FAR_P"]
+FAR = "the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks"
 COMMON = "the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank"
-row("bank 4 (flight)", circ, com, "the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`)", FL["HOME_END%"] - circ)
+row("bank 4 (flight)", circ, far, "the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`)", FL["HOME_END%"] - circ)
+row("bank 4 (flight)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 4 (flight)", com, com_end, COMMON, B5["COMMON_USED%"] - com)
 row("bank 4 (flight)", com_end, bp, "`PF_HOOK` (bank 4 high pass)", FL["HOME_TOP%"] - com_end)
 row("bank 4 (flight)", bp, bp_end, "the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here)")
@@ -102,8 +105,9 @@ pfvs_used = FL.get("PFVS_END%", C["PFVS_P"]) - C["PFVS_P"]
 row("bank 4 (flight)", C["PFVS_P"], qsl, "the circle engine's variables (bank 4 top)", pfvs_used)
 row("bank 4 (flight)", qsl, 0xC000, "the quarter squares `QSL`, `QSH` (made by the loader)")
 progis = progm_end - progm
-row("bank 4 (docked)", 0x8000, com - progis, "`S%` and the hot pass", DK["HOME_END%"] - 0x8000)
-row("bank 4 (docked)", com - progis, com, "the main RAM part's image")
+row("bank 4 (docked)", 0x8000, far - progis, "`S%` and the hot pass", DK["HOME_END%"] - 0x8000)
+row("bank 4 (docked)", far - progis, far, "the main RAM part's image")
+row("bank 4 (docked)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 4 (docked)", com, com_end, COMMON, B5["COMMON_USED%"] - com)
 row("bank 4 (docked)", com_end, bp, "(free)", 0)
 row("bank 4 (docked)", bp, bp_end, "the docked code's blueprints, their normals and `FC_NORMTAB`", C["NORMTAB"] - bp)
@@ -114,11 +118,13 @@ dpst = dfss - 0xC00
 row("bank 7 (flight)", 0x8000, FL["OVL%"], "the cold pass, `QQ18`")
 m = re.search(r"Flight overlays: &([0-9A-F]+) -&([0-9A-F]+)  \(1: (\d+)  bytes, 2: (\d+)", cp)
 row("bank 7 (flight)", FL["OVL%"], FL["WIN7%"], "the overlay region (`D.OV1` %s bytes, `D.OV2` %s)" % (m.group(3), m.group(4)))
-row("bank 7 (flight)", FL["WIN7%"], com, "the renderer's window (bank 7 passes: the disc layer's painter, the second disc)", FL["WIN7_MID%"] - FL["WIN7%"])
+row("bank 7 (flight)", FL["WIN7%"], far, "the renderer's window (bank 7 passes: the disc layer's painter, the second disc)", FL["WIN7_MID%"] - FL["WIN7%"])
+row("bank 7 (flight)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 7 (flight)", com, com_end, COMMON, B5["COMMON_USED%"] - com)
 row("bank 7 (flight)", com_end, dpst, "the painter's entries (`DPENT%`), which the common block calls, and its own call of bank 5; the painter's operands' patch", FL["WIN7_END%"] - com_end)
 row("bank 7 (flight)", dpst, dfss, "the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`)")
-row("bank 7 (docked)", 0x8000, com, "the set's face lists, the cold pass, `QQ18`", DK["COLD_END%"] - 0x8000)
+row("bank 7 (docked)", 0x8000, far, "the set's face lists, the cold pass, `QQ18`", DK["COLD_END%"] - 0x8000)
+row("bank 7 (docked)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 7 (docked)", com, com_end, COMMON, B5["COMMON_USED%"] - com)
 row("bank 7 (docked)", com_end, dfss, "(free)", 0)
 

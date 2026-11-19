@@ -1,4 +1,4 @@
-hot &8000-&AC62: 119 units, 9176 bytes, 2187 free
+hot &8000-&ABFC: 119 units, 9176 bytes, 2085 free
   &8000    22 S%
   &8016    15 INBAY
   &8025    20 DEEOR

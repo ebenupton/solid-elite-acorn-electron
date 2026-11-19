@@ -23,9 +23,10 @@
 \     and PCLI copies them to PROGM% when it loads the program;
 \
 \   * bank 4 (saved as T.CODEH): the hot pass from S% at &8000 (HOME%), then
-\     the main RAM part's image, the common block at COMMON%
-\     (elite-common.asm: the code that pages the banks, the same in every
-\     bank; in bank 7 too), and the docked code's own blueprints (its
+\     the main RAM part's image, the far block at FAR% (elite-far.asm's
+\     far calls) and the common block at COMMON% (elite-common.asm: the
+\     code that pages the banks, the same in every bank; both in bank 7
+\     too), and the docked code's own blueprints (its
 \     blocks tagged "Area: blueprints", which followed the code at &5600 in
 \     the original) in the blueprint slot at BPSLOT%; the image stops short
 \     of the quarter squares, which the loader makes (the docked code's
@@ -43,13 +44,13 @@
  INCLUDE "3-assembled-output/common-entry.asm"          \ The common block's
                                                         \ labels (elite-common.asm)
 
- PROGI% = COMMON% - PROGIS%   \ The main RAM part's image, below the
-                        \ common block and the blueprint slot (which holds
-                        \ this program's blueprints)
+ PROGI% = FAR% - PROGIS%   \ The main RAM part's image, below the far block,
+                        \ the common block and the blueprint slot (which
+                        \ holds this program's blueprints)
 
  HOT_END% = PROGI%      \ (bank 4: the hot pass, the main RAM part's image, the
-                        \ common block, then the blueprint slot and the
-                        \ quarter squares)
+                        \ far block and the common block, then the blueprint
+                        \ slot and the quarter squares)
 
  INCLUDE "3-assembled-output/elite-docked-config.asm"
 
@@ -111,15 +112,17 @@
 
  ASSERT P% = BPSLOT_END%
 
- ORG PROGI%             \ the main RAM part's image, below the common block
+ ORG PROGI%             \ the main RAM part's image, below the far block
  ASSERT INBAYJ = INBAYJ%   \ (the flight code's INBAY returns there: elite-map.asm)
 
  COPYBLOCK PROGM%, PROGM_END%, PROGI%
 
- ORG COMMON%            \ the common block (elite-common.asm): the code that
- INCBIN "3-assembled-output/COMMON.bin"   \ pages the banks, the same bytes in
- ASSERT P% = COMMON_END% AND COMMON_END% <= BPSLOT%   \ every bank (bank 5's
-                        \ assembly made them)
+ ORG FAR%               \ the far block (elite-far.asm: the loader's assembly
+ INCBIN "3-assembled-output/FAR.bin"   \ made its bytes), then the common block
+ ASSERT P% = COMMON%    \ (elite-common.asm): the code that pages the banks,
+ INCBIN "3-assembled-output/COMMON.bin"   \ the same bytes in every bank (bank
+ ASSERT P% = COMMON_END% AND COMMON_END% <= BPSLOT%   \ 5's assembly made
+                        \ them)
  ASSERT DL = DL% AND LASCT = LASCT%   \ (the interrupt handler's, in bank 5:
                         \ elite-map.asm)
 
@@ -150,10 +153,11 @@
 
 .COLD_END%
 
- PRINT "Docked bank 7: &8000-", ~COLD_END%-1, " (the cold pass), free ", COMMON%-COLD_END%, ", the common block ", ~COMMON%, "-", ~COMMON_END%-1
- ASSERT COLD_END% <= COMMON%
+ PRINT "Docked bank 7: &8000-", ~COLD_END%-1, " (the cold pass), free ", FAR%-COLD_END%, ", the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1
+ ASSERT COLD_END% <= FAR%
 
- ORG COMMON%            \ the common block, as in bank 4
+ ORG FAR%               \ the far block and the common block, as in bank 4
+ INCBIN "3-assembled-output/FAR.bin"
  INCBIN "3-assembled-output/COMMON.bin"
  ASSERT P% = COMMON_END%
 

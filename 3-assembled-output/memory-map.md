@@ -3,7 +3,7 @@
 | main RAM | `&0000-&00FF` | zero page: the game's (the rasteriser's &06-&27 and the frame layer's &D2-&E1 during a frame, kept) | 256 | 0 |
 | main RAM | `&0100-&01FF` | the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched) | 256 | 0 |
 | main RAM | `&0300-&03CF` | `UP`, the game's workspace | 208 | 0 |
-| main RAM | `&0400-&06FA` | resident block A (`elite-resident.asm`): `BANKS`, the far calls, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 664 | 99 |
+| main RAM | `&0400-&06FA` | resident block A (`elite-resident.asm`): `BANKS`, the far calls' variables and jump forms, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 553 | 210 |
 | main RAM | `&06FB-&0723` | the circle engine's variables (main low: `gfx-merid.asm`) | 35 | 6 |
 | main RAM | `&0724-&07BF` | `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`); then `cbcopy` (`elite-resident.asm`) | 51 | 105 |
 | main RAM | `&07C0-&07FF` | `SNE`, `ACT` | 64 | 0 |
@@ -27,14 +27,16 @@
 | main RAM | `&3000-&57FF` | buffer 0: a MODE 5 screen, the space view and the dashboard | 10240 | 0 |
 | main RAM | `&5800-&7FFF` | buffer 1, the direct-mode screen: the same | 10240 | 0 |
 | bank 4 (flight) | `&8000-&A690` | `S%` and the hot pass | 9873 | 0 |
-| bank 4 (flight) | `&A691-&B1A2` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2720 | 114 |
+| bank 4 (flight) | `&A691-&B13C` | the planet's surface (bank 4 passes: `pf_tilt`, `pc_circ`) | 2720 | 12 |
+| bank 4 (flight) | `&B13D-&B1A2` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 4 (flight) | `&B1A3-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 92 | 1 |
 | bank 4 (flight) | `&B200-&B2FF` | `PF_HOOK` (bank 4 high pass) | 228 | 28 |
 | bank 4 (flight) | `&B300-&BBA1` | the blueprint set (`D.MOx`), its normals and `FC_NORMTAB` (the image holds the main RAM part's image here) | 2210 | 0 |
 | bank 4 (flight) | `&BBA2-&BBFF` | the circle engine's variables (bank 4 top) | 93 | 1 |
 | bank 4 (flight) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
-| bank 4 (docked) | `&8000-&AC62` | `S%` and the hot pass | 9176 | 2187 |
-| bank 4 (docked) | `&AC63-&B1A2` | the main RAM part's image | 1344 | 0 |
+| bank 4 (docked) | `&8000-&ABFC` | `S%` and the hot pass | 9176 | 2085 |
+| bank 4 (docked) | `&ABFD-&B13C` | the main RAM part's image | 1344 | 0 |
+| bank 4 (docked) | `&B13D-&B1A2` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 4 (docked) | `&B1A3-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 92 | 1 |
 | bank 4 (docked) | `&B200-&B2FF` | (free) | 0 | 256 |
 | bank 4 (docked) | `&B300-&BBA1` | the docked code's blueprints, their normals and `FC_NORMTAB` | 2144 | 66 |
@@ -42,11 +44,13 @@
 | bank 4 (docked) | `&BC00-&BFFF` | the quarter squares `QSL`, `QSH` (made by the loader) | 1024 | 0 |
 | bank 7 (flight) | `&8000-&9AF0` | the cold pass, `QQ18` | 6897 | 0 |
 | bank 7 (flight) | `&9AF1-&9F3A` | the overlay region (`D.OV1` 1098 bytes, `D.OV2` 783) | 1098 | 0 |
-| bank 7 (flight) | `&9F3B-&B1A2` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc) | 4506 | 206 |
+| bank 7 (flight) | `&9F3B-&B13C` | the renderer's window (bank 7 passes: the disc layer's painter, the second disc) | 4506 | 104 |
+| bank 7 (flight) | `&B13D-&B1A2` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 7 (flight) | `&B1A3-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 92 | 1 |
 | bank 7 (flight) | `&B200-&B3FF` | the painter's entries (`DPENT%`), which the common block calls, and its own call of bank 5; the painter's operands' patch | 297 | 215 |
 | bank 7 (flight) | `&B400-&BFFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
-| bank 7 (docked) | `&8000-&B1A2` | the set's face lists, the cold pass, `QQ18` | 11362 | 1345 |
+| bank 7 (docked) | `&8000-&B13C` | the set's face lists, the cold pass, `QQ18` | 11362 | 1243 |
+| bank 7 (docked) | `&B13D-&B1A2` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 7 (docked) | `&B1A3-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 92 | 1 |
 | bank 7 (docked) | `&B200-&BFFF` | (free) | 0 | 3584 |
 | bank 5 | `&8000-&8BFF` | the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables | 2459 | 613 |
@@ -68,4 +72,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 1380, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 144, bank 4 (docked) 2604, bank 7 (flight) 422, bank 7 (docked) 4930, bank 5 845, bank 6 10.
+Free, by place: main RAM 1491, main RAM (flight) 1040, main RAM (docked) 1176, bank 4 (flight) 42, bank 4 (docked) 2502, bank 7 (flight) 320, bank 7 (docked) 4828, bank 5 845, bank 6 10.

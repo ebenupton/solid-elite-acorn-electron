@@ -23,8 +23,9 @@
 \     and PCLI copies them to PROGM% when it loads the program;
 \
 \   * bank 4 (saved as D.CODEH): the hot pass from S% at &8000 (HOME%), the
-\     planet's surface, the common block at COMMON% (elite-common.asm: the
-\     code that pages the banks, the same in every bank; in bank 7 too),
+\     planet's surface, the far block at FAR% (elite-far.asm's far calls)
+\     and the common block at COMMON% (elite-common.asm: the code that
+\     pages the banks, the same in every bank; both in bank 7 too),
 \     PF_HOOK, then the blueprint slot at BPSLOT%, which LOMOD loads
 \     from a D.MOx file, as the original loaded it at &5600 (the image holds
 \     the main RAM part's image there, and stops short of the quarter
@@ -34,8 +35,8 @@
 \     text tokens (QQ18, elite-text-tokens.asm's blocks tagged cold), the
 \     overlay region, then the renderer's window (WIN7%: the bank 7 passes of
 \     the renderer's files, the flight code's own parts of the renderer),
-\     with the common block and the painter's entries (DPENT%) in it,
-\     before the painter's operands' patch.
+\     with the far block, the common block and the painter's entries
+\     (DPENT%) in it, before the painter's operands' patch.
 \
 \ The renderer's files are placed by passes too (streams.py: each block's
 \ "Area:" line names its place), and this file INCLUDEs their bank 4 and
@@ -65,9 +66,10 @@ ELSE                    \ circle engine's game part) in a build with _CIRCLES,
  CIRCSZ = 0             \ but PF_HOOK, which is after the common block
 ENDIF
 
- HOT_END% = COMMON% - CIRCSZ   \ (bank 4: the hot pass, the planet's surface
-                        \ in a build with _CIRCLES, the common block, PF_HOOK,
-                        \ then the blueprint slot and the quarter squares)
+ HOT_END% = FAR% - CIRCSZ   \ (bank 4: the hot pass, the planet's surface in
+                        \ a build with _CIRCLES, the far block and the common
+                        \ block, PF_HOOK, then the blueprint slot and the
+                        \ quarter squares)
 
  ORG PROGM%
 
@@ -142,9 +144,11 @@ ENDIF
 
 .HOME_END%
 
- ORG COMMON%            \ the common block (elite-common.asm): the code that
- INCBIN "3-assembled-output/COMMON.bin"   \ pages the banks, the same bytes in
- ASSERT P% = COMMON_END%   \ every bank (bank 5's assembly made them)
+ ORG FAR%               \ the far block (elite-far.asm: the loader's assembly
+ INCBIN "3-assembled-output/FAR.bin"   \ made its bytes), then the common block
+ ASSERT P% = COMMON%    \ (elite-common.asm): the code that pages the banks,
+ INCBIN "3-assembled-output/COMMON.bin"   \ the same bytes in every bank (bank
+ ASSERT P% = COMMON_END%   \ 5's assembly made them)
 
 IF _CIRCLES             \ (PF_HOOK, in the room from the common block to the
  INCLUDE "3-assembled-output/gfx-planet7-bank4high.asm"   \ blueprint slot)
@@ -172,12 +176,12 @@ ENDIF
  ASSERT DL = DL% AND LASCT = LASCT%   \ (the interrupt handler's, in bank 5:
                         \ elite-map.asm)
 
- PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", COMMON%-HOME_END%, ", the common block ", ~COMMON%, "-", ~COMMON_END%-1, ", PF_HOOK to ", ~HOME_TOP%-1, " (free ", BPSLOT%-HOME_TOP%, ")"
+ PRINT "Flight bank 4: &8000-", ~CIRC_START%-1, " (the hot pass), ", HOME_END%-CIRC_START%, " (the planet's surface), free ", FAR%-HOME_END%, ", the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1, ", PF_HOOK to ", ~HOME_TOP%-1, " (free ", BPSLOT%-HOME_TOP%, ")"
  PRINT "Flight main RAM part: low pass ", ~PROGM%, "-", ~LOW_END%-1, ", hot pass to ", ~PROGM_USED%-1, ", free ", PROGM_END%-PROGM_USED%
  PRINT "Flight second main RAM part (D.LOW): ", ~PROGL%, "-", ~PROGL_USED%-1, ", free ", PROGL_END%-PROGL_USED%
  PRINT "Flight third main RAM part (D.LOW, copied down): ", ~PROGK%, "-", ~PROGK_USED%-1, ", free ", PROGK_END%-PROGK_USED%
  PRINT "Flight fourth main RAM part (D.LOW): ", ~PROGS%, "-", ~PROGS_USED%-1, ", free ", PROGS_END%-PROGS_USED%
- ASSERT HOME_END% <= COMMON% AND HOME_TOP% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
+ ASSERT HOME_END% <= FAR% AND HOME_TOP% <= BPSLOT% AND CIRC_START% <= HOT_END% AND HOME_END% - CIRC_START% <= CIRCSZ
 
  ORG PROGI%             \ the main RAM part's image, at the start of the
  COPYBLOCK PROGM%, PROGM_END%, PROGI%   \ blueprint slot: the D.MOx file loads
@@ -245,9 +249,10 @@ ENDIF
 
 .WIN7_MID%
 
- ASSERT WIN7_MID% <= COMMON%
+ ASSERT WIN7_MID% <= FAR%
 
- ORG COMMON%            \ the common block, as in bank 4
+ ORG FAR%               \ the far block and the common block, as in bank 4
+ INCBIN "3-assembled-output/FAR.bin"
  INCBIN "3-assembled-output/COMMON.bin"
  ASSERT P% = COMMON_END% AND P% = DPENT%
 
@@ -259,7 +264,7 @@ ENDIF
 
 .WIN7_END%
 
- PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the overlays to ", ~OVL_END%-1, ", the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", COMMON%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the common block ", ~COMMON%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
+ PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the overlays to ", ~OVL_END%-1, ", the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", FAR%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
  ASSERT WIN7_END% <= DPST%         \ (the disc state, to DFSSAVE%: Port:
                                    \ the end of the bank)
 

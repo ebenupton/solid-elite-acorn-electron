@@ -334,7 +334,12 @@ speed. `&F4` is written before `ROMSEL` on every switch, and the loader writes
 the bank numbers into each bank's copy of the block's first five bytes, and the page of the
 bank's entries into its copy of the call's `JSR` (`cbcopy`, `cbset`).
 
-A far call costs about 110 cycles (`farC6` as `farC`) and three bytes of stack, and passes A, X,
+The far calls' code (`farC`, `farH`) is the far block (`elite-far.asm`, `FAR%`, just
+below the common block), the same bytes in each program's home and cold images, so
+that a far call runs on from its caller's bank's copy into its target's and none of it is fetched
+from main RAM; the jump forms (`farCj`, `farHj`), for targets that never return, are in the
+resident block. Bank 6 has no far block, so the cold 6 pass's `farC6` is gone with the pass's room
+(no block is tagged for it). A far call takes three bytes of stack, and passes A, X,
 Y and the flags both ways. The harness (`6-harness/blib.mjs`) sees through
 far-call frames by the label `farret`.
 

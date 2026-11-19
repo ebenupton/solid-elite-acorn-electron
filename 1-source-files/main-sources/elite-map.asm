@@ -51,10 +51,11 @@
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
  C6SZ = 0               \ (BANK6), before the frame layer, and its room (the
                         \ flight code's layout assembles it there and saves it
-                        \ as C6.bin, which bank 6's assembly takes in; a far
-                        \ call, farC6, reaches it: elite-far.asm, streams.py;
-                        \ no block is tagged for it now, and it has no room:
-                        \ the frame layer starts at C6%)
+                        \ as C6.bin, which bank 6's assembly takes in:
+                        \ streams.py; no block is tagged for it now, it has no
+                        \ room, and its far call, farC6, is gone, as bank 6
+                        \ has no far block (elite-far.asm): the frame layer
+                        \ starts at C6%)
  FHV% = C6% + C6SZ + 41 \ The hangar's background's four jumps into bank 6
                         \ (gfx-bank6.asm's FHV, after the bank's scratch:
                         \ gfx-hangar.asm)
@@ -141,6 +142,15 @@
                         \ gfx-bank5.asm, gfx-bank6.asm; 2-build-files/
                         \ mapcheck.py checks that the six images hold the
                         \ same bytes there)
+
+ FAR% = COMMON% - 102   \ The far block (elite-far.asm): the far calls between a
+                        \ program's home and cold banks (farC, farH), the same
+                        \ bytes just below the common block in each program's
+                        \ home and cold images (the loader's assembly makes
+                        \ them, FAR.bin; mapcheck.py checks the four images):
+                        \ a far call runs on from its caller's bank's copy
+                        \ into its target's. Banks 5 and 6 have none (no far
+                        \ call is made from them or into them)
 
  FJT% = &BFC0           \ Bank 6's entries, a table of jumps at its top
                         \ (gfx-bank6.asm), which the common block's GCALL

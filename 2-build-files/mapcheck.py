@@ -16,7 +16,8 @@
 #   * a pass copy that defines a label is INCLUDEd by no assembly;
 #   * the six images of the banks (each program's home and cold images, bank
 #     5's and bank 6's) do not all hold the common block's bytes
-#     (elite-common.asm, COMMON.bin) at COMMON%: the code that pages the
+#     (elite-common.asm, COMMON.bin) at COMMON%, or the programs' four the
+#     far block's (elite-far.asm, FAR.bin) at FAR%: the code that pages the
 #     banks runs on from one bank's copy into another's;
 #   * an instruction of any assembly's listing addresses page &0D outside
 #     what the original puts there (CATD, &0D7A-&0D9D, which the loader
@@ -141,8 +142,10 @@ for prog, sy in (("flight", FL), ("docked", DK)):
 # banks 4 and 7, each program's
 qsl, bp, bp_end = C["QSL"], C["BPSLOT_P"], C["BPSLOT_END_P"]
 com, com_end = C["COMMON_P"], C["COMMON_END_P"]
+far = C["FAR_P"]
 fhot_end = FL["CIRC_START%"]
 order("flight bank 4", [("the hot pass", 0x8000, fhot_end), ("the planet's surface", fhot_end, FL["HOME_END%"]),
+                        ("the far block", far, LD["FAR_USED%"]),
                         ("the common block", com, com_end), ("PF_HOOK", com_end, FL["HOME_TOP%"]),
                         ("the blueprint slot", bp, bp_end),
                         ("the circle engine's variables (bank 4 top)", C["PFVS_P"], FL.get("PFVS_END%", C["PFVS_P"])),
@@ -154,13 +157,13 @@ for img in ("D.CODEH.bin", "T.CODEH.bin"):             # (the loader makes them:
         errors.append("bank 4: %s reaches the quarter squares (&%04X)" % (img, qsl))
 nlab += inside(FL, OUT + "elite-flight-hot.asm", 0x8000, fhot_end, "the hot pass")
 for f in ("gfx-planet7", "gfx-merid"):
-    nlab += inside(FL, OUT + "%s-bank4.asm" % f, fhot_end, com, "bank 4's planet's surface")
+    nlab += inside(FL, OUT + "%s-bank4.asm" % f, fhot_end, far, "bank 4's planet's surface")
     nlab += inside(FL, OUT + "%s-bank4high.asm" % f, com_end, bp, "bank 4's room after the common block")
     nlab += inside(FL, OUT + "%s-bank4top.asm" % f, C["PFVS_P"], qsl, "bank 4 top")
     nlab += inside(FL, OUT + "%s-mainhigh.asm" % f, C["PFVH_P"], 0x7FFE, "main high")
 nlab += inside(FL, OUT + "gfx-merid-mainlow.asm", C["PFVA_P"], C["GLUE_P"], "main low")
-order("docked bank 4", [("the hot pass", 0x8000, DK["HOME_END%"]), ("the main RAM part's image", com - (progm_end - progm), com),
-                        ("the common block", com, com_end),
+order("docked bank 4", [("the hot pass", 0x8000, DK["HOME_END%"]), ("the main RAM part's image", far - (progm_end - progm), far),
+                        ("the far block", far, LD["FAR_USED%"]), ("the common block", com, com_end),
                         ("the blueprint slot", bp, bp_end), ("the quarter squares", qsl, qsl + 0x400)])
 nlab += inside(DK, OUT + "elite-docked-hot.asm", 0x8000, DK["HOME_END%"], "the hot pass")
 nlab += inside(DK, OUT + "elite-docked-blueprints.asm", bp, bp_end, "the blueprint slot")
@@ -168,7 +171,8 @@ dfss = C["DFSSAVE_P"]
 dpst = dfss - 0xC00
 ovl_end = FL["WIN7%"]
 order("flight bank 7", [("the cold pass", 0x8000, FL["COLD_END%"]), ("the overlay region", FL["OVL%"], ovl_end),
-                        ("the renderer's window", FL["WIN7%"], FL["WIN7_MID%"]), ("the common block", com, com_end),
+                        ("the renderer's window", FL["WIN7%"], FL["WIN7_MID%"]), ("the far block", far, LD["FAR_USED%"]),
+                        ("the common block", com, com_end),
                         ("the painter's entries and the rest of the window", C["DPENT_P"], FL["WIN7_END%"]),
                         ("the disc state", dpst, dfss)])
 for c in ("cold",):
@@ -176,10 +180,11 @@ for c in ("cold",):
 for n in (1, 2):
     nlab += inside(FL, OUT + "elite-flight-ovl%d.asm" % n, FL["OVL%"], ovl_end, "the overlay region")
 for f in ("gfx-raster_disc", "gfx-raster_disc2"):
-    nlab += inside(FL, OUT + "%s-bank7.asm" % f, FL["WIN7%"], com, "the renderer's window")
+    nlab += inside(FL, OUT + "%s-bank7.asm" % f, FL["WIN7%"], far, "the renderer's window")
 for f in ("gfx-glue", "gfx-raster_dpatch"):
     nlab += inside(FL, OUT + "%s-bank7.asm" % f, com_end, dpst, "the renderer's window, after the common block")
-order("docked bank 7", [("the face lists and the cold pass", 0x8000, DK["COLD_END%"]), ("the common block", com, com_end)])
+order("docked bank 7", [("the face lists and the cold pass", 0x8000, DK["COLD_END%"]), ("the far block", far, LD["FAR_USED%"]),
+                        ("the common block", com, com_end)])
 nlab += inside(DK, OUT + "elite-docked-cold.asm", 0x8000, DK["COLD_END%"], "the cold pass")
 
 # bank 5
@@ -235,6 +240,12 @@ for img, base in (("D.CODEH.bin", 0x8000), ("D.CODEC.bin", 0x8000), ("T.CODEH.bi
     d = open(OUT + img, "rb").read()
     if base > com or d[com - base:com_end - base] != cb:
         errors.append("the common block: %s does not hold COMMON.bin's bytes at &%04X-&%04X" % (img, com, com_end - 1))
+fb = open(OUT + "FAR.bin", "rb").read()
+if len(fb) != com - far or LD["farC"] != far:
+    errors.append("the far block: FAR.bin is %d bytes from &%04X, not FAR%% to COMMON%%" % (len(fb), LD["farC"]))
+for img in ("D.CODEH.bin", "D.CODEC.bin", "T.CODEH.bin", "T.CODEC.bin"):
+    if open(OUT + img, "rb").read()[far - 0x8000:com - 0x8000] != fb:
+        errors.append("the far block: %s does not hold FAR.bin's bytes at &%04X-&%04X" % (img, far, com - 1))
 if B5["CB7"] != com:
     errors.append("the common block: bank 5's assembly has it at &%04X, not COMMON%% (&%04X)" % (B5["CB7"], com))
 

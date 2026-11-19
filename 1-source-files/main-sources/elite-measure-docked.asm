@@ -15,7 +15,7 @@
  INCLUDE "3-assembled-output/resident.asm"
  INCLUDE "3-assembled-output/common-entry.asm"
 
- PROGI% = COMMON% - PROGIS%
+ PROGI% = FAR% - PROGIS%
  HOT_END% = PROGI%
 
  INCLUDE "3-assembled-output/elite-docked-config.asm"

@@ -235,7 +235,7 @@ def load():
     if "LCOL" in mc:                              # (the drawing routines' colour: yellow, both bit planes)
         extra = extra + [(mc["LCOL"], [0xFF])]
     # (the port: main RAM with the loader's resident block A, which holds the
-    # far calls, and the flight code's home and cold images in two banks,
+    # far calls' variables, and the flight code's home and cold images (with the far calls) in two banks,
     # numbered as jsbeeb's PROBE finds them, 7 and 6)
     ld = syms(os.path.join(REPO, "3-assembled-output/loader-symbols.txt"))
     loader = open(os.path.join(REPO, "3-assembled-output/ELITE4.bin"), "rb").read()
@@ -254,6 +254,11 @@ def load():
         d = list(open(os.path.join(REPO, path), "rb").read())
         return d + [0] * (16384 - len(d))
     cand.banks = {4: bank("3-assembled-output/D.CODEH.bin"), 7: bank("3-assembled-output/D.CODEC.bin")}
+    ce = open(os.path.join(REPO, "3-assembled-output/common-entry.asm")).read()   # (the common block's bytes
+    cb = lambda n: int(re.search(r"^%s\s*=\s*&([0-9A-F]+)" % n, ce, re.M).group(1), 16) - 0x8000   # that the
+    for b in cand.banks:                                                          # loader writes: the bank
+        cand.banks[b][cb("CB7"):cb("CB7") + 5] = [7, 6, 5, 4, b]                  # numbers, CB7 on, the bank's
+        cand.banks[b][cb("CBPG")] = 0x80                                          # own and its entries' page)
     for (a, data) in extra:                       # (the quarter squares, in the home bank)
         if 0x8000 <= a < 0xC000:
             cand.banks[4][a - 0x8000:a - 0x8000 + len(data)] = list(data)

@@ -52,6 +52,7 @@ __pycache__/
 3-assembled-output/bank5-entry.asm
 3-assembled-output/common-entry.asm
 3-assembled-output/COMMON.bin
+3-assembled-output/FAR.bin
 3-assembled-output/sunref-syms.asm
 
 # clkh, the headless Electron (6-harness/clkh): its build directory

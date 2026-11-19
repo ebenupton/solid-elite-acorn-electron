@@ -434,8 +434,12 @@ export function elkLabeller(b, buildFile) {
         if (!m || b.loader["BANK" + m[1]] === undefined) continue;
         for (const [k, v] of Object.entries(loadSyms(join(dir, f)))) if (v >= 0x8000 && v < 0xc000 && common[k] === undefined) extra.push(["#" + m[1], v, k]);
     }
-    // (the common block's labels, in each game bank: named without a bank)
+    // (the common block's labels, in each game bank: named without a bank;
+    // and the far block's, the loader's from farC to FAR_USED%, in the
+    // programs' banks)
     for (const [k, v] of Object.entries(common)) for (const r of ["H", "C", "#5", "#6"]) extra.push([r, v, k, "*"]);
+    const f0 = b.loader.farC, f1 = b.loader["FAR_USED%"];
+    if (f0 >= 0x8000 && f1 !== undefined) for (const [k, v] of Object.entries(b.loader)) if (v >= f0 && v <= f1 && common[k] === undefined) for (const r of ["H", "C"]) extra.push([r, v, k, "*"]);
     const progLabels = { flight: labelsOf(b.progs.flight), docked: labelsOf(b.progs.docked) };
     return (e, bk, prog) => {
         const slotOf = map => map === "m" ? -1 : map[0] === "#" ? e.rb(b.loader["BANK" + map.slice(1)]) : bk.bankOf(map);

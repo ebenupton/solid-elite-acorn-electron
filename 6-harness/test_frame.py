@@ -167,7 +167,7 @@ class Mem:
         ok = bytearray(0x10000)                  # the write guard's allowed bytes
         for lo, hi in ((0x06, 0x28), (0xD2, 0xE2), (0xF4, 0xF5), (0x100, 0x200), (S['BUF0'], S['BUF0'] + 2 * SCRSZ),
                        (S['MBOX'], S['MBOX'] + 0xA0), (S['GVARS'], S['VEC']),
-                       (ld['fA'], ld['fA'] + 5), (ld['fpc'] + 1, ld['fpc'] + 3), (ld['fpj'] + 1, ld['fpj'] + 3)):
+                       (ld['fA'], ld['fA'] + 5), (ld['fpj'] + 1, ld['fpj'] + 3)):
             ok[lo:hi] = b'\1' * (hi - lo)
         self.ok = ok
         game = bytearray(ok)                     # game code (LL9, and what the

@@ -6450,30 +6450,30 @@ End macro FNE
      0B05   9D 40 1E   STA &1E40,X
      0B08   CA         DEX
      0B09   10 F7      BPL &0B02
-     0B0B   20 D7 05   JSR &05D7
+     0B0B   20 68 05   JSR &0568
      0B0E   AD 02 04   LDA &0402
      0B11   A2 2F      LDX #&2F
      0B13   A0 91      LDY #&91
-     0B15   20 B9 05   JSR &05B9
+     0B15   20 4A 05   JSR &054A
      0B18   A9 BF      LDA #&BF
      0B1A   20 D5 0B   JSR &0BD5
      0B1D   A9 46      LDA #&46
      0B1F   8D 42 1E   STA &1E42
-     0B22   20 D7 05   JSR &05D7
+     0B22   20 68 05   JSR &0568
      0B25   AD 01 04   LDA &0401
      0B28   A2 40      LDX #&40
      0B2A   A0 80      LDY #&80
-     0B2C   20 B9 05   JSR &05B9
+     0B2C   20 4A 05   JSR &054A
      0B2F   A9 BF      LDA #&BF
      0B31   20 D5 0B   JSR &0BD5
      0B34   A2 C0      LDX #&C0
      0B36   20 D2 B1   JSR &B1D2
      0B39   A2 E9      LDX #&E9
      0B3B   A0 0B      LDY #&0B
-     0B3D   20 C0 04   JSR &04C0
+     0B3D   20 51 04   JSR &0451
      0B40   A2 FB      LDX #&FB
      0B42   A0 0B      LDY #&0B
-     0B44   20 C0 04   JSR &04C0
+     0B44   20 51 04   JSR &0451
      0B47   A2 00      LDX #&00
 .ldp1
      0B49   BD 00 20   LDA &2000,X
@@ -6492,7 +6492,7 @@ End macro FNE
      0B70   9D A0 7D   STA &7DA0,X
      0B73   E8         INX
      0B74   D0 D3      BNE &0B49
-     0B76   20 84 05   JSR &0584
+     0B76   20 15 05   JSR &0515
      0B79   A2 0F      LDX #&0F
 .lsh
      0B7B   BD C5 0B   LDA &0BC5,X
@@ -6504,21 +6504,21 @@ End macro FNE
      0B87   8D 02 FE   STA &FE02
      0B8A   A9 2C      LDA #&2C
      0B8C   8D 03 FE   STA &FE03
-     0B8F   A2 8C      LDX #&8C
+     0B8F   A2 1D      LDX #&1D
      0B91   AD 02 04   LDA &0402
-     0B94   8D 8D 06   STA &068D
+     0B94   8D 1E 06   STA &061E
      0B97   C9 08      CMP #&08
      0B99   B0 02      BCS &0B9D
-     0B9B   A2 87      LDX #&87
+     0B9B   A2 18      LDX #&18
      0B9D   8E 04 02   STX &0204
      0BA0   A9 06      LDA #&06
      0BA2   8D 05 02   STA &0205
      0BA5   58         CLI
-     0BA6   A9 15      LDA #&15
+     0BA6   A9 A6      LDA #&A6
      0BA8   8D 02 02   STA &0202
-     0BAB   A9 06      LDA #&06
+     0BAB   A9 05      LDA #&05
      0BAD   8D 03 02   STA &0203
-     0BB0   A9 FA      LDA #&FA
+     0BB0   A9 8B      LDA #&8B
      0BB2   8D 0E 02   STA &020E
      0BB5   A9 05      LDA #&05
      0BB7   8D 0F 02   STA &020F
@@ -6622,368 +6622,367 @@ LOAD: &B00 -&C29 , free 214
      0406   00
 .ft
      0407   00 00
-.farC
+.farCj
      0409   08         PHP
      040A   8D 04 04   STA &0404
      040D   AD 00 04   LDA &0400
-     0410   D0 10      BNE &0422
-.farC6
+     0410   D0 07      BNE &0419
+.farHj
      0412   08         PHP
      0413   8D 04 04   STA &0404
-     0416   AD 01 04   LDA &0401
-     0419   D0 07      BNE &0422
-.farH
-     041B   08         PHP
-     041C   8D 04 04   STA &0404
-     041F   AD 03 04   LDA &0403
-.farc
-     0422   8D 06 04   STA &0406
-     0425   8E 05 04   STX &0405
-     0428   BA         TSX
-     0429   BD 02 01   LDA &0102,X
-     042C   8D 44 04   STA &0444
-     042F   BD 03 01   LDA &0103,X
-     0432   8D 45 04   STA &0445
-     0435   BD 01 01   LDA &0101,X
-     0438   9D 02 01   STA &0102,X
-     043B   A5 F4      LDA &F4
-     043D   9D 03 01   STA &0103,X
-     0440   68         PLA
-     0441   A2 02      LDX #&02
-.fpc
-     0443   BD FF FF   LDA &FFFF,X
-     0446   9D 06 04   STA &0406,X
-     0449   CA         DEX
-     044A   D0 F7      BNE &0443
-     044C   AD 06 04   LDA &0406
-     044F   85 F4      STA &F4
-     0451   8D 05 FE   STA &FE05
-     0454   AD 04 04   LDA &0404
-     0457   AE 05 04   LDX &0405
-     045A   28         PLP
-     045B   20 75 04   JSR &0475
-.farret
-     045E   8D 04 04   STA &0404
-     0461   08         PHP
-     0462   68         PLA
-     0463   8D 06 04   STA &0406
-     0466   68         PLA
-     0467   85 F4      STA &F4
-     0469   8D 05 FE   STA &FE05
-     046C   AD 06 04   LDA &0406
-     046F   48         PHA
-     0470   AD 04 04   LDA &0404
-     0473   28         PLP
-     0474   60         RTS
-.fjmp
-     0475   6C 07 04   JMP (&0407)
-.farCj
-     0478   08         PHP
-     0479   8D 04 04   STA &0404
-     047C   AD 00 04   LDA &0400
-     047F   D0 07      BNE &0488
-.farHj
-     0481   08         PHP
-     0482   8D 04 04   STA &0404
-     0485   AD 03 04   LDA &0403
+     0416   AD 03 04   LDA &0403
 .farj
-     0488   8D 06 04   STA &0406
-     048B   8E 05 04   STX &0405
-     048E   BA         TSX
-     048F   BD 02 01   LDA &0102,X
-     0492   8D A6 04   STA &04A6
-     0495   BD 03 01   LDA &0103,X
-     0498   8D A7 04   STA &04A7
-     049B   BD 01 01   LDA &0101,X
-     049E   9D 03 01   STA &0103,X
-     04A1   68         PLA
-     04A2   68         PLA
-     04A3   A2 02      LDX #&02
+     0419   8D 06 04   STA &0406
+     041C   8E 05 04   STX &0405
+     041F   BA         TSX
+     0420   BD 02 01   LDA &0102,X
+     0423   8D 37 04   STA &0437
+     0426   BD 03 01   LDA &0103,X
+     0429   8D 38 04   STA &0438
+     042C   BD 01 01   LDA &0101,X
+     042F   9D 03 01   STA &0103,X
+     0432   68         PLA
+     0433   68         PLA
+     0434   A2 02      LDX #&02
 .fpj
-     04A5   BD FF FF   LDA &FFFF,X
-     04A8   9D 06 04   STA &0406,X
-     04AB   CA         DEX
-     04AC   D0 F7      BNE &04A5
-     04AE   AD 06 04   LDA &0406
-     04B1   85 F4      STA &F4
-     04B3   8D 05 FE   STA &FE05
-     04B6   AD 04 04   LDA &0404
-     04B9   AE 05 04   LDX &0405
-     04BC   28         PLP
-     04BD   6C 07 04   JMP (&0407)
+     0436   BD FF FF   LDA &FFFF,X
+     0439   9D 06 04   STA &0406,X
+     043C   CA         DEX
+     043D   D0 F7      BNE &0436
+     043F   AD 06 04   LDA &0406
+     0442   85 F4      STA &F4
+     0444   8D 05 FE   STA &FE05
+     0447   AD 04 04   LDA &0404
+     044A   AE 05 04   LDX &0405
+     044D   28         PLP
+     044E   6C 07 04   JMP (&0407)
+.farC
+     B13D   08         PHP
+     B13E   8D 04 04   STA &0404
+     B141   AD A3 B1   LDA &B1A3
+     B144   D0 07      BNE &B14D
+.farH
+     B146   08         PHP
+     B147   8D 04 04   STA &0404
+     B14A   AD A6 B1   LDA &B1A6
+.farc
+     B14D   8D 79 B1   STA &B179
+     B150   8E 05 04   STX &0405
+     B153   BA         TSX
+     B154   BD 02 01   LDA &0102,X
+     B157   8D 70 B1   STA &B170
+     B15A   BD 03 01   LDA &0103,X
+     B15D   8D 71 B1   STA &B171
+     B160   BD 01 01   LDA &0101,X
+     B163   9D 02 01   STA &0102,X
+     B166   AD A7 B1   LDA &B1A7
+     B169   9D 03 01   STA &0103,X
+     B16C   68         PLA
+     B16D   A2 02      LDX #&02
+.fpc
+     B16F   BD FF FF   LDA &FFFF,X
+     B172   9D 06 04   STA &0406,X
+     B175   CA         DEX
+     B176   D0 F7      BNE &B16F
+.farb
+     B178   A9 00      LDA #&00
+     B17A   85 F4      STA &F4
+     B17C   8D 05 FE   STA &FE05
+     B17F   AD 04 04   LDA &0404
+     B182   AE 05 04   LDX &0405
+     B185   28         PLP
+     B186   20 A0 B1   JSR &B1A0
+.farret
+     B189   8D 04 04   STA &0404
+     B18C   08         PHP
+     B18D   68         PLA
+     B18E   8D 06 04   STA &0406
+     B191   68         PLA
+     B192   85 F4      STA &F4
+     B194   8D 05 FE   STA &FE05
+     B197   AD 06 04   LDA &0406
+     B19A   48         PHA
+     B19B   AD 04 04   LDA &0404
+     B19E   28         PLP
+     B19F   60         RTS
+.fjmp
+     B1A0   6C 07 04   JMP (&0407)
+.FAR_USED%
+The far block: &B13D -&B1A2 , free 0 
+Saving file '3-assembled-output/FAR.bin'
 .PCLI
-     04C0   8E D3 04   STX &04D3
-     04C3   8C D4 04   STY &04D4
-     04C6   A5 F4      LDA &F4
-     04C8   8D 95 06   STA &0695
-     04CB   A9 FF      LDA #&FF
-     04CD   8D 8D 1F   STA &1F8D
-     04D0   A2 00      LDX #&00
+     0451   8E 64 04   STX &0464
+     0454   8C 65 04   STY &0465
+     0457   A5 F4      LDA &F4
+     0459   8D 26 06   STA &0626
+     045C   A9 FF      LDA #&FF
+     045E   8D 8D 1F   STA &1F8D
+     0461   A2 00      LDX #&00
 .pcl1
 .pcs
-     04D2   BD FF FF   LDA &FFFF,X
-     04D5   9D 40 1E   STA &1E40,X
-     04D8   E8         INX
-     04D9   C9 0D      CMP #&0D
-     04DB   D0 F5      BNE &04D2
-     04DD   AD 41 1E   LDA &1E41
-     04E0   C9 2E      CMP #&2E
-     04E2   D0 12      BNE &04F6
-     04E4   AD 43 1E   LDA &1E43
-     04E7   C9 2E      CMP #&2E
-     04E9   D0 0B      BNE &04F6
-     04EB   AD 44 1E   LDA &1E44
-     04EE   C9 43      CMP #&43
-     04F0   F0 0B      BEQ &04FD
-     04F2   C9 4D      CMP #&4D
-     04F4   F0 76      BEQ &056C
+     0463   BD FF FF   LDA &FFFF,X
+     0466   9D 40 1E   STA &1E40,X
+     0469   E8         INX
+     046A   C9 0D      CMP #&0D
+     046C   D0 F5      BNE &0463
+     046E   AD 41 1E   LDA &1E41
+     0471   C9 2E      CMP #&2E
+     0473   D0 12      BNE &0487
+     0475   AD 43 1E   LDA &1E43
+     0478   C9 2E      CMP #&2E
+     047A   D0 0B      BNE &0487
+     047C   AD 44 1E   LDA &1E44
+     047F   C9 43      CMP #&43
+     0481   F0 0B      BEQ &048E
+     0483   C9 4D      CMP #&4D
+     0485   F0 76      BEQ &04FD
 .pmos
-     04F6   A2 40      LDX #&40
-     04F8   A0 1E      LDY #&1E
-     04FA   4C F7 FF   JMP &FFF7
+     0487   A2 40      LDX #&40
+     0489   A0 1E      LDY #&1E
+     048B   4C F7 FF   JMP &FFF7
 .pprog
-     04FD   A2 C3      LDX #&C3
-     04FF   20 D2 B1   JSR &B1D2
-     0502   A9 48      LDA #&48
-     0504   8D 48 1E   STA &1E48
-     0507   A9 0D      LDA #&0D
-     0509   8D 49 1E   STA &1E49
-     050C   20 D7 05   JSR &05D7
-     050F   AD 03 04   LDA &0403
-     0512   A2 3C      LDX #&3C
-     0514   A0 80      LDY #&80
-     0516   20 29 07   JSR &0729
-     0519   AD 0E 20   LDA &200E
-     051C   8D 33 05   STA &0533
-     051F   AD 0F 20   LDA &200F
-     0522   18         CLC
-     0523   69 05      ADC #&05
-     0525   8D 34 05   STA &0534
-     0528   A9 1E      LDA #&1E
-     052A   8D 37 05   STA &0537
-     052D   A0 06      LDY #&06
-     052F   A2 40      LDX #&40
+     048E   A2 C3      LDX #&C3
+     0490   20 D2 B1   JSR &B1D2
+     0493   A9 48      LDA #&48
+     0495   8D 48 1E   STA &1E48
+     0498   A9 0D      LDA #&0D
+     049A   8D 49 1E   STA &1E49
+     049D   20 68 05   JSR &0568
+     04A0   AD 03 04   LDA &0403
+     04A3   A2 3C      LDX #&3C
+     04A5   A0 80      LDY #&80
+     04A7   20 29 07   JSR &0729
+     04AA   AD 0E 20   LDA &200E
+     04AD   8D C4 04   STA &04C4
+     04B0   AD 0F 20   LDA &200F
+     04B3   18         CLC
+     04B4   69 05      ADC #&05
+     04B6   8D C5 04   STA &04C5
+     04B9   A9 1E      LDA #&1E
+     04BB   8D C8 04   STA &04C8
+     04BE   A0 06      LDY #&06
+     04C0   A2 40      LDX #&40
 .pcm0
-     0531   CA         DEX
+     04C2   CA         DEX
 .pcm1
-     0532   BD FF FF   LDA &FFFF,X
+     04C3   BD FF FF   LDA &FFFF,X
 .pcm2
-     0535   9D 00 FF   STA &FF00,X
-     0538   E0 00      CPX #&00
-     053A   D0 F5      BNE &0531
-     053C   CE 34 05   DEC &0534
-     053F   CE 37 05   DEC &0537
-     0542   88         DEY
-     0543   D0 EC      BNE &0531
-     0545   A9 43      LDA #&43
-     0547   8D 48 1E   STA &1E48
-     054A   20 D7 05   JSR &05D7
-     054D   AD 00 04   LDA &0400
-     0550   A2 40      LDX #&40
-     0552   A0 80      LDY #&80
-     0554   20 29 07   JSR &0729
-     0557   20 84 05   JSR &0584
-     055A   AD 40 1E   LDA &1E40
-     055D   C9 52      CMP #&52
-     055F   D0 1A      BNE &057B
-     0561   AD 03 04   LDA &0403
-     0564   85 F4      STA &F4
-     0566   8D 05 FE   STA &FE05
-     0569   4C 00 80   JMP &8000
+     04C6   9D 00 FF   STA &FF00,X
+     04C9   E0 00      CPX #&00
+     04CB   D0 F5      BNE &04C2
+     04CD   CE C5 04   DEC &04C5
+     04D0   CE C8 04   DEC &04C8
+     04D3   88         DEY
+     04D4   D0 EC      BNE &04C2
+     04D6   A9 43      LDA #&43
+     04D8   8D 48 1E   STA &1E48
+     04DB   20 68 05   JSR &0568
+     04DE   AD 00 04   LDA &0400
+     04E1   A2 40      LDX #&40
+     04E3   A0 80      LDY #&80
+     04E5   20 29 07   JSR &0729
+     04E8   20 15 05   JSR &0515
+     04EB   AD 40 1E   LDA &1E40
+     04EE   C9 52      CMP #&52
+     04F0   D0 1A      BNE &050C
+     04F2   AD 03 04   LDA &0403
+     04F5   85 F4      STA &F4
+     04F7   8D 05 FE   STA &FE05
+     04FA   4C 00 80   JMP &8000
 .pbp
-     056C   A0 30      LDY #&30
-     056E   20 D9 05   JSR &05D9
-     0571   AD 03 04   LDA &0403
-     0574   A2 09      LDX #&09
-     0576   A0 B3      LDY #&B3
-     0578   20 B9 05   JSR &05B9
+     04FD   A0 30      LDY #&30
+     04FF   20 6A 05   JSR &056A
+     0502   AD 03 04   LDA &0403
+     0505   A2 09      LDX #&09
+     0507   A0 B3      LDY #&B3
+     0509   20 4A 05   JSR &054A
 .prest
-     057B   AD 95 06   LDA &0695
-     057E   85 F4      STA &F4
-     0580   8D 05 FE   STA &FE05
-     0583   60         RTS
+     050C   AD 26 06   LDA &0626
+     050F   85 F4      STA &F4
+     0511   8D 05 FE   STA &FE05
+     0514   60         RTS
 .b0fix
-     0584   A0 1E      LDY #&1E
-     0586   A9 30      LDA #&30
-     0588   8D 90 05   STA &0590
-     058B   A9 00      LDA #&00
-     058D   AA         TAX
+     0515   A0 1E      LDY #&1E
+     0517   A9 30      LDA #&30
+     0519   8D 21 05   STA &0521
+     051C   A9 00      LDA #&00
+     051E   AA         TAX
 .bfz
-     058E   9D 00 FF   STA &FF00,X
-     0591   E8         INX
-     0592   D0 FA      BNE &058E
-     0594   EE 90 05   INC &0590
-     0597   88         DEY
-     0598   D0 F4      BNE &058E
-     059A   A0 0A      LDY #&0A
-     059C   A9 76      LDA #&76
-     059E   8D A8 05   STA &05A8
-     05A1   A9 4E      LDA #&4E
-     05A3   8D AB 05   STA &05AB
+     051F   9D 00 FF   STA &FF00,X
+     0522   E8         INX
+     0523   D0 FA      BNE &051F
+     0525   EE 21 05   INC &0521
+     0528   88         DEY
+     0529   D0 F4      BNE &051F
+     052B   A0 0A      LDY #&0A
+     052D   A9 76      LDA #&76
+     052F   8D 39 05   STA &0539
+     0532   A9 4E      LDA #&4E
+     0534   8D 3C 05   STA &053C
 .bfc
-     05A6   BD 00 FF   LDA &FF00,X
+     0537   BD 00 FF   LDA &FF00,X
 .bfd
-     05A9   9D 00 FF   STA &FF00,X
-     05AC   E8         INX
-     05AD   D0 F7      BNE &05A6
-     05AF   EE A8 05   INC &05A8
-     05B2   EE AB 05   INC &05AB
-     05B5   88         DEY
-     05B6   D0 EE      BNE &05A6
-     05B8   60         RTS
+     053A   9D 00 FF   STA &FF00,X
+     053D   E8         INX
+     053E   D0 F7      BNE &0537
+     0540   EE 39 05   INC &0539
+     0543   EE 3C 05   INC &053C
+     0546   88         DEY
+     0547   D0 EE      BNE &0537
+     0549   60         RTS
 .bcopy
-     05B9   8C C8 05   STY &05C8
-     05BC   85 F4      STA &F4
-     05BE   8D 05 FE   STA &FE05
-     05C1   A0 00      LDY #&00
+     054A   8C 59 05   STY &0559
+     054D   85 F4      STA &F4
+     054F   8D 05 FE   STA &FE05
+     0552   A0 00      LDY #&00
 .bc1
-     05C3   B9 00 FF   LDA &FF00,Y
+     0554   B9 00 FF   LDA &FF00,Y
 .bc2
-     05C6   99 00 FF   STA &FF00,Y
-     05C9   C8         INY
-     05CA   D0 F7      BNE &05C3
-     05CC   EE C5 05   INC &05C5
-     05CF   EE C8 05   INC &05C8
-     05D2   CA         DEX
-     05D3   D0 EE      BNE &05C3
-     05D5   60         RTS
+     0557   99 00 FF   STA &FF00,Y
+     055A   C8         INY
+     055B   D0 F7      BNE &0554
+     055D   EE 56 05   INC &0556
+     0560   EE 59 05   INC &0559
+     0563   CA         DEX
+     0564   D0 EE      BNE &0554
+     0566   60         RTS
 .dfsin
 .dfsout
-     05D6   60         RTS
+     0567   60         RTS
 .pload
-     05D7   A0 20      LDY #&20
-     05D9   A2 06      LDX #&06
+     0568   A0 20      LDY #&20
+     056A   A2 06      LDX #&06
 .pld1
-     05DB   BD F3 05   LDA &05F3,X
-     05DE   9D 60 1E   STA &1E60,X
-     05E1   CA         DEX
-     05E2   10 F7      BPL &05DB
-     05E4   8C 63 1E   STY &1E63
-     05E7   8C C5 05   STY &05C5
-     05EA   A9 FF      LDA #&FF
-     05EC   A2 60      LDX #&60
-     05EE   A0 1E      LDY #&1E
-     05F0   4C DD FF   JMP &FFDD
+     056C   BD 84 05   LDA &0584,X
+     056F   9D 60 1E   STA &1E60,X
+     0572   CA         DEX
+     0573   10 F7      BPL &056C
+     0575   8C 63 1E   STY &1E63
+     0578   8C 56 05   STY &0556
+     057B   A9 FF      LDA #&FF
+     057D   A2 60      LDX #&60
+     057F   A0 1E      LDY #&1E
+     0581   4C DD FF   JMP &FFDD
 .pblk0
-     05F3   42 1E
-     05F5   00 00 00 00
-     05F9   00
+     0584   42 1E
+     0586   00 00 00 00
+     058A   00
 .WRCHR
-     05FA   48         PHA
-     05FB   A5 F4      LDA &F4
-     05FD   48         PHA
-     05FE   AD 03 04   LDA &0403
-     0601   85 F4      STA &F4
-     0603   8D 05 FE   STA &FE05
-     0606   BA         TSX
-     0607   BD 02 01   LDA &0102,X
-     060A   20 06 80   JSR &8006
-     060D   68         PLA
-     060E   85 F4      STA &F4
-     0610   8D 05 FE   STA &FE05
-     0613   68         PLA
-     0614   60         RTS
+     058B   48         PHA
+     058C   A5 F4      LDA &F4
+     058E   48         PHA
+     058F   AD 03 04   LDA &0403
+     0592   85 F4      STA &F4
+     0594   8D 05 FE   STA &FE05
+     0597   BA         TSX
+     0598   BD 02 01   LDA &0102,X
+     059B   20 06 80   JSR &8006
+     059E   68         PLA
+     059F   85 F4      STA &F4
+     05A1   8D 05 FE   STA &FE05
+     05A4   68         PLA
+     05A5   60         RTS
 .BRKR
-     0615   AD 03 04   LDA &0403
-     0618   85 F4      STA &F4
-     061A   8D 05 FE   STA &FE05
-     061D   4C 0B 80   JMP &800B
+     05A6   AD 03 04   LDA &0403
+     05A9   85 F4      STA &F4
+     05AB   8D 05 FE   STA &FE05
+     05AE   4C 0B 80   JMP &800B
 .S1%
-     0620   3A 30 2E ...
+     05B1   3A 30 2E ...
 .NA%
-     0625   4A 41 4D ...
-     062C   0D
-     062D   00
-     062E   14
-     062F   AD
-     0630   4A 5A
-     0632   48 02
-     0634   53 B7
-     0636   00 00 03 E8
-     063A   46
-     063B   00
-     063C   00
-     063D   0F
-     063E   00
-     063F   00
-     0640   00
-     0641   00 00
-     0643   16
-     0644   00
-     0645   00
-     0646   00
-     0647   00
-     0648   00
-     0649   00
-     064A   00
-     064B   00
-     064C   00
-     064D   00
-     064E   00
-     064F   00
-     0650   00
-     0651   00
-     0652   00
-     0653   00
-     0654   00
-     0655   00
-     0656   00
-     0657   00
-     0658   00
-     0659   00
-     065A   00
-     065B   00
-     065C   00 00 00 00
-     0660   03
-     0661   00
-     0662   10
-     0663   0F
-     0664   11
-     0665   00
-     0666   03
-     0667   1C
-     0668   0E
-     0669   00
-     066A   00
-     066B   0A
-     066C   00
-     066D   11
-     066E   3A
-     066F   07
-     0670   09
-     0671   08
-     0672   00
-     0673   00
-     0674   00 00
-     0676   80
+     05B6   4A 41 4D ...
+     05BD   0D
+     05BE   00
+     05BF   14
+     05C0   AD
+     05C1   4A 5A
+     05C3   48 02
+     05C5   53 B7
+     05C7   00 00 03 E8
+     05CB   46
+     05CC   00
+     05CD   00
+     05CE   0F
+     05CF   00
+     05D0   00
+     05D1   00
+     05D2   00 00
+     05D4   16
+     05D5   00
+     05D6   00
+     05D7   00
+     05D8   00
+     05D9   00
+     05DA   00
+     05DB   00
+     05DC   00
+     05DD   00
+     05DE   00
+     05DF   00
+     05E0   00
+     05E1   00
+     05E2   00
+     05E3   00
+     05E4   00
+     05E5   00
+     05E6   00
+     05E7   00
+     05E8   00
+     05E9   00
+     05EA   00
+     05EB   00
+     05EC   00
+     05ED   00 00 00 00
+     05F1   03
+     05F2   00
+     05F3   10
+     05F4   0F
+     05F5   11
+     05F6   00
+     05F7   03
+     05F8   1C
+     05F9   0E
+     05FA   00
+     05FB   00
+     05FC   0A
+     05FD   00
+     05FE   11
+     05FF   3A
+     0600   07
+     0601   09
+     0602   08
+     0603   00
+     0604   00
+     0605   00 00
+     0607   80
 .CHK2
-     0677   AA
+     0608   AA
 .CHK
-     0678   03
+     0609   03
 .BRBR1
-     0679   A0 00      LDY #&00
-     067B   A9 0D      LDA #&0D
+     060A   A0 00      LDY #&00
+     060C   A9 0D      LDA #&0D
 .BRBRLOOP
-     067D   20 EE FF   JSR &FFEE
-     0680   C8         INY
-     0681   B1 FD      LDA (&FD),Y
-     0683   D0 F8      BNE &067D
-     0685   F0 FE      BEQ &0685
+     060E   20 EE FF   JSR &FFEE
+     0611   C8         INY
+     0612   B1 FD      LDA (&FD),Y
+     0614   D0 F8      BNE &060E
+     0616   F0 FE      BEQ &0616
 .IRQGL
-     0687   A9 0C      LDA #&0C
-     0689   8D 05 FE   STA &FE05
+     0618   A9 0C      LDA #&0C
+     061A   8D 05 FE   STA &FE05
 .IRQG
-     068C   A9 00      LDA #&00
-     068E   8D 05 FE   STA &FE05
-     0691   4C 74 B3   JMP &B374
+     061D   A9 00      LDA #&00
+     061F   8D 05 FE   STA &FE05
+     0622   4C 74 B3   JMP &B374
 .PANR
-     0694   07
+     0625   07
 .pbank
-     0695   00
+     0626   00
 .SREQ
-     0696   00
-     0697   00
-Resident block A: &0400-&697 , free 99  (then the circle engine's variables and table, SNE and ACT)
+     0627   00
+     0628   00
+Resident block A: &0400-&628 , free 210  (then the circle engine's variables and table, SNE and ACT)
 .pcb_o
      0724   00
      0725   18
@@ -7008,7 +7007,7 @@ Resident block A: &0400-&697 , free 99  (then the circle engine's variables and 
      074D   AD 03 04   LDA &0403
      0750   8D A6 51   STA &51A6
      0753   68         PLA
-     0754   4C B9 05   JMP &05B9
+     0754   4C 4A 05   JMP &054A
 .RESG_END%
 The circle engine's table and cbcopy: &724 -&756 , free 105 
 .SNE
@@ -7088,13 +7087,13 @@ The circle engine's table and cbcopy: &724 -&756 , free 105
      9098   90 02      BCC &909C
      909A   49 B8      EOR #&B8
      909C   8D F2 8F   STA &8FF2
-     909F   AD 97 06   LDA &0697
+     909F   AD 28 06   LDA &0628
      90A2   20 DF 90   JSR &90DF
-     90A5   AD 96 06   LDA &0696
+     90A5   AD 27 06   LDA &0627
      90A8   20 DF 90   JSR &90DF
      90AB   A9 00      LDA #&00
-     90AD   8D 96 06   STA &0696
-     90B0   8D 97 06   STA &0697
+     90AD   8D 27 06   STA &0627
+     90B0   8D 28 06   STA &0628
      90B3   A2 03      LDX #&03
 .stk1
      90B5   BD E6 8F   LDA &8FE6,X
@@ -7301,9 +7300,9 @@ S.ELITE4 &1900  &2246  &1900  &1900
 Saving file '3-assembled-output/ELITE4.unprot.bin'
 Addresses for the commander checksum in elite-checksum.py
 Load address = &1900 
-NA% = &625 
-CHK2 = &677 
-streams (place): flight: 448 blocks (low 6, hot 218, cold 153, blueprints 0, none 15), 112 hot units, stubs 58 into the cold pass, 68 out of it, 20 direct; hot &8000-&A702: 64 units, 9873 bytes, 114 free; hotm &1A58-&1E3F: 0 units, 0 bytes, 1000 free; hotx &1100-&18FF: 10 units, 2048 bytes, 0 free; hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free; hots &2450-&2C4F: 35 units, 2008 bytes, 40 free; docked: 435 blocks (low 2, hot 213, cold 176, blueprints 12, none 6), 119 hot units, stubs 40 into the cold pass, 43 out of it, 2 direct; hot &8000-&AC62: 119 units, 9176 bytes, 2187 free; hotm &1910-&1E3F: 0 units, 0 bytes, 1328 free; hotx &2C50-&2C4F: 0 units, 0 bytes, 0 free; hotl &2C50-&2C4F: 0 units, 0 bytes, 0 free; hots &2C50-&2C4F: 0 units, 0 bytes, 0 free; tokens: cold 5, resident 2; renderer: 20 files, 39 passes
+NA% = &5B6 
+CHK2 = &608 
+streams (place): flight: 448 blocks (low 6, hot 218, cold 153, blueprints 0, none 15), 112 hot units, stubs 58 into the cold pass, 68 out of it, 20 direct; hot &8000-&A69C: 64 units, 9873 bytes, 12 free; hotm &1A58-&1E3F: 0 units, 0 bytes, 1000 free; hotx &1100-&18FF: 10 units, 2048 bytes, 0 free; hotl &2C50-&2FFF: 3 units, 944 bytes, 0 free; hots &2450-&2C4F: 35 units, 2008 bytes, 40 free; docked: 435 blocks (low 2, hot 213, cold 176, blueprints 12, none 6), 119 hot units, stubs 40 into the cold pass, 43 out of it, 2 direct; hot &8000-&ABFC: 119 units, 9176 bytes, 2085 free; hotm &1910-&1E3F: 0 units, 0 bytes, 1328 free; hotx &2C50-&2C4F: 0 units, 0 bytes, 0 free; hotl &2C50-&2C4F: 0 units, 0 bytes, 0 free; hots &2C50-&2C4F: 0 units, 0 bytes, 0 free; tokens: cold 5, resident 2; renderer: 20 files, 39 passes
 .ZP
      0000
 .RAND
@@ -7725,9 +7724,9 @@ WP workspace from &E00 to &FF8 inclusive
 .ovf9
      1922   AD 2F 19   LDA &192F
      1925   28         PLP
-     1926   4C 09 04   JMP &0409
+     1926   4C 3D B1   JMP &B13D
 .ovfl
-     1929   20 09 04   JSR &0409
+     1929   20 3D B1   JSR &B13D
      192C   4D 91
 .OVLCUR
      192E   01
@@ -8014,7 +8013,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      2498   A9 00      LDA #&00
      249A   99 00 0E   STA &0E00,Y
 .HLOIN
-     249D   20 09 04   JSR &0409
+     249D   20 3D B1   JSR &B13D
      24A0   6D 82
 .BLINE
      24A2   A5 74      LDA &74
@@ -8144,7 +8143,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      258D   95 D2      STA &D2,X
      258F   60         RTS
 .TAS4
-     2590   20 09 04   JSR &0409
+     2590   20 3D B1   JSR &B13D
      2593   F8 84
 .TAS6
      2595   A5 34      LDA &34
@@ -8158,7 +8157,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      25A5   85 36      STA &36
      25A7   60         RTS
 .DCS1
-     25A8   20 09 04   JSR &0409
+     25A8   20 3D B1   JSR &B13D
      25AB   1A 85
 .HITCH
      25AD   18         CLC
@@ -8199,7 +8198,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      25EC   18         CLC
      25ED   60         RTS
 .FRMIS
-     25EE   20 09 04   JSR &0409
+     25EE   20 3D B1   JSR &B13D
      25F1   93 85
 .ANGRY
      25F3   C9 02      CMP #&02
@@ -8235,10 +8234,10 @@ S.ELTH &9611  &1A58  &8000  &9611
      262B   8D 49 09   STA &0949
      262E   60         RTS
 .SESCP
-     262F   20 09 04   JSR &0409
+     262F   20 3D B1   JSR &B13D
      2632   BC 85
 .SFS1
-     2634   20 09 04   JSR &0409
+     2634   20 3D B1   JSR &B13D
      2637   C0 85
 .BUMP2
      2639   85 D1      STA &D1
@@ -8267,19 +8266,19 @@ S.ELTH &9611  &1A58  &8000  &9611
      265B   A2 80      LDX #&80
      265D   30 E7      BMI &2646
 .ARCTAN
-     265F   20 09 04   JSR &0409
+     265F   20 3D B1   JSR &B13D
      2662   74 86
 .LASLI
-     2664   20 09 04   JSR &0409
+     2664   20 3D B1   JSR &B13D
      2667   B6 86
 .LASLI2
-     2669   20 09 04   JSR &0409
+     2669   20 3D B1   JSR &B13D
      266C   E4 86
 .tnpr1
-     266E   20 09 04   JSR &0409
+     266E   20 3D B1   JSR &B13D
      2671   1E 87
 .TT146
-     2673   20 09 04   JSR &0409
+     2673   20 3D B1   JSR &B13D
      2676   6D 87
 .TT25
      2678   20 08 19   JSR &1908
@@ -8300,13 +8299,13 @@ S.ELTH &9611  &1A58  &8000  &9611
      2691   20 00 19   JSR &1900
      2694   B9 9C
 .TT111
-     2696   20 09 04   JSR &0409
+     2696   20 3D B1   JSR &B13D
      2699   63 88
 .hyp
      269B   20 00 19   JSR &1900
      269E   6B 9D
 .ee3
-     26A0   20 09 04   JSR &0409
+     26A0   20 3D B1   JSR &B13D
      26A3   04 89
 .TT167
      26A5   20 08 19   JSR &1908
@@ -8377,7 +8376,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      271C   8D F8 0F   STA &0FF8
      271F   60         RTS
 .MCASH
-     2720   20 09 04   JSR &0409
+     2720   20 3D B1   JSR &B13D
      2723   93 89
 .DET1
      2725   A9 06      LDA #&06
@@ -8457,7 +8456,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      27A7   0D BE B3   ORA &B3BE
      27AA   60         RTS
 .NWSPS
-     27AB   20 09 04   JSR &0409
+     27AB   20 3D B1   JSR &B13D
      27AE   C9 8B
 .PLS22
 .PLL4
@@ -8466,10 +8465,10 @@ S.ELTH &9611  &1A58  &8000  &9611
 .PL40
      27B0   60         RTS
 .SUN
-     27B1   20 09 04   JSR &0409
+     27B1   20 3D B1   JSR &B13D
      27B4   89 8C
 .RTS2
-     27B6   20 09 04   JSR &0409
+     27B6   20 3D B1   JSR &B13D
      27B9   AE 8D
 .CIRCLE
      27BB   20 1A 2B   JSR &2B1A
@@ -8488,7 +8487,7 @@ S.ELTH &9611  &1A58  &8000  &9611
 .PL89
      27D6   85 95      STA &95
 .CIRCLE2
-     27D8   20 09 04   JSR &0409
+     27D8   20 3D B1   JSR &B13D
      27DB   AF 8D
 .WPLS2
      27DD   20 3A 97   JSR &973A
@@ -8555,7 +8554,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      2852   8C 00 0E   STY &0E00
      2855   60         RTS
 .EDGES
-     2856   20 09 04   JSR &0409
+     2856   20 3D B1   JSR &B13D
      2859   0C 8E
 .TT17
      285B   20 4F 94   JSR &944F
@@ -8599,7 +8598,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      28A2   88         DEY
      28A3   60         RTS
 .ping
-     28A4   20 09 04   JSR &0409
+     28A4   20 3D B1   JSR &B13D
      28A7   42 8E
 .MAS4
      28A9   05 47      ORA &47
@@ -8610,10 +8609,10 @@ S.ELTH &9611  &1A58  &8000  &9611
      28B0   AD 07 B3   LDA &B307
      28B3   60         RTS
 .DEATH
-     28B4   20 78 04   JSR &0478
+     28B4   20 09 04   JSR &0409
      28B7   2A 90
 .RSHIPS
-     28B9   20 78 04   JSR &0478
+     28B9   20 09 04   JSR &0409
      28BC   A8 90
 .RDKEY
      28BE   8C 14 29   STY &2914
@@ -8673,10 +8672,10 @@ S.ELTH &9611  &1A58  &8000  &9611
      2917   AA         TAX
      2918   60         RTS
 .WARP
-     2919   20 09 04   JSR &0409
+     2919   20 3D B1   JSR &B13D
      291C   00 92
 .ECMOF
-     291E   20 09 04   JSR &0409
+     291E   20 3D B1   JSR &B13D
      2921   5B 92
 .EXNO3
      2923   A9 10      LDA #&10
@@ -8687,7 +8686,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      292C   A9 20      LDA #&20
      292E   D0 2A      BNE &295A
 .SFRMIS
-     2930   20 09 04   JSR &0409
+     2930   20 3D B1   JSR &B13D
      2933   74 92
 .EXNO2
      2935   EE 9F 03   INC &039F
@@ -8718,7 +8717,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      2964   4A         LSR A
      2965   4A         LSR A
 .SNDQ
-     2966   20 09 04   JSR &0409
+     2966   20 3D B1   JSR &B13D
      2969   8B 92
 .NOS1
      296B   4A         LSR A
@@ -9040,7 +9039,7 @@ S.ELTH &9611  &1A58  &8000  &9611
      2B70   20 D8 9A   JSR &9AD8
      2B73   4C 43 97   JMP &9743
 .HL2S
-     2B76   20 09 04   JSR &0409
+     2B76   20 3D B1   JSR &B13D
      2B79   71 93
 .H_PTCLS
      2B7B   20 3A 97   JSR &973A
@@ -9484,10 +9483,10 @@ S.ELTH &9611  &1A58  &8000  &9611
      2EB1   A6 84      LDX &84
      2EB3   4C 99 81   JMP &8199
 .KS4
-     2EB6   20 09 04   JSR &0409
+     2EB6   20 3D B1   JSR &B13D
      2EB9   4E 8E
 .KS4g
-     2EBB   20 09 04   JSR &0409
+     2EBB   20 3D B1   JSR &B13D
      2EBE   51 8E
 .SUNBK
      2EC0   2C F8 0F   BIT &0FF8
@@ -9687,7 +9686,7 @@ S.ELTE &9EF4  &2FD3  &8000  &9EF4
      2FF9   00
      2FFA   00
 .RES2
-     2FFB   20 09 04   JSR &0409
+     2FFB   20 3D B1   JSR &B13D
      2FFE   94 8E
 .PROGL_USED%
 .MA18
@@ -10104,10 +10103,10 @@ S.ELTA &8000  &125D  &8000  &8000
      141D   20 00 19   JSR &1900
      1420   E8 9E
 .cpl
-     1422   20 09 04   JSR &0409
+     1422   20 3D B1   JSR &B13D
      1425   BE 89
 .TT48
-     1427   20 09 04   JSR &0409
+     1427   20 3D B1   JSR &B13D
      142A   16 8B
 .EX2
      142C   A5 65      LDA &65
@@ -10295,7 +10294,7 @@ S.ELTA &8000  &125D  &8000  &8000
      156A   E8         INX
      156B   60         RTS
 .SPS4
-     156C   20 09 04   JSR &0409
+     156C   20 3D B1   JSR &B13D
      156F   89 8B
 .SP1
      1571   20 6C 15   JSR &156C
@@ -10380,7 +10379,7 @@ S.ELTA &8000  &125D  &8000  &8000
 .cpy
      1612   00
 .DOT
-     1613   20 09 04   JSR &0409
+     1613   20 3D B1   JSR &B13D
      1616   96 8B
 .NWSHP
      1618   85 D1      STA &D1
@@ -10466,19 +10465,19 @@ S.ELTA &8000  &125D  &8000  &8000
      16A8   38         SEC
      16A9   60         RTS
 .ABORT
-     16AA   20 09 04   JSR &0409
+     16AA   20 3D B1   JSR &B13D
      16AD   FF 8B
 .ABORT2
-     16AF   20 09 04   JSR &0409
+     16AF   20 3D B1   JSR &B13D
      16B2   01 8C
 .ECBLB2
-     16B4   20 09 04   JSR &0409
+     16B4   20 3D B1   JSR &B13D
      16B7   0D 8C
 .SPBLB
-     16B9   20 09 04   JSR &0409
+     16B9   20 3D B1   JSR &B13D
      16BC   1B 8C
 .MSBAR
-     16BE   20 09 04   JSR &0409
+     16BE   20 3D B1   JSR &B13D
      16C1   4C 8C
 .TT102
      16C3   C9 76      CMP #&76
@@ -10763,10 +10762,10 @@ S.ELTA &8000  &125D  &8000  &8000
      18F1   99 47 00   STA &0047,Y
      18F4   96 4B      STX &4B,Y
 .LO2
-     18F6   20 09 04   JSR &0409
+     18F6   20 3D B1   JSR &B13D
      18F9   1B 96
 .LOOK1
-     18FB   20 09 04   JSR &0409
+     18FB   20 3D B1   JSR &B13D
      18FE   28 96
 .PROGK_USED%
 Saving file '3-assembled-output/D.LOW.bin'
@@ -10775,8 +10774,8 @@ Saving file '3-assembled-output/D.LOWK.bin'
      8000   4C 2C 80   JMP &802C
      8003   4C 2C 80   JMP &802C
      8006   4C BD 8A   JMP &8ABD
-     8009   8C 06
-     800B   4C 79 06   JMP &0679
+     8009   1D 06
+     800B   4C 0A 06   JMP &060A
      800E   00 53
      8010   4C 5C 97   JMP &975C
      8013   4C 97 14   JMP &1497
@@ -10788,7 +10787,7 @@ S% workspace (flight) from &8000 to &8015 inclusive
      801B   48         PHA
      801C   A2 23      LDX #&23
      801E   A0 80      LDY #&80
-     8020   4C C0 04   JMP &04C0
+     8020   4C 51 04   JMP &0451
 .LTLI
      8023   4C 2E 54 ...
      802B   0D
@@ -10796,16 +10795,16 @@ S% workspace (flight) from &8000 to &8015 inclusive
      802C   20 32 80   JSR &8032
      802F   4C B9 28   JMP &28B9
 .deeo1
-     8032   20 09 04   JSR &0409
+     8032   20 3D B1   JSR &B13D
      8035   11 91
 .DOENTRY
      8037   A9 52      LDA #&52
      8039   8D 23 80   STA &8023
 .DEATH2
      803C   20 FB 2F   JSR &2FFB
-     803F   20 D6 05   JSR &05D6
+     803F   20 67 05   JSR &0567
      8042   20 7A 0D   JSR &0D7A
-     8045   20 D6 05   JSR &05D6
+     8045   20 67 05   JSR &0567
      8048   4C 16 80   JMP &8016
 .M%
      804B   AD 00 09   LDA &0900
@@ -11082,13 +11081,13 @@ S% workspace (flight) from &8000 to &8015 inclusive
 .MA65
      8263   4C 75 82   JMP &8275
 .ISDK
-     8266   20 09 04   JSR &0409
+     8266   20 3D B1   JSR &B13D
      8269   0A 80
 .MA59
-     826B   20 09 04   JSR &0409
+     826B   20 3D B1   JSR &B13D
      826E   3C 80
 .MA58
-     8270   20 09 04   JSR &0409
+     8270   20 3D B1   JSR &B13D
      8273   4F 80
 .MA26
      8275   A5 6A      LDA &6A
@@ -11200,7 +11199,7 @@ S% workspace (flight) from &8000 to &8015 inclusive
      8344   11
      8345   88
 .LOIN
-     8346   20 09 04   JSR &0409
+     8346   20 3D B1   JSR &B13D
      8349   BC 80
 .FLKB
      834B   60         RTS
@@ -11279,7 +11278,7 @@ S% workspace (flight) from &8000 to &8015 inclusive
 .pxdr
      83C8   68         PLA
 .PIXEL
-     83C9   20 09 04   JSR &0409
+     83C9   20 3D B1   JSR &B13D
      83CC   1D 83
 .STARS
      83CE   A9 FF      LDA #&FF
@@ -11910,7 +11909,7 @@ S% workspace (flight) from &8000 to &8015 inclusive
      89B0   99 82 0F   STA &0F82,Y
      89B3   D0 C0      BNE &8975
 .MAS1
-     89B5   20 09 04   JSR &0409
+     89B5   20 3D B1   JSR &B13D
      89B8   89 83
 .MVT3
      89BA   A5 43      LDA &43
@@ -12051,10 +12050,10 @@ S% workspace (flight) from &8000 to &8015 inclusive
      8AB5   95 47      STA &47,X
      8AB7   60         RTS
 .BELL
-     8AB8   20 09 04   JSR &0409
+     8AB8   20 3D B1   JSR &B13D
      8ABB   7D 84
 .TT26
-     8ABD   20 09 04   JSR &0409
+     8ABD   20 3D B1   JSR &B13D
      8AC0   7F 84
 .DIALS
      8AC2   A9 F0      LDA #&F0
@@ -13312,7 +13311,7 @@ End macro QSMUL
      92BE   85 54      STA &54
      92C0   60         RTS
 .me2
-     92C1   20 09 04   JSR &0409
+     92C1   20 3D B1   JSR &B13D
      92C4   F7 8E
 .DORND2
      92C6   18         CLC
@@ -13330,7 +13329,7 @@ End macro QSMUL
      92D8   86 03      STX &03
      92DA   60         RTS
 .MTT4
-     92DB   20 09 04   JSR &0409
+     92DB   20 3D B1   JSR &B13D
      92DE   32 8F
 .TT100
      92E0   20 40 97   JSR &9740
@@ -13387,7 +13386,7 @@ End macro QSMUL
      9346   69 05      ADC #&05
      9348   20 18 16   JSR &1618
 .MTT1
-     934B   20 09 04   JSR &0409
+     934B   20 3D B1   JSR &B13D
      934E   62 8F
 .MLOOP
      9350   A2 FF      LDX #&FF
@@ -13670,10 +13669,10 @@ End macro QSMUL
 .DK5
      956E   60         RTS
 .MESS
-     956F   20 09 04   JSR &0409
+     956F   20 3D B1   JSR &B13D
      9572   B8 92
 .OUCH
-     9574   20 09 04   JSR &0409
+     9574   20 3D B1   JSR &B13D
      9577   DD 92
 .TIS2
      9579   A8         TAY
@@ -14061,7 +14060,7 @@ End macro L5PB
 .hee9
      97AF   60         RTS
 .HEE31
-     97B0   20 09 04   JSR &0409
+     97B0   20 3D B1   JSR &B13D
      97B3   7D 93
 .S_SHIP
      97B5   A5 8C      LDA &8C
@@ -14104,10 +14103,10 @@ End macro L5PB
 .GFAR
      97FE   00
 .SPLV
-     97FF   20 09 04   JSR &0409
+     97FF   20 3D B1   JSR &B13D
      9802   BC 93
 .SPLR
-     9804   20 09 04   JSR &0409
+     9804   20 3D B1   JSR &B13D
      9807   CB 93
 .L_SUN
      9809   AD 12 03   LDA &0312
@@ -15535,7 +15534,7 @@ End macro L5ADD
 .LL79
      A262   60         RTS
 .LL147
-     A263   20 09 04   JSR &0409
+     A263   20 3D B1   JSR &B13D
      A266   E0 93
 .LL80
 .LL78
@@ -17629,6 +17628,7 @@ End macro PMQ
      B12F   FE
      B130   FF
 .HOME_END%
+     B13D   08 8D 04 ... INCBIN "3-assembled-output/FAR.bin"
      B1A3   00 00 00 ... INCBIN "3-assembled-output/COMMON.bin"
 .PF_HOOK
      B200   08         PHP
@@ -17873,7 +17873,7 @@ End macro PMQ
 .pc_v
      BBFD
 .PFVS_END%
-Flight bank 4: &8000-&A690  (the hot pass), 2720  (the planet's surface), free 114 , the common block &B1A3 -&B1FF , PF_HOOK to &B2E3  (free 28 )
+Flight bank 4: &8000-&A690  (the hot pass), 2720  (the planet's surface), free 12 , the far block and the common block &B13D -&B1FF , PF_HOOK to &B2E3  (free 28 )
 Flight main RAM part: low pass &1900 -&1A57 , hot pass to &1A57 , free 1000 
 Flight second main RAM part (D.LOW): &2C50 -&2FFF , free 0 
 Flight third main RAM part (D.LOW, copied down): &1100 -&18FF , free 0 
@@ -17882,10 +17882,10 @@ Saving file '3-assembled-output/D.CODEH.bin'
 Saving file '3-assembled-output/D.CODEM.bin'
 .COLD_START%
 .jh_DOENTRY
-     8000   20 81 04   JSR &0481
+     8000   20 12 04   JSR &0412
      8003   37 80
 .jh_DEATH2
-     8005   20 81 04   JSR &0481
+     8005   20 12 04   JSR &0412
      8008   3C 80
 .ISDK_C
      800A   AD 49 09   LDA &0949
@@ -17936,7 +17936,7 @@ Saving file '3-assembled-output/D.CODEM.bin'
      8058   20 BF 8B   JSR &8BBF
      805B   20 6A 92   JSR &926A
 .xh_MA26
-     805E   20 1B 04   JSR &041B
+     805E   20 46 B1   JSR &B146
      8061   75 82
 .TWOS_C
      8063   88
@@ -18273,7 +18273,7 @@ Saving file '3-assembled-output/D.CODEM.bin'
      8264   86 36      STX &36
      8266   D0 05      BNE &826D
 .xh_HLOIN2
-     8268   20 1B 04   JSR &041B
+     8268   20 46 B1   JSR &B146
      826B   93 24
 .HLOIN_C
      826D   84 85      STY &85
@@ -18384,7 +18384,7 @@ Saving file '3-assembled-output/D.CODEM.bin'
      8315   A4 06      LDY &06
      8317   60         RTS
 .xh_PIXEL2
-     8318   20 1B 04   JSR &041B
+     8318   20 46 B1   JSR &B146
      831B   8B 83
 .PIXEL_C
      831D   84 06      STY &06
@@ -18434,7 +18434,7 @@ Saving file '3-assembled-output/D.CODEM.bin'
 .pxd1_C
      8363   60         RTS
 .xh_BLINE
-     8364   20 1B 04   JSR &041B
+     8364   20 46 B1   JSR &B146
      8367   A2 24
 .FLIP_C
      8369   AC C3 03   LDY &03C3
@@ -18472,13 +18472,13 @@ Saving file '3-assembled-output/D.CODEM.bin'
 .MA9_C
      83A9   60         RTS
 .xh_m
-     83AA   20 1B 04   JSR &041B
+     83AA   20 46 B1   JSR &B146
      83AD   50 2C
 .xh_MAS2
-     83AF   20 1B 04   JSR &041B
+     83AF   20 46 B1   JSR &B146
      83B2   52 2C
 .xh_MVT3
-     83B4   20 1B 04   JSR &041B
+     83B4   20 46 B1   JSR &B146
      83B7   BA 89
 .TENS_C
      83B9   48 76 E8 00
@@ -18663,10 +18663,10 @@ Saving file '3-assembled-output/D.CODEM.bin'
      84E8   20 6F 92   JSR &926F
      84EB   4C DE 84   JMP &84DE
 .xh_DIALS
-     84EE   20 1B 04   JSR &041B
+     84EE   20 46 B1   JSR &B146
      84F1   C2 8A
 .xh_DL6
-     84F3   20 1B 04   JSR &041B
+     84F3   20 46 B1   JSR &B146
      84F6   12 8C
 .TAS4_C
      84F8   BE 25 09   LDX &0925,Y
@@ -18764,7 +18764,7 @@ Saving file '3-assembled-output/D.CODEM.bin'
      85AD   A9 30      LDA #&30
      85AF   4C 86 92   JMP &9286
 .xh_ANGRY
-     85B2   20 1B 04   JSR &041B
+     85B2   20 46 B1   JSR &B146
      85B5   F3 25
 .FR1_C
      85B7   A9 C9      LDA #&C9
@@ -18863,22 +18863,22 @@ Saving file '3-assembled-output/D.CODEM.bin'
      8651   20 00 19   JSR &1900
      8654   4C 9B
 .xh_SQUA2
-     8656   20 1B 04   JSR &041B
+     8656   20 46 B1   JSR &B146
      8659   FE 8D
 .xh_MULTU
-     865B   20 1B 04   JSR &041B
+     865B   20 46 B1   JSR &B146
      865E   11 8E
 .xh_FMLTU2
-     8660   20 1B 04   JSR &041B
+     8660   20 46 B1   JSR &B146
      8663   60 8E
 .xh_MULT12
-     8665   20 1B 04   JSR &041B
+     8665   20 46 B1   JSR &B146
      8668   AF 8F
 .xh_MAD
-     866A   20 1B 04   JSR &041B
+     866A   20 46 B1   JSR &B146
      866D   D7 8F
 .xh_ADD
-     866F   20 1B 04   JSR &041B
+     866F   20 46 B1   JSR &B146
      8672   11 90
 .ARCTAN_C
      8674   A5 1B      LDA &1B
@@ -19330,7 +19330,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8989   A9 1E      LDA #&1E
      898B   4C F1 8B   JMP &8BF1
 .xh_SUNLAU
-     898E   20 1B 04   JSR &041B
+     898E   20 46 B1   JSR &B146
      8991   B4 26
 .MCASH_C
      8993   8A         TXA
@@ -19629,10 +19629,10 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8B7B   8C 00 0E   STY &0E00
      8B7E   60         RTS
 .xh_DET1
-     8B7F   20 1B 04   JSR &041B
+     8B7F   20 46 B1   JSR &B146
      8B82   25 27
 .xh_DENGY
-     8B84   20 1B 04   JSR &041B
+     8B84   20 46 B1   JSR &B146
      8B87   2D 27
 .SPS4_C
      8B89   A2 08      LDX #&08
@@ -19658,16 +19658,16 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8BB0   85 91      STA &91
      8BB2   4C B5 8B   JMP &8BB5
 .xh_CPIX4
-     8BB5   20 1B 04   JSR &041B
+     8BB5   20 46 B1   JSR &B146
      8BB8   53 91
 .xh_CPIX2
-     8BBA   20 1B 04   JSR &041B
+     8BBA   20 46 B1   JSR &B146
      8BBD   58 91
 .xh_OOPS
-     8BBF   20 1B 04   JSR &041B
+     8BBF   20 46 B1   JSR &B146
      8BC2   38 27
 .xh_GINF
-     8BC4   20 1B 04   JSR &041B
+     8BC4   20 46 B1   JSR &B146
      8BC7   85 27
 .NWSPS_C
      8BC9   20 1B 8C   JSR &8C1B
@@ -19689,7 +19689,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8BED   85 68      STA &68
      8BEF   A9 02      LDA #&02
 .xh_NWSHP
-     8BF1   20 1B 04   JSR &041B
+     8BF1   20 46 B1   JSR &B146
      8BF4   18 16
 .NwS1_C
      8BF6   B5 46      LDA &46,X
@@ -20009,7 +20009,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8E05   18         CLC
      8E06   60         RTS
 .xh_WPLS
-     8E07   20 1B 04   JSR &041B
+     8E07   20 46 B1   JSR &B146
      8E0A   28 28
 .EDGES_C
      8E0C   85 D1      STA &D1
@@ -20043,7 +20043,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8E3B   38         SEC
      8E3C   60         RTS
 .xh_CHKON
-     8E3D   20 1B 04   JSR &041B
+     8E3D   20 46 B1   JSR &B146
      8E40   4A 92
 .ping_C
      8E42   A2 01      LDX #&01
@@ -20065,7 +20065,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8E61   A9 81      LDA #&81
      8E63   4C F1 8B   JMP &8BF1
 .xh_SUNBK
-     8E66   20 1B 04   JSR &041B
+     8E66   20 46 B1   JSR &B146
      8E69   C0 2E
 .THERE_C
      8E6B   AE 67 03   LDX &0367
@@ -20124,7 +20124,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8ED3   20 EE 84   JSR &84EE
      8ED6   20 A2 92   JSR &92A2
 .xh_ZINF
-     8ED9   20 1B 04   JSR &041B
+     8ED9   20 46 B1   JSR &B146
      8EDC   AC 92
 .msblob_C
      8EDE   A2 04      LDX #&04
@@ -20167,10 +20167,10 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8F24   09 C0      ORA #&C0
      8F26   85 66      STA &66
 .xh_DORND2
-     8F28   20 1B 04   JSR &041B
+     8F28   20 46 B1   JSR &B146
      8F2B   C6 92
 .xh_DORND
-     8F2D   20 1B 04   JSR &041B
+     8F2D   20 46 B1   JSR &B146
      8F30   C7 92
 .MTT4_C
      8F32   20 2D 8F   JSR &8F2D
@@ -20193,10 +20193,10 @@ S.ELTC &9B32  &871E  &8000  &9B32
      8F53   69 0B      ADC #&0B
      8F55   20 F1 8B   JSR &8BF1
 .jh_TT100
-     8F58   20 81 04   JSR &0481
+     8F58   20 12 04   JSR &0412
      8F5B   E0 92
 .xh_me3
-     8F5D   20 1B 04   JSR &041B
+     8F5D   20 46 B1   JSR &B146
      8F60   ED 92
 .MTT1_C
      8F62   AD 20 03   LDA &0320
@@ -20285,10 +20285,10 @@ S.ELTC &9B32  &871E  &8000  &9B32
      900B   C6 89      DEC &89
      900D   10 DE      BPL &8FED
 .jh_MLOOP
-     900F   20 81 04   JSR &0481
+     900F   20 12 04   JSR &0412
      9012   50 93
 .jh_FRCE
-     9014   20 81 04   JSR &0481
+     9014   20 12 04   JSR &0412
      9017   70 93
 .BAD_C
      9019   AD 72 03   LDA &0372
@@ -20298,7 +20298,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      9021   6D 79 03   ADC &0379
      9024   60         RTS
 .xh_DPLT
-     9025   20 1B 04   JSR &041B
+     9025   20 46 B1   JSR &B146
      9028   B0 28
 .DEATH_C
      902A   20 6A 92   JSR &926A
@@ -20401,12 +20401,12 @@ S.ELTC &9B32  &871E  &8000  &9B32
      90ED   A2 C3      LDX #&C3
      90EF   20 D2 B1   JSR &B1D2
 .lomo1_C
-     90F2   20 D6 05   JSR &05D6
+     90F2   20 67 05   JSR &0567
      90F5   20 7A 0D   JSR &0D7A
-     90F8   20 D6 05   JSR &05D6
+     90F8   20 67 05   JSR &0567
      90FB   A2 09      LDX #&09
      90FD   A0 91      LDY #&91
-     90FF   20 C0 04   JSR &04C0
+     90FF   20 51 04   JSR &0451
      9102   A9 39      LDA #&39
      9104   A2 ED      LDX #&ED
      9106   4C D2 B1   JMP &B1D2
@@ -20414,12 +20414,12 @@ S.ELTC &9B32  &871E  &8000  &9B32
      9109   4C 2E 44 ...
      9110   0D
 .LOWLD_C
-     9111   20 D6 05   JSR &05D6
+     9111   20 67 05   JSR &0567
      9114   20 7A 0D   JSR &0D7A
-     9117   20 D6 05   JSR &05D6
+     9117   20 67 05   JSR &0567
      911A   A2 42      LDX #&42
      911C   A0 91      LDY #&91
-     911E   20 C0 04   JSR &04C0
+     911E   20 51 04   JSR &0451
      9121   A9 30      LDA #&30
      9123   8D 31 91   STA &9131
      9126   A9 11      LDA #&11
@@ -20466,9 +20466,9 @@ S.ELTC &9B32  &871E  &8000  &9B32
      917C   D0 E4      BNE &9162
      917E   A9 FF      LDA #&FF
      9180   8D 8D 1F   STA &1F8D
-     9183   20 D6 05   JSR &05D6
+     9183   20 67 05   JSR &0567
      9186   20 7A 0D   JSR &0D7A
-     9189   20 D7 05   JSR &05D7
+     9189   20 68 05   JSR &0568
      918C   A0 00      LDY #&00
      918E   84 90      STY &90
      9190   A9 20      LDA #&20
@@ -20491,7 +20491,7 @@ S.ELTC &9B32  &871E  &8000  &9B32
      91B0   A5 93      LDA &93
      91B2   E9 9F      SBC #&9F
      91B4   90 E6      BCC &919C
-     91B6   20 D6 05   JSR &05D6
+     91B6   20 67 05   JSR &0567
      91B9   A2 00      LDX #&00
 .ovl5_C
      91BB   BD 00 B4   LDA &B400,X
@@ -20531,10 +20531,10 @@ S.ELTC &9B32  &871E  &8000  &9B32
      91F3   D0 FB      BNE &91F0
      91F5   60         RTS
 .xh_SPS1
-     91F6   20 1B 04   JSR &041B
+     91F6   20 46 B1   JSR &B146
      91F9   83 93
 .xh_TAS2
-     91FB   20 1B 04   JSR &041B
+     91FB   20 46 B1   JSR &B146
      91FE   92 93
 .WARP_C
      9200   AE 3E 03   LDX &033E
@@ -20586,10 +20586,10 @@ S.ELTC &9B32  &871E  &8000  &9B32
      9265   A9 48      LDA #&48
      9267   4C 86 92   JMP &9286
 .xh_EXNO3
-     926A   20 1B 04   JSR &041B
+     926A   20 46 B1   JSR &B146
      926D   23 29
 .xh_BEEP
-     926F   20 1B 04   JSR &041B
+     926F   20 46 B1   JSR &B146
      9272   2C 29
 .SFRMIS_C
      9274   A2 01      LDX #&01
@@ -20602,21 +20602,21 @@ S.ELTC &9B32  &871E  &8000  &9B32
 .sfr9_C
      9285   60         RTS
 .xh_NOISE
-     9286   20 1B 04   JSR &041B
+     9286   20 46 B1   JSR &B146
      9289   5A 29
 .SNDQ_C
      928B   09 80      ORA #&80
-     928D   AE 96 06   LDX &0696
-     9290   8E 97 06   STX &0697
-     9293   8D 96 06   STA &0696
+     928D   AE 27 06   LDX &0627
+     9290   8E 28 06   STX &0628
+     9293   8D 27 06   STA &0627
      9296   AD 02 04   LDA &0402
      9299   8D 91 1F   STA &1F91
      929C   60         RTS
 .xh_CTRL
-     929D   20 1B 04   JSR &041B
+     929D   20 46 B1   JSR &B146
      92A0   9E 29
 .xh_U%
-     92A2   20 1B 04   JSR &041B
+     92A2   20 46 B1   JSR &B146
      92A5   44 94
 .me1_C
      92A7   8E 4A 03   STX &034A
@@ -20777,19 +20777,19 @@ Macro ITEM:
      934F   07
 End macro ITEM
 .xh_LL5
-     9350   20 1B 04   JSR &041B
+     9350   20 46 B1   JSR &B146
      9353   15 96
 .xh_LL28
-     9355   20 1B 04   JSR &041B
+     9355   20 46 B1   JSR &B146
      9358   56 96
 .xh_RECM
-     935A   20 1B 04   JSR &041B
+     935A   20 46 B1   JSR &B146
      935D   3A 97
 .xh_MFRAME
-     935F   20 1B 04   JSR &041B
+     935F   20 46 B1   JSR &B146
      9362   40 97
 .xh_LL9F
-     9364   20 1B 04   JSR &041B
+     9364   20 46 B1   JSR &B146
      9367   70 2B
 .HLS_C
      9369   20 5A 93   JSR &935A
@@ -21218,10 +21218,10 @@ Execute at &8000
 Reload at &9615 
 S.ELTG &9615  &9611  &8000  &9615 
 .xh_MVEIT
-     9611   20 1B 04   JSR &041B
+     9611   20 46 B1   JSR &B146
      9614   6C A2
 .xh_MVT1
-     9616   20 1B 04   JSR &041B
+     9616   20 46 B1   JSR &B146
      9619   12 A4
 .LO2_C
      961B   60         RTS
@@ -21360,10 +21360,10 @@ S.ELTG &9615  &9611  &8000  &9615
      9725   88         DEY
      9726   60         RTS
 .xh_LYN
-     9727   20 1B 04   JSR &041B
+     9727   20 46 B1   JSR &B146
      972A   C1 A5
 .xh_SCAN
-     972C   20 1B 04   JSR &041B
+     972C   20 46 B1   JSR &B146
      972F   C9 A5
 .QQ18
 Macro RTOK:
@@ -27316,6 +27316,7 @@ End macro CGADV
 .d_pwr
      B0D4   00
 .WIN7_MID%
+     B13D   08 8D 04 ... INCBIN "3-assembled-output/FAR.bin"
      B1A3   00 00 00 ... INCBIN "3-assembled-output/COMMON.bin"
 .DPENT
      B200   4C D2 A6   JMP &A6D2
@@ -27443,7 +27444,7 @@ End macro CGADV
      B327   30
      B328   58
 .WIN7_END%
-Flight bank 7: &8000-&9AF0  (the cold pass), the overlays to &9F3A , the renderer's window &9F3B -&B328  (free 206  and 215 ), with the common block &B1A3 -&B1FF  and the painter's entries to &B214  in it, and the painter's state &B400 -&BFFF 
+Flight bank 7: &8000-&9AF0  (the cold pass), the overlays to &9F3A , the renderer's window &9F3B -&B328  (free 104  and 215 ), with the far block and the common block &B13D -&B1FF  and the painter's entries to &B214  in it, and the painter's state &B400 -&BFFF 
 Saving file '3-assembled-output/D.CODEC.bin'
 .C6_END%
 Flight cold 6: &8000 -&7FFF  (0  bytes), free 0 
@@ -27967,9 +27968,9 @@ S.ELTC &89EF  &1910  &8000  &89EF
      8000   4C 2F 80   JMP &802F
      8003   4C 20 80   JMP &8020
      8006   4C A5 86   JMP &86A5
-     8009   8C 06
-     800B   4C 79 06   JMP &0679
-     800E   63 4C
+     8009   1D 06
+     800B   4C 0A 06   JMP &060A
+     800E   FD 4B
      8010   4C 93 9A   JMP &9A93
      8013   4C 9D 8C   JMP &8C9D
 S% workspace (docked) from &8000 to &8015 inclusive
@@ -27980,7 +27981,7 @@ S% workspace (docked) from &8000 to &8015 inclusive
 .INBAYJ
      801D   4C 34 80   JMP &8034
 .DOBEGIN
-     8020   20 78 04   JSR &0478
+     8020   20 09 04   JSR &0409
      8023   44 83
 .DEEOR
      8025   A9 20      LDA #&20
@@ -27988,10 +27989,10 @@ S% workspace (docked) from &8000 to &8015 inclusive
      8029   20 D2 B1   JSR &B1D2
      802C   4C 39 80   JMP &8039
 .DOENTRY
-     802F   20 78 04   JSR &0478
+     802F   20 09 04   JSR &0409
      8032   4F 83
 .SCRAM
-     8034   20 78 04   JSR &0478
+     8034   20 09 04   JSR &0409
      8037   D4 83
 .BRKBK
      8039   A9 79      LDA #&79
@@ -28000,7 +28001,7 @@ S% workspace (docked) from &8000 to &8015 inclusive
      8040   8D 0D 80   STA &800D
      8043   60         RTS
 .DETOK
-     8044   20 09 04   JSR &0409
+     8044   20 3D B1   JSR &B13D
      8047   FF 83
 .MVEIT
      8049   A5 65      LDA &65
@@ -28956,16 +28957,16 @@ S.ELTA &8000  &82A1  &8000  &8000
      8693   D0 E4      BNE &8679
      8695   60         RTS
 .STATUS
-     8696   20 09 04   JSR &0409
+     8696   20 3D B1   JSR &B13D
      8699   71 86
 .BPRNT
-     869B   20 09 04   JSR &0409
+     869B   20 3D B1   JSR &B13D
      869E   42 87
 .FEED
-     86A0   20 09 04   JSR &0409
+     86A0   20 3D B1   JSR &B13D
      86A3   F9 87
 .CHPR
-     86A5   20 09 04   JSR &0409
+     86A5   20 3D B1   JSR &B13D
      86A8   C5 88
 .DIALS
      86AA   A9 F0      LDA #&F0
@@ -29223,7 +29224,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      8866   80
      8867   80
 .HME2
-     8868   20 09 04   JSR &0409
+     8868   20 3D B1   JSR &B13D
      886B   97 89
 .HATB
      886D   02
@@ -29780,13 +29781,13 @@ S.ELTA &8000  &82A1  &8000  &8000
      8BBC   A2 80      LDX #&80
      8BBE   30 E7      BMI &8BA7
 .PDESC
-     8BC0   20 09 04   JSR &0409
+     8BC0   20 3D B1   JSR &B13D
      8BC3   57 8A
 .TT66
-     8BC5   20 09 04   JSR &0409
+     8BC5   20 3D B1   JSR &B13D
      8BC8   A6 8B
 .CLYNS
-     8BCA   20 09 04   JSR &0409
+     8BCA   20 3D B1   JSR &B13D
      8BCD   14 8C
 .LYN
      8BCF   A0 F0      LDY #&F0
@@ -29863,58 +29864,58 @@ S.ELTA &8000  &82A1  &8000  &8000
      8C3A   7C
      8C3B   7D
 .TT146
-     8C3C   20 09 04   JSR &0409
+     8C3C   20 3D B1   JSR &B13D
      8C3F   A2 8C
 .TT67
-     8C41   20 09 04   JSR &0409
+     8C41   20 3D B1   JSR &B13D
      8C44   C7 8C
 .TT25
-     8C46   20 09 04   JSR &0409
+     8C46   20 3D B1   JSR &B13D
      8C49   DA 8C
 .TT22
-     8C4B   20 09 04   JSR &0409
+     8C4B   20 3D B1   JSR &B13D
      8C4E   56 8E
 .TT219
-     8C50   20 09 04   JSR &0409
+     8C50   20 3D B1   JSR &B13D
      8C53   50 8F
 .TT208
-     8C55   20 09 04   JSR &0409
+     8C55   20 3D B1   JSR &B13D
      8C58   65 90
 .TT213
-     8C5A   20 09 04   JSR &0409
+     8C5A   20 3D B1   JSR &B13D
      8C5D   04 91
 .TT16
-     8C5F   20 09 04   JSR &0409
+     8C5F   20 3D B1   JSR &B13D
      8C62   42 91
 .TT103
-     8C64   20 09 04   JSR &0409
+     8C64   20 3D B1   JSR &B13D
      8C67   6F 91
 .TT23
-     8C69   20 09 04   JSR &0409
+     8C69   20 3D B1   JSR &B13D
      8C6C   C8 91
 .TT111
-     8C6E   20 09 04   JSR &0409
+     8C6E   20 3D B1   JSR &B13D
      8C71   7F 92
 .TT167
-     8C73   20 09 04   JSR &0409
+     8C73   20 3D B1   JSR &B13D
      8C76   6F 94
 .TT110
-     8C78   20 78 04   JSR &0478
+     8C78   20 09 04   JSR &0409
      8C7B   DE 94
 .EQSHP
-     8C7D   20 09 04   JSR &0409
+     8C7D   20 3D B1   JSR &B13D
      8C80   5A 95
 .hm
-     8C82   20 09 04   JSR &0409
+     8C82   20 3D B1   JSR &B13D
      8C85   2A 97
 .cpl
-     8C87   20 09 04   JSR &0409
+     8C87   20 3D B1   JSR &B13D
      8C8A   6B 97
 .plf
-     8C8C   20 09 04   JSR &0409
+     8C8C   20 3D B1   JSR &B13D
      8C8F   F3 97
 .TT27
-     8C91   20 09 04   JSR &0409
+     8C91   20 3D B1   JSR &B13D
      8C94   FE 97
 .EX2
      8C96   A5 65      LDA &65
@@ -30530,7 +30531,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      9092   AD 00 03   LDA &0300
      9095   60         RTS
 .ping
-     9096   20 09 04   JSR &0409
+     9096   20 3D B1   JSR &B13D
      9099   E6 98
 .SFX
      909B   12
@@ -30574,7 +30575,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      90C1   00
      90C2   00
 .RESET
-     90C3   20 09 04   JSR &0409
+     90C3   20 3D B1   JSR &B13D
      90C6   F2 98
 .RES2
      90C8   A9 12      LDA #&12
@@ -30803,16 +30804,16 @@ S.ELTA &8000  &82A1  &8000  &8000
      9279   CE 78 92   DEC &9278
      927C   D0 05      BNE &9283
 .DEATH2
-     927E   20 78 04   JSR &0478
+     927E   20 09 04   JSR &0409
      9281   45 99
 .BR1
-     9283   20 78 04   JSR &0478
+     9283   20 09 04   JSR &0409
      9286   58 99
 .QU5
-     9288   20 09 04   JSR &0409
+     9288   20 3D B1   JSR &B13D
      928B   70 99
 .BAY
-     928D   20 78 04   JSR &0478
+     928D   20 09 04   JSR &0409
      9290   83 99
 .TITLE
      9292   48         PHA
@@ -30901,8 +30902,8 @@ S.ELTA &8000  &82A1  &8000  &8000
      9336   18         CLC
      9337   8A         TXA
 .QUL2
-     9338   7D 2C 06   ADC &062C,X
-     933B   5D 2D 06   EOR &062D,X
+     9338   7D BD 05   ADC &05BD,X
+     933B   5D BE 05   EOR &05BE,X
      933E   CA         DEX
      933F   D0 F7      BNE &9338
      9341   60         RTS
@@ -30910,13 +30911,13 @@ S.ELTA &8000  &82A1  &8000  &8000
      9342   A2 07      LDX #&07
 .GTL1
      9344   B5 4B      LDA &4B,X
-     9346   9D 25 06   STA &0625,X
+     9346   9D B6 05   STA &05B6,X
      9349   CA         DEX
      934A   10 F8      BPL &9344
 .TR1
      934C   A2 07      LDX #&07
 .GTL2
-     934E   BD 25 06   LDA &0625,X
+     934E   BD B6 05   LDA &05B6,X
      9351   95 4B      STA &4B,X
      9353   CA         DEX
      9354   10 F8      BPL &934E
@@ -30927,7 +30928,7 @@ S.ELTA &8000  &82A1  &8000  &8000
 .GTNME
      935C   A2 04      LDX #&04
 .GTL3
-     935E   BD 20 06   LDA &0620,X
+     935E   BD B1 05   LDA &05B1,X
      9361   95 46      STA &46,X
      9363   CA         DEX
      9364   10 F8      BPL &935E
@@ -30996,7 +30997,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      93DB   85 2C      STA &2C
      93DD   A2 B3      LDX #&B3
      93DF   A0 93      LDY #&93
-     93E1   20 C0 04   JSR &04C0
+     93E1   20 51 04   JSR &0451
      93E4   CE CF 03   DEC &03CF
      93E7   18         CLC
      93E8   60         RTS
@@ -31018,7 +31019,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      9407   D0 F8      BNE &9401
      9409   A2 B6      LDX #&B6
      940B   A0 93      LDY #&93
-     940D   20 C0 04   JSR &04C0
+     940D   20 51 04   JSR &0451
      9410   4C 2C 94   JMP &942C
 .stack
      9413   00
@@ -31071,11 +31072,11 @@ S.ELTA &8000  &82A1  &8000  &8000
 .SVL1
      9471   BD 58 03   LDA &0358,X
      9474   9D 00 0B   STA &0B00,X
-     9477   9D 2D 06   STA &062D,X
+     9477   9D BE 05   STA &05BE,X
      947A   CA         DEX
      947B   10 F4      BPL &9471
      947D   20 34 93   JSR &9334
-     9480   8D 78 06   STA &0678
+     9480   8D 09 06   STA &0609
      9483   48         PHA
      9484   09 80      ORA #&80
      9486   85 40      STA &40
@@ -31092,7 +31093,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      94A0   68         PLA
      94A1   8D 4B 0B   STA &0B4B
      94A4   49 A9      EOR #&A9
-     94A6   8D 77 06   STA &0677
+     94A6   8D 08 06   STA &0608
      94A9   8D 4A 0B   STA &0B4A
      94AC   A0 0B      LDY #&0B
      94AE   8C 0B 0C   STY &0C0B
@@ -31110,14 +31111,14 @@ S.ELTA &8000  &82A1  &8000  &8000
      94C4   68         PLA
      94C5   B0 15      BCS &94DC
      94C7   48         PHA
-     94C8   20 D6 05   JSR &05D6
+     94C8   20 67 05   JSR &0567
      94CB   68         PLA
      94CC   A2 46      LDX #&46
      94CE   8E 00 0C   STX &0C00
      94D1   A2 00      LDX #&00
      94D3   A0 0C      LDY #&0C
      94D5   20 DD FF   JSR &FFDD
-     94D8   20 D6 05   JSR &05D6
+     94D8   20 67 05   JSR &0567
      94DB   18         CLC
 .QUR
      94DC   60         RTS
@@ -31147,7 +31148,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      950D   A2 4B      LDX #&4B
 .LOL1
      950F   BD 00 0B   LDA &0B00,X
-     9512   9D 2D 06   STA &062D,X
+     9512   9D BE 05   STA &05BE,X
      9515   CA         DEX
      9516   10 F7      BPL &950F
 .LOR
@@ -31350,7 +31351,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      967E   4A         LSR A
      967F   4A         LSR A
 .SNDQ
-     9680   20 09 04   JSR &0409
+     9680   20 3D B1   JSR &B13D
      9683   E6 99
 .NOS1
      9685   4A         LSR A
@@ -31449,7 +31450,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      9700   4D CC 03   EOR &03CC
      9703   60         RTS
 .DKS3
-     9704   20 09 04   JSR &0409
+     9704   20 3D B1   JSR &B13D
      9707   FD 99
 .DKJ1
      9709   A9 10      LDA #&10
@@ -31654,7 +31655,7 @@ S.ELTA &8000  &82A1  &8000  &8000
      9821   EB
      9822   A2
 .MESS
-     9823   20 09 04   JSR &0409
+     9823   20 3D B1   JSR &B13D
      9826   24 9A
 .mes9
      9828   20 91 8C   JSR &8C91
@@ -32073,7 +32074,7 @@ S.ELTF &98F2  &994A  &8000  &98F2
 .hee9
      9ADC   60         RTS
 .HEE31
-     9ADD   20 09 04   JSR &0409
+     9ADD   20 3D B1   JSR &B13D
      9AE0   93 9A
 .S_SHIP
      9AE2   A5 8C      LDA &8C
@@ -33418,7 +33419,7 @@ Execute at &8000
 Reload at &994A 
 S.ELTG &994A  &A3D8  &8000  &994A 
 .HOME_END%
-Docked bank 4: &8000-&A3D7  (the hot pass), free 2187 
+Docked bank 4: &8000-&A3D7  (the hot pass), free 2085 
 Docked main RAM part: low pass &1900 -&190F , hot pass to &19A7 , free 1176 
 .XX21
      B300   E0 1E
@@ -36160,6 +36161,7 @@ Docked blueprints: &B300 -&B98F , normals to &BAA3 , free 188
      BB9C   00 00
      BB9E   86 BA
      BBA0   00 00
+     B13D   08 8D 04 ... INCBIN "3-assembled-output/FAR.bin"
      B1A3   00 00 00 ... INCBIN "3-assembled-output/COMMON.bin"
 Saving file '3-assembled-output/T.CODEH.bin'
 Saving file '3-assembled-output/T.CODEM.bin'
@@ -36960,7 +36962,7 @@ Saving file '3-assembled-output/T.CODEM.bin'
      8344   20 4A 83   JSR &834A
      8347   4C 48 99   JMP &9948
 .xh_DEEOR
-     834A   20 1B 04   JSR &041B
+     834A   20 46 B1   JSR &B146
      834D   25 80
 .DOENTRY_C
      834F   20 4A 83   JSR &834A
@@ -37028,7 +37030,7 @@ Saving file '3-assembled-output/T.CODEM.bin'
      83D7   20 07 99   JSR &9907
      83DA   4C 55 99   JMP &9955
 .xh_BRKBK
-     83DD   20 1B 04   JSR &041B
+     83DD   20 46 B1   JSR &B146
      83E0   39 80
 .MT27_C
      83E2   A9 D9      LDA #&D9
@@ -37360,34 +37362,34 @@ Saving file '3-assembled-output/T.CODEM.bin'
      860C   52 49 
      860E   4F 4E 
 .xh_MVEIT
-     8610   20 1B 04   JSR &041B
+     8610   20 46 B1   JSR &B146
      8613   49 80
 .xh_LL30
-     8615   20 1B 04   JSR &041B
+     8615   20 46 B1   JSR &B146
      8618   FE 82
 .xh_LOIN
-     861A   20 1B 04   JSR &041B
+     861A   20 46 B1   JSR &B146
      861D   FE 82
 .xh_FLKB
-     861F   20 1B 04   JSR &041B
+     861F   20 46 B1   JSR &B146
      8622   8E 84
 .xh_NLIN3
-     8624   20 1B 04   JSR &041B
+     8624   20 46 B1   JSR &B146
      8627   94 84
 .xh_NLIN4
-     8629   20 1B 04   JSR &041B
+     8629   20 46 B1   JSR &B146
      862C   97 84
 .xh_NLIN
-     862E   20 1B 04   JSR &041B
+     862E   20 46 B1   JSR &B146
      8631   9B 84
 .xh_NLIN2
-     8633   20 1B 04   JSR &041B
+     8633   20 46 B1   JSR &B146
      8636   9F 84
 .xh_HLOIN
-     8638   20 1B 04   JSR &041B
+     8638   20 46 B1   JSR &B146
      863B   B8 84
 .xh_PIXEL
-     863D   20 1B 04   JSR &041B
+     863D   20 46 B1   JSR &B146
      8640   95 85
 .PRXS_C
      8642   01 00
@@ -37936,7 +37938,7 @@ Execute at &8000
 Reload at &82A1 
 S.ELTB &82A1  &89EF  &8000  &82A1 
 .xh_HALL
-     89EF   20 1B 04   JSR &041B
+     89EF   20 46 B1   JSR &B146
      89F2   91 88
 .LL164_C
      89F4   A9 38      LDA #&38
@@ -37989,10 +37991,10 @@ S.ELTB &82A1  &89EF  &8000  &82A1
 .HF8_C
      8A4C   60         RTS
 .xh_SQUA2
-     8A4D   20 1B 04   JSR &041B
+     8A4D   20 46 B1   JSR &B146
      8A50   B4 89
 .xh_MULTU
-     8A52   20 1B 04   JSR &041B
+     8A52   20 46 B1   JSR &B146
      8A55   C7 89
 .PDESC_C
      8A57   AD BF 03   LDA &03BF
@@ -38254,7 +38256,7 @@ S.ELTB &82A1  &89EF  &8000  &82A1
      8C51   88         DEY
      8C52   60         RTS
 .xh_LYN
-     8C53   20 1B 04   JSR &041B
+     8C53   20 46 B1   JSR &B146
      8C56   CF 8B
 .tnpr_C
      8C58   48         PHA
@@ -39393,12 +39395,12 @@ S.ELTB &82A1  &89EF  &8000  &82A1
      94E3   9D 80 08   STA &0880,X
      94E6   CA         DEX
      94E7   10 F7      BPL &94E0
-     94E9   20 D6 05   JSR &05D6
+     94E9   20 67 05   JSR &0567
      94EC   20 7A 0D   JSR &0D7A
-     94EF   20 D6 05   JSR &05D6
+     94EF   20 67 05   JSR &0567
      94F2   A2 4E      LDX #&4E
      94F4   A0 95      LDY #&95
-     94F6   4C C0 04   JMP &04C0
+     94F6   4C 51 04   JMP &0451
 .LCASH_C
      94F9   86 06      STX &06
      94FB   AD 64 03   LDA &0364
@@ -39763,7 +39765,7 @@ S.ELTD &1910  &976B  &8000  &1910
      9799   20 58 85   JSR &8558
      979C   A0 00      LDY #&00
 .QUL4_C
-     979E   B9 25 06   LDA &0625,Y
+     979E   B9 B6 05   LDA &05B6,Y
      97A1   C9 0D      CMP #&0D
      97A3   F0 06      BEQ &97AB
      97A5   20 FE 87   JSR &87FE
@@ -39952,19 +39954,19 @@ S.ELTD &1910  &976B  &8000  &1910
 .TT48_C
      98CC   60         RTS
 .xh_FLFLLS
-     98CD   20 1B 04   JSR &041B
+     98CD   20 46 B1   JSR &B146
      98D0   CB 8C
 .xh_NWSHP
-     98D2   20 1B 04   JSR &041B
+     98D2   20 46 B1   JSR &B146
      98D5   0E 8D
 .xh_MSBAR
-     98D7   20 1B 04   JSR &041B
+     98D7   20 46 B1   JSR &B146
      98DA   CF 8D
 .xh_SUN
-     98DC   20 1B 04   JSR &041B
+     98DC   20 46 B1   JSR &B146
      98DF   0B 8E
 .xh_CIRCLE2
-     98E1   20 1B 04   JSR &041B
+     98E1   20 46 B1   JSR &B146
      98E4   44 8F
 .ping_C
      98E6   A2 01      LDX #&01
@@ -39996,10 +39998,10 @@ S.ELTE &976B  &98F2  &8000  &976B
      9904   CA         DEX
      9905   10 FA      BPL &9901
 .xh_RES2
-     9907   20 1B 04   JSR &041B
+     9907   20 46 B1   JSR &B146
      990A   C8 90
 .xh_ZINF
-     990C   20 1B 04   JSR &041B
+     990C   20 46 B1   JSR &B146
      990F   09 91
 .msblob_C
      9911   A2 04      LDX #&04
@@ -40018,13 +40020,13 @@ S.ELTE &976B  &98F2  &8000  &976B
      9927   D0 F8      BNE &9921
      9929   60         RTS
 .xh_DORND
-     992A   20 1B 04   JSR &041B
+     992A   20 46 B1   JSR &B146
      992D   4E 91
 .jh_FRCE
-     992F   20 81 04   JSR &0481
+     992F   20 12 04   JSR &0412
      9932   BB 91
 .xh_T95
-     9934   20 1B 04   JSR &041B
+     9934   20 46 B1   JSR &B146
      9937   5D 92
 .BAD_C
      9939   AD 72 03   LDA &0372
@@ -40073,19 +40075,19 @@ S.ELTE &976B  &98F2  &8000  &976B
 .DFAULT_C
      998C   A2 53      LDX #&53
 .QUL1_C
-     998E   BD 24 06   LDA &0624,X
+     998E   BD B5 05   LDA &05B5,X
      9991   9D 4F 03   STA &034F,X
      9994   CA         DEX
      9995   D0 F7      BNE &998E
      9997   86 87      STX &87
      9999   20 B9 99   JSR &99B9
-     999C   CD 78 06   CMP &0678
+     999C   CD 09 06   CMP &0609
      999F   EA         NOP
      99A0   EA         NOP
      99A1   49 A9      EOR #&A9
      99A3   AA         TAX
      99A4   AD 66 03   LDA &0366
-     99A7   EC 77 06   CPX &0677
+     99A7   EC 08 06   CPX &0608
      99AA   F0 02      BEQ &99AE
      99AC   09 80      ORA #&80
 .tZ_C
@@ -40093,45 +40095,45 @@ S.ELTE &976B  &98F2  &8000  &976B
      99B0   8D 66 03   STA &0366
      99B3   60         RTS
 .xh_TITLE
-     99B4   20 1B 04   JSR &041B
+     99B4   20 46 B1   JSR &B146
      99B7   92 92
 .xh_CHECK
-     99B9   20 1B 04   JSR &041B
+     99B9   20 46 B1   JSR &B146
      99BC   34 93
 .xh_MT26
-     99BE   20 1B 04   JSR &041B
+     99BE   20 46 B1   JSR &B146
      99C1   7C 93
 .xh_ZERO
-     99C3   20 1B 04   JSR &041B
+     99C3   20 46 B1   JSR &B146
      99C6   94 93
 .xh_ZES1
-     99C8   20 1B 04   JSR &041B
+     99C8   20 46 B1   JSR &B146
      99CB   A5 93
 .xh_SVE
-     99CD   20 1B 04   JSR &041B
+     99CD   20 46 B1   JSR &B146
      99D0   2C 94
 .xh_FX200
-     99D2   20 1B 04   JSR &041B
+     99D2   20 46 B1   JSR &B146
      99D5   32 95
 .xh_RDKEY
-     99D7   20 1B 04   JSR &041B
+     99D7   20 46 B1   JSR &B146
      99DA   CE 95
 .xh_BEEP
-     99DC   20 1B 04   JSR &041B
+     99DC   20 46 B1   JSR &B146
      99DF   4A 96
 .xh_NOISE
-     99E1   20 1B 04   JSR &041B
+     99E1   20 46 B1   JSR &B146
      99E4   73 96
 .SNDQ_C
      99E6   09 80      ORA #&80
-     99E8   AE 96 06   LDX &0696
-     99EB   8E 97 06   STX &0697
-     99EE   8D 96 06   STA &0696
+     99E8   AE 27 06   LDX &0627
+     99EB   8E 28 06   STX &0628
+     99EE   8D 27 06   STA &0627
      99F1   AD 02 04   LDA &0402
      99F4   8D 91 1F   STA &1F91
      99F7   60         RTS
 .xh_CTRL
-     99F8   20 1B 04   JSR &041B
+     99F8   20 46 B1   JSR &B146
      99FB   99 96
 .DKS3_C
      99FD   84 D1      STY &D1
@@ -40146,7 +40148,7 @@ S.ELTE &976B  &98F2  &8000  &976B
 .Dk3_C
      9A13   60         RTS
 .xh_TT217
-     9A14   20 1B 04   JSR &041B
+     9A14   20 46 B1   JSR &B146
      9A17   9A 97
 .me1_C
      9A19   8E 4A 03   STX &034A
@@ -40166,7 +40168,7 @@ S.ELTE &976B  &98F2  &8000  &976B
      9A35   8C 4A 03   STY &034A
      9A38   8D A4 03   STA &03A4
 .xh_mes9
-     9A3B   20 1B 04   JSR &041B
+     9A3B   20 46 B1   JSR &B146
      9A3E   28 98
 .QQ23_C
 Macro ITEM:
@@ -40272,13 +40274,13 @@ Macro ITEM:
      9A83   07
 End macro ITEM
 .xh_LL5
-     9A84   20 1B 04   JSR &041B
+     9A84   20 46 B1   JSR &B146
      9A87   8C 99
 .xh_DRAWQ
-     9A89   20 1B 04   JSR &041B
+     9A89   20 46 B1   JSR &B146
      9A8C   67 9A
 .xh_LL9B
-     9A8E   20 1B 04   JSR &041B
+     9A8E   20 46 B1   JSR &B146
      9A91   74 9A
 .HEE31_C
      9A93   A5 65      LDA &65
@@ -40313,7 +40315,7 @@ End macro ITEM
 .hb9_C
      9AD1   60         RTS
 .xh_LL145
-     9AD2   20 1B 04   JSR &041B
+     9AD2   20 46 B1   JSR &B146
      9AD5   AD A1
 .TKN1_C
      9AD7   57
@@ -52754,7 +52756,8 @@ End macro CHAR
      AC5C   00
      AC5D
 .COLD_END%
-Docked bank 7: &8000-&AC61  (the cold pass), free 1345 , the common block &B1A3 -&B1FF 
+Docked bank 7: &8000-&AC61  (the cold pass), free 1243 , the far block and the common block &B13D -&B1FF 
+     B13D   08 8D 04 ... INCBIN "3-assembled-output/FAR.bin"
      B1A3   00 00 00 ... INCBIN "3-assembled-output/COMMON.bin"
 Saving file '3-assembled-output/T.CODEC.bin'
 .pcb_o

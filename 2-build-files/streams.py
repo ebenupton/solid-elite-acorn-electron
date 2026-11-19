@@ -99,7 +99,9 @@
 #   .xh_TT26 JSR farH : EQUW TT26
 #
 # (farCj and jh_ / farHj for the targets that never return, NORETURN below).
-# The far calls (elite-far.asm) are in the resident block in main RAM. A cold
+# The far calls (elite-far.asm) are in the far block, which the programs'
+# banks hold (the jump forms in the resident block; the cold 6 pass's farC6
+# is gone: no block is tagged for that pass). A cold
 # block's stubs go in the copy of the nearest block before it that is not
 # cold, so a block that falls through into a routine of the other side falls
 # into its stub: the stub calls the body and returns to the falling routine's
