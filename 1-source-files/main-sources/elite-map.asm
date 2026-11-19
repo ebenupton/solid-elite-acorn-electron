@@ -129,7 +129,7 @@
                         \ file into the bank no further
  ASSERT QSL = SETF% AND QSH + &200 = &C000
 
- COMMON% = &B1A3        \ The common block (elite-common.asm): the code that
+ COMMON% = &B19F        \ The common block (elite-common.asm): the code that
  COMMON_END% = &B200    \ pages the banks, at the same address with the same
                         \ bytes in every bank's image (bank 5's assembly makes
                         \ them, COMMON.bin, which the others take in:

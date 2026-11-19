@@ -38,6 +38,10 @@
  STA GFRONT
  LDA #&FF
  STA GSTASH
+ LDA #LO(fsh_next)      \ where the common block's C_POLY comes back to, in
+ STA cp_ret+1           \ this bank's copy of it (elite-common.asm)
+ LDA #HI(fsh_next)
+ STA cp_ret+2
  JMP f_reset            \ (no docking slot, the lists empty; Y kept)
 
 

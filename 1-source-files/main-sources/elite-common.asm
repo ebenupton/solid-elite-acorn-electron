@@ -47,8 +47,12 @@
 \
 \ ------------------------------------------------------------------------------
 \
-\   C_POLY              R_POLY, in bank 5 (the frame layer's most frequent
-\                       call, by a stub of its own: nothing is passed)
+\   C_POLY              R_POLY, in bank 5, for a ship's face (the frame
+\                       layer's most frequent call, by a stub of its own:
+\                       nothing is passed, and it is not a subroutine: f_ship
+\                       jumps to it from bank 6, and it jumps back into
+\                       f_ship's loop, so the call uses no stack but R_POLY's
+\                       own return)
 \
 \   C_T5                a routine of the rasteriser, in bank 5 (X: in RJT)
 \
@@ -73,7 +77,7 @@
 \
 \   A, Y, C flag        As the routine left them (X is not kept)
 \
-\ Each pages the caller's bank back in (the copy's own number, CBME, kept on
+\ Each but C_POLY pages the caller's bank back in (the copy's own number, CBME, kept on
 \ the stack), so any bank's code, and code in main RAM that runs with a game
 \ bank paged (PCLI, the loader, the hangar's background), may call them, and
 \ a routine may call them again (the game code that the frame runs reaches
@@ -82,13 +86,17 @@
 \ ******************************************************************************
 
 .C_POLY
- LDA CBME               \ the caller's bank, to page back after
- PHA
- LDA CB5
+ LDA CB5                \ (the frame layer's f_ship is its only caller, in
+ STA &F4                \ bank 6, and jumps here: nothing of the caller is
+ STA ROMSEL             \ pushed, neither its bank nor its place)
+ JSR R_POLY
+ LDA CB6
  STA &F4
  STA ROMSEL
- JSR R_POLY
- JMP ctail
+.cp_ret
+ JMP &FFFF              \ back in f_ship's loop (fsh_next: F_INIT writes the
+                        \ address into bank 6's copy, the only one that runs
+                        \ this)
 
 .C_T5
  STA GA                 \ (A across the paging)

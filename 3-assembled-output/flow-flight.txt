@@ -1,4 +1,4 @@
-hot &8000-&A69C: 64 units, 9873 bytes, 12 free
+hot &8000-&A698: 64 units, 9873 bytes, 8 free
   &8000    22 S%
   &8016    13 INBAY
   &8023     9 LTLI

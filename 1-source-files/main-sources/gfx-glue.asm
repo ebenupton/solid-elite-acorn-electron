@@ -16,7 +16,9 @@
 \                       and T_GETW, whose routines take X too, pass it in GX
 \                       to entries of their own after RJT (R_DOTX, R_GETWX)
 \
-\   FT_POLY             R_POLY, by the common block's own stub for it
+\   C_POLY              R_POLY for a ship's face, by the common block's own
+\                       stub for it, which f_ship jumps to and which jumps
+\                       back into f_ship's loop (F_INIT gives it the place)
 \
 \   FT_DPROWS,          the painter's DP_ROWS, DP_BEGIN, DP_DISC2 and DP_WQ
 \   f_dpbegin,          (C_T7), with A and Y passed, and X in GX
@@ -68,7 +70,6 @@ ENDMACRO
  ASSERT LO(RJT) <> 0 AND LO(R_DOTX) <> 0 AND LO(R_GETWX) <> 0
 
 FT_GETW = T_GETW
-FT_POLY = C_POLY
 FT_LINE = T_LINE
 
 .f_dpwq                 \ the painter's entries, in the flight code's bank 7

@@ -43,6 +43,7 @@
                                                         \ addresses
  INCLUDE "3-assembled-output/common-entry.asm"          \ The common block's
                                                         \ labels (elite-common.asm)
+ INCLUDE "3-assembled-output/bank5-entry.asm"           \ Bank 5's entries (RJT)
 
  PROGI% = FAR% - PROGIS%   \ The main RAM part's image, below the far block,
                         \ the common block and the blueprint slot (which
@@ -65,7 +66,9 @@
 
  INCLUDE "3-assembled-output/elite-docked-hotm.asm"
 
- FT_POLY = C_POLY       \ (the common block's call of R_POLY)
+.FT_POLY                \ the hangar's call of R_POLY, in bank 5: its entry
+ LDX #LO(RJT) + 21      \ in bank 5's table, through the common block
+ JMP C_T5
  INCLUDE "3-assembled-output/gfx-hangar-dockedmain.asm"   \ (the hangar's
                         \ background: gfx-hangar.asm)
 

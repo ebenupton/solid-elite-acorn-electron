@@ -2838,8 +2838,8 @@ fsd_zl = fz_p : fsd_zh = fz_p+1 : fsd_rl = fz_q : fsd_q = fz_q+1 : fsd_x = fz_u
  JSR f_winding
  BCC fsh_next
 .fsh_draw
- JSR FT_POLY
-.fsh_next
+ JMP C_POLY             \ (R_POLY, in bank 5: the common block's stub comes
+.^fsh_next              \ back here, cp_ret)
  LDA fz_n               \ next face list entry: n + 1 bytes on
  SEC
  ADC f_fo
@@ -3051,7 +3051,7 @@ fsd_zl = fz_p : fsd_zh = fz_p+1 : fsd_rl = fz_q : fsd_q = fz_q+1 : fsd_x = fz_u
  JSR f_itemv
  LDA #3
  STA R_PN
- JSR FT_POLY
+ JSR T_POLY
 .ffi8
  LDA fz_q               \ next fin: 7 bytes on
  CLC
