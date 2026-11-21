@@ -938,8 +938,8 @@ RPN = 4
 \ the other, if both are on the screen, is the second disc, behind it,
 \ incremental too (f_disc2). After the wait (f_ddraw) bank 5 repairs the
 \ dirty rows outside the band of the layer's rows, old and new (T_REPAIR),
-\ and the painter takes the band's rows a batch at a time in the mailbox
-\ (gfx-rws.asm: DB_R; f_lbat), asking bank 5 itself for their dirty extents
+\ and the painter takes the band's rows a batch at a time, reading them
+\ here (f_lbat), asking bank 5 itself for their dirty extents
 \ and keeping what it wrote for the second disc (f_dbat) and for the text
 \ and the sights (f_wq). Each buffer's rows of
 \ the layer (f_dlt, f_dlb), its colour (F_DCOL), whether its rows had
@@ -2075,60 +2075,17 @@ FC_PLLE = &5F : FC_PLLO = &AF
 .f_bbit EQUB 1, 2       \ (f_dpr's bit for each buffer)
 
 \ f_lbat: the layer's rows f_dy .. f_dhi (f_dy <= f_dhi) through the painter
-\ (DP_ROWS), a batch at a time: each row's record in the mailbox from DB_R
-\ (gfx-rws.asm), from R_NDISCL/R in R_NDT .. R_NDB (empty outside), the
-\ span widened to whole MODE 5 pixels (L even, R odd: f_snap), with f_d2c
-\ bit 7 R_NDN and R_NDX0-3 too (R_NDN zero with bit 6 clear). A batch is
-\ the rows that fit in the records' room, up to the first row whose dirty
-\ extent the painter has not had from bank 5 (f_dcv, which each call of
-\ the painter returns: it asks bank 5 for more as its rows reach it)
+\ (DP_ROWS), which reads them where they are (Port: the painter is in this
+\ bank): first each row is made ready in place, R_NDISCL/R in R_NDT ..
+\ R_NDB (empty outside, and the boundaries none), the span widened to whole
+\ MODE 5 pixels (L even, R odd), with f_d2c bit 7 its count and colour too
+\ (none with bit 6 clear) and with bit 6 its boundaries on pixels' edges
+\ (f_snap); then the painter takes them in batches, each up to the first
+\ row whose dirty extent it has not had from bank 5 (f_dcv, which each call
+\ returns: it asks bank 5 for more as its rows reach it)
 
 .f_lbat
- BIT f_d2c
- BMI flb1
-.flp1                   \ a plain layer's batch: the spans
- LDX #0
  LDY f_dy
- STY f_d0
-.flp2
- CPY R_NDT
- BCC flp4
- CPY R_NDB
- BEQ flp3
- BCS flp4
-.flp3
- LDA R_NDISCL,Y
- CMP #&FF
- BEQ flp4
- AND #&FE
- STA DB_R,X
- LDA R_NDISCR,Y
- ORA #1
- BNE flp5               \ (always)
-.flp4
- LDA #&FF               \ an empty span
- STA DB_R,X
- LDA #0
-.flp5
- STA DB_R+1,X
- INX
- INX
- INY
- CPY f_dcv
- BCS flp6
- CPX #DB_RL-1
- BCS flp6
- CPY f_dhi
- BCC flp2
- BEQ flp2
-.flp6
- JSR flb9
- BCS flp1
- RTS
-.flb1                   \ a batch with boundaries
- LDX #0
- LDY f_dy
- STY f_d0
 .flb2
  CPY R_NDT
  BCC flb4
@@ -2139,69 +2096,73 @@ FC_PLLE = &5F : FC_PLLO = &AF
  LDA R_NDISCL,Y
  CMP #&FF
  BEQ flb4
- AND #&FE
- STA DB_R+1,X
+ AND #&FE               \ the span on whole pixels
+ STA R_NDISCL,Y
  STA f_sl
- BIT f_d2c
- BVS f_snap             \ its boundaries (f_snap, which goes on at flb5)
- LDA #0                 \ no boundaries
- STA DB_R,X
  LDA R_NDISCR,Y
  ORA #1
- STA DB_R+2,X
- BNE flb5               \ (always)
+ STA R_NDISCR,Y
+ BIT f_d2c
+ BPL flb6               \ (a plain layer: the span only)
+ BVS f_snap             \ its boundaries (f_snap, which goes on at flb6)
+ LDA #0                 \ no boundaries
+ STA R_NDN,Y
+ BEQ flb6               \ (always)
 .flb4
- LDA #0                 \ an empty span
- STA DB_R,X
- STA DB_R+2,X
- LDA #&FF
- STA DB_R+1,X
-.flb5
- INX
- INX
- INX
+ LDA #&FF               \ an empty span
+ STA R_NDISCL,Y
+ LDA #0
+ STA R_NDISCR,Y
+ STA R_NDN,Y
 .flb6
  INY
- CPY f_dcv
- BCS flb7
- CPX #DB_RL-6
- BCS flb7
  CPY f_dhi
  BCC flb2
  BEQ flb2
+ LDY f_dy               \ the batches
 .flb7
- JSR flb9
- BCS flb1
- RTS
-.flb9                   \ the batch, rows f_d0 .. Y - 1, to the painter; C set
- STY f_dy               \ if rows are left
- TYA
+ STY f_d0
+ LDA f_dhi              \ to the first row not covered, at most the last,
+ CLC                    \ and at least one row
+ ADC #1
+ CMP f_dcv
+ BCC P%+5
+ LDA f_dcv
  SEC
  SBC f_d0
- TAX
+ BEQ flb8
+ BCS flb9
+.flb8
+ LDA #1
+.flb9
+ TAX                    \ rows f_d0 .. f_d0 + X - 1 to the painter
+ CLC
+ ADC f_d0
+ STA f_dy
  LDY f_d0
  JSR FT_DPROWS
  STA f_dcv
+ LDY f_dy
  LDA f_dhi
  CMP f_dy
+ BCS flb7
  RTS
 
-\ f_snap: row Y's boundaries (R_NDN, R_NDX0-3) into its record at X (whose
-\ left end is there), each on a MODE 5 pixel's left edge (x AND &FE), as
-\ the span is (f_lbat): one that lands on the span's left end (f_sl) is
-\ folded into the colour there (R_NDN bit 7), and two that land together
-\ go. So every edge of the layer's rows is between two MODE 5 pixels, and
-\ the painter, which writes the bytes whose pixels changed, never has a
-\ pixel half one colour. Part of f_lbat's loop (it jumps here, and this
-\ goes on at flb5, with X and Y for it): a row of none, one or two has its
-\ own code, straight into the record; one of three or four goes through a
-\ loop (X counts the boundaries out, f_sbo keeps them), then the count and
-\ colour, the boundaries and the right end into the record.
+\ f_snap: row Y's boundaries (R_NDN, R_NDX0-3) made ready in place, each on
+\ a MODE 5 pixel's left edge (x AND &FE), as the span is (f_lbat): one that
+\ lands on the span's left end (f_sl) is folded into the colour there
+\ (R_NDN bit 7), and two that land together go. So every edge of the
+\ layer's rows is between two MODE 5 pixels, and the painter, which writes
+\ the bytes whose pixels changed, never has a pixel half one colour. Part
+\ of f_lbat's loop (it jumps here, and this goes on at flb6, with Y for
+\ it): a row of none, one or two has its own code; one of three or four
+\ goes through a loop (X counts the boundaries out, f_sbo keeps them),
+\ then the count and colour and the boundaries back.
 
 .f_snap
  LDA R_NDN,Y            \ the count: none, one and two each in line
  AND #&7F
- BEQ fsk0
+ BEQ fsk0               \ (none: as it is)
  CMP #2
  BEQ fsk2
  BCC P%+5
@@ -2210,63 +2171,43 @@ FC_PLLE = &5F : FC_PLLO = &AF
  AND #&FE
  CMP f_sl
  BEQ fsk1a
- STA DB_R+2,X
- LDA R_NDN,Y
- STA DB_R,X
-.fsk1
- LDA R_NDISCR,Y         \ (the right end after one)
- ORA #1
- STA DB_R+3,X
- INX
- JMP flb5
+ STA R_NDX0,Y
+.fsk0
+ JMP flb6
 .fsk1a
  LDA R_NDN,Y            \ at the span's left end: none, the other colour
  EOR #&81
- JMP fsk0a
+ STA R_NDN,Y
+ JMP flb6
 .fsk2b
  LDA R_NDN,Y            \ (two gone: none, the same colour)
  AND #&80
- JMP fsk0a
-.fsk0
- LDA R_NDN,Y            \ no boundaries
-.fsk0a
- STA DB_R,X
- LDA R_NDISCR,Y
- ORA #1
- STA DB_R+2,X
- JMP flb5
+ STA R_NDN,Y
+ JMP flb6
 .fsk2
  LDA R_NDX0,Y           \ two boundaries
  AND #&FE
  CMP f_sl
  BEQ fsk2a
- STA DB_R+2,X
+ STA R_NDX0,Y
  STA f_sbo
  LDA R_NDX1,Y
  AND #&FE
  CMP f_sbo
  BEQ fsk2b              \ (together: both go)
- STA DB_R+3,X
- LDA R_NDN,Y
- STA DB_R,X
- LDA R_NDISCR,Y
- ORA #1
- STA DB_R+4,X
- INX
- INX
- JMP flb5
+ STA R_NDX1,Y
+ JMP flb6
 .fsk2a
  LDA R_NDX1,Y           \ the first at the span's left end: the other
  AND #&FE               \ colour, and the second alone, unless it is there
  CMP f_sl               \ too
  BEQ fsk2b
- STA DB_R+2,X
+ STA R_NDX0,Y
  LDA R_NDN,Y
  EOR #&83
- STA DB_R,X
- BNE fsk1               \ (always: the count is one)
+ STA R_NDN,Y
+ JMP flb6
 .fsn0                   \ three or four
- STX f_sbx
  LDX #0                 \ (none out yet)
  LDA R_NDN,Y            \ the colour at the left end, and the count
  AND #&80
@@ -2306,45 +2247,22 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BCS fsn1               \ (always)
  ASSERT R_NDX1 = R_NDX0 + 192 AND R_NDX2 = R_NDX1 + 192 AND R_NDX3 = R_NDX2 + 192
 .fsn9
- STX f_so
- TXA
- ORA f_sbc
- LDX f_sbx
- STA DB_R,X
- LDA f_so
- BEQ fsn10
+ TXA                    \ the count and colour, and the boundaries left (those
+ ORA f_sbc              \ after the count are not read)
+ STA R_NDN,Y
  LDA f_sbo
- STA DB_R+2,X
- LDA f_so
- CMP #2
- BCC fsn10
+ STA R_NDX0,Y
  LDA f_sbo+1
- STA DB_R+3,X
- LDA f_so
- CMP #3
- BCC fsn10
+ STA R_NDX1,Y
  LDA f_sbo+2
- STA DB_R+4,X
- LDA f_so
- CMP #4
- BCC fsn10
+ STA R_NDX2,Y
  LDA f_sbo+3
- STA DB_R+5,X
-.fsn10
- TXA                    \ the right end after them
- CLC
- ADC f_so
- TAX
- LDA R_NDISCR,Y
- ORA #1
- STA DB_R+2,X
- JMP flb5
+ STA R_NDX3,Y
+ JMP flb6
 
-.f_sl    EQUB 0         \ f_snap's: the span's left end, the record's place,
-.f_sbx   EQUB 0         \ the colour at the left end (bit 7), the boundaries
-.f_sbc   EQUB 0         \ in, out
+.f_sl    EQUB 0         \ f_snap's: the span's left end, the colour at the
+.f_sbc   EQUB 0         \ left end (bit 7), the boundaries in, out
 .f_sbn   EQUB 0
-.f_so    EQUB 0
 .f_sb1   EQUB 1
 .f_sbo   EQUB 0, 0, 0, 0
  ASSERT f_sb1 = f_sbo - 1

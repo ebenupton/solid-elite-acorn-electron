@@ -803,10 +803,26 @@ def disc_tests(png_dir):
             rows = surface_rows(cx, cy, r, surf)
             rb = []
             for y, (p, xs) in rows.items():
+                dy = abs(y - cy)                      # (the rows as the disc part leaves
+                if dy > r:                            # them for the painter, f_lbat: each
+                    continue                          # boundary on a pixel's edge, one at
+                hw = math.isqrt(r * r - dy * dy)      # the span's left end, clipped to
+                if cx + hw < 2 or cx - hw > 253:      # the window, folded into the
+                    continue                          # colour, two together gone)
+                sl = max(cx - hw, 2) & 0xFE
+                c, out = p & 1, []
+                for x in xs:
+                    x &= 0xFE
+                    if x == sl:
+                        c ^= 1
+                    elif out and out[-1] == x:
+                        out.pop()
+                    else:
+                        out.append(x)
                 n = b7(m, 'R_NDN', y)
                 gx = [b7(m, 'R_NDX%d' % k, y) for k in range(n & 0x7F)]
-                if (n >> 7, gx) != (p & 1, xs):
-                    rb.append((y, (n >> 7, gx), (p, xs)))
+                if (n >> 7, gx) != (c, out):
+                    rb.append((y, (n >> 7, gx), (c, out)))
             check(not rb, 'disc scene %d: PC_ROWS\' rows are planet_caps.py\'s%s' % (i, '' if not rb else ' (row %d: %r, the model %r)' % rb[0]))
     print('the disc layer: a moving sequence (each frame against a fresh machine)')
     m = Machine()

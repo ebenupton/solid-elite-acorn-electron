@@ -8,10 +8,11 @@
 \ Port (Model B): the row code of the BBC Master port's incremental disc
 \ layer (its R_DISCROWS): each buffer keeps the disc's span on each row
 \ (R_DISCL/R) and its boundaries, up to three (R_BDN, R_BDX0-2), and each
-\ frame writes only what changed. The frame layer (bank 6) makes the rows
-\ (f_discs: the new spans, R_NDISCL/R, and the planet's boundaries, R_NDN,
-\ R_NDX0-3, from PC_ROWS) and hands them over a batch at a time, as a
-\ stream of records in the mailbox (gfx-rws.asm: DB_R):
+\ frame writes only what changed. The frame layer's disc part makes the
+\ rows (f_dprep: the new spans, R_NDISCL/R, and the planet's boundaries,
+\ R_NDN, R_NDX0-3, from PC_ROWS) in this bank too (Port, the Electron:
+\ gfx-frame.asm's bank 7 pass), each edge on a whole MODE 5 pixel (f_lbat),
+\ and the painter reads them there, a batch of rows at a time:
 \
 \   * DP_BEGIN (A = the buffer, X = the frame's flags, PB_*, and the
 \     layer's rows): the buffer's arrays into the code's operands (as the
@@ -23,7 +24,7 @@
 \     them; the frame layer's batches stop where its list does);
 \
 \   * DP_ROWS (Y = the first row, X = the rows in the batch): the layer's
-\     rows (a plain layer's: r_dlb; with boundaries: r_dmb), each record's
+\     rows (a plain layer's: r_dlb; with boundaries: r_dmb), each row's
 \     bytes read once and compared with the buffer's row as they come; a
 \     row that changed or is dirty is painted (r_ent, with its notes), and
 \     what it wrote is kept here for the rest of the frame (R_NOTE);
@@ -230,8 +231,8 @@ PB_RESET = &80          \ the buffer was blanked: its disc state forgotten
 
 \ ******************************************************************************
 \
-\ DP_ROWS: Y = the first row, X = the rows: the layer's batch, their records
-\ in the mailbox from DB_R. Returns A as DP_BEGIN does
+\ DP_ROWS: Y = the first row, X = the rows: the layer's batch (their rows in
+\ R_NDISCL, R_NDISCR, R_NDN, R_NDX0-3). Returns A as DP_BEGIN does
 \
 \ ******************************************************************************
 
@@ -282,8 +283,8 @@ ENDMACRO
 }
 
 \ dp_end: (the row loops) the batch done: if its next row is the first the
-\ dirty rows in hand do not cover, more from bank 5 (the batch's records
-\ are read); A = the first row not covered, for the frame layer
+\ dirty rows in hand do not cover, more from bank 5; A = the first row not
+\ covered, for the frame layer's disc part
 
 .dp_end
 {
@@ -349,33 +350,33 @@ ENDMACRO
   JMP d2_nx
 
 \ ============================================================================
-\ The row loops: rows X on to dp_xe, their records from DB_R + Y on. Each
-\ takes a record's bytes from the mailbox once, into the row's variables,
-\ comparing them with what the buffer holds as it goes, in the order of
-\ the row's list (below): a row that is the same and not dirty (r_nd is
-\ the next dirty row) costs those compares; the first byte that differs
-\ sends the rest of the record into the variables and the row to r_ent, as
-\ a row that is the same but dirty goes (r_rowd), with the next record's
-\ place in dp_s. r_dlb: a plain layer's rows (the span only; r_dlf: after
-\ a colour change, when each row is drawn again whole); r_dmb: rows with
-\ boundaries, when this frame or this buffer's last one has them, by the
-\ row's count once that and the colour are the buffer's (dmk0 to dmk3).
+\ The row loops: rows X on to dp_xe, their new spans, counts, colours and
+\ boundaries read where the disc part made them, in this bank (Port: the
+\ frame layer's R_NDISCL, R_NDISCR, R_NDN and R_NDX0-3, gfx-frame.asm, each
+\ boundary and span end on a whole MODE 5 pixel: its f_lbat), and compared
+\ with what the buffer holds as they are read, in the order of the row's
+\ list (below): a row that is the same and not dirty (r_nd is the next
+\ dirty row) costs those compares; the first byte that differs sends the
+\ rest of the row into the variables and the row to r_ent, as a row that
+\ is the same but dirty goes (r_rowd). r_dlb: a plain layer's rows (the
+\ span only; r_dlf: after a colour change, when each row is drawn again
+\ whole); r_dmb: rows with boundaries, when this frame or this buffer's
+\ last one has them, by the row's count once that and the colour are the
+\ buffer's (dmk0 to dmk3).
 \ ============================================================================
 
 .r_dlb
   LDA #0                  \ (no boundaries, colour A)
   STA rn_n
 .dl1
-  LDA DB_R,Y
+  LDA R_NDISCL,X
   STA rn_l
 .r_psl22 CMP R_DISCL0,X
   BNE dl2
-  LDA DB_R+1,Y
+  LDA R_NDISCR,X
   STA rn_r
 .r_psr22 CMP R_DISCR0,X
   BNE dl3
-  INY
-  INY
   CPX r_nd
   BEQ dl4
 .dlnx
@@ -384,11 +385,9 @@ ENDMACRO
   BNE dl1
   JMP dp_end
 .dl2
-  LDA DB_R+1,Y
+  LDA R_NDISCR,X
   STA rn_r
 .dl3
-  INY
-  INY
   JMP dmk0e
 .dl4
   JMP r_rowd
@@ -397,12 +396,10 @@ ENDMACRO
   LDA #0
   STA rn_n
 .df1
-  LDA DB_R,Y
+  LDA R_NDISCL,X
   STA rn_l
-  LDA DB_R+1,Y
+  LDA R_NDISCR,X
   STA rn_r
-  INY
-  INY
   JMP dmn1
 .dfnx
   INX
@@ -418,7 +415,7 @@ ENDMACRO
   CPX dp_xe
   BEQ dm9x
 .r_dmb
-  LDA DB_R,Y              \ the count and the colour
+  LDA R_NDN,X             \ the count and the colour
   STA rn_n
 .r_pbn22 CMP R_BDN0,X
   BEQ P%+5
@@ -426,33 +423,24 @@ ENDMACRO
   AND #7
   BNE dmk123
 .dmk0
-  LDA DB_R+1,Y
+  LDA R_NDISCL,X
   STA rn_l
 .r_psl60 CMP R_DISCL0,X
   BNE dmk0c0
-  LDA DB_R+2,Y
+  LDA R_NDISCR,X
   STA rn_r
 .r_psr60 CMP R_DISCR0,X
-  BNE dmk0c1
-  INY
-  INY
-  INY
-  JMP dm9
+  BEQ dm9
+  BNE dmk0e               \ (always)
 .dmk0c0
-  LDA DB_R+2,Y
+  LDA R_NDISCR,X
   STA rn_r
-.dmk0c1
-  TYA
-  CLC
-  ADC #3
-  TAY
 .dmk0e
   LDA rn_l                \ (a span's left end is even, no span's 255: a
 .r_psl25 ORA R_DISCL0,X   \ span appearing or going is r_gen's)
   LSR A
   BCC P%+5
   JMP dmn1
-  STY dp_s
   LDY #0
   JMP r_ent
 .dm9x
@@ -463,157 +451,126 @@ ENDMACRO
   CMP #2
   BCS dmk23
 .dmk1
-  LDA DB_R+1,Y
+  LDA R_NDISCL,X
   STA rn_l
 .r_psl61 CMP R_DISCL0,X
   BNE dmk1c0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
 .r_pb061 CMP R_BDX00,X
   BNE dmk1c1
-  LDA DB_R+3,Y
+  LDA R_NDISCR,X
   STA rn_r
 .r_psr61 CMP R_DISCR0,X
-  BNE dmk1c2
-  INY
-  INY
-  INY
-  INY
-  JMP dm9
+  BEQ dm9
+  BNE dmk1c2              \ (always)
 .dmk1c0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
 .dmk1c1
-  LDA DB_R+3,Y
+  LDA R_NDISCR,X
   STA rn_r
 .dmk1c2
-  TYA
-  CLC
-  ADC #4
-  STA dp_s
   LDY #1
   JMP r_ent
 .dmk23
   BNE dmk3
 .dmk2
-  LDA DB_R+1,Y
+  LDA R_NDISCL,X
   STA rn_l
 .r_psl62 CMP R_DISCL0,X
   BNE dmk2c0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
 .r_pb062 CMP R_BDX00,X
   BNE dmk2c1
-  LDA DB_R+3,Y
+  LDA R_NDX1,X
   STA rn_x1
 .r_pb162 CMP R_BDX10,X
   BNE dmk2c2
-  LDA DB_R+4,Y
+  LDA R_NDISCR,X
   STA rn_r
 .r_psr62 CMP R_DISCR0,X
   BNE dmk2c3
-  TYA
-  ADC #4                  \ (C set by the CMP)
-  TAY
   JMP dm9
 .dmk2c0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
 .dmk2c1
-  LDA DB_R+3,Y
+  LDA R_NDX1,X
   STA rn_x1
 .dmk2c2
-  LDA DB_R+4,Y
+  LDA R_NDISCR,X
   STA rn_r
 .dmk2c3
-  TYA
-  CLC
-  ADC #5
-  STA dp_s
   LDY #2
   JMP r_ent
 .dmk3
-  LDA DB_R+1,Y
+  LDA R_NDISCL,X
   STA rn_l
 .r_psl63 CMP R_DISCL0,X
   BNE dmk3c0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
 .r_pb063 CMP R_BDX00,X
   BNE dmk3c1
-  LDA DB_R+3,Y
+  LDA R_NDX1,X
   STA rn_x1
 .r_pb163 CMP R_BDX10,X
   BNE dmk3c2
-  LDA DB_R+4,Y
+  LDA R_NDX2,X
   STA rn_x2
 .r_pb263 CMP R_BDX20,X
   BNE dmk3c3
-  LDA DB_R+5,Y
+  LDA R_NDISCR,X
   STA rn_r
 .r_psr63 CMP R_DISCR0,X
   BNE dmk3c4
-  TYA
-  ADC #5                  \ (C set by the CMP)
-  TAY
   JMP dm9
 .dmk3c0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
 .dmk3c1
-  LDA DB_R+3,Y
+  LDA R_NDX1,X
   STA rn_x1
 .dmk3c2
-  LDA DB_R+4,Y
+  LDA R_NDX2,X
   STA rn_x2
 .dmk3c3
-  LDA DB_R+5,Y
+  LDA R_NDISCR,X
   STA rn_r
 .dmk3c4
-  TYA
-  CLC
-  ADC #6
-  STA dp_s
   LDY #3
   JMP r_ent
 
-.dmn                      \ another count or colour: the whole record
+.dmn                      \ another count or colour: the whole row
   AND #7
   STA r_nk
-  LDA DB_R+1,Y
+  LDA R_NDISCL,X
   STA rn_l
   LDA r_nk
   BEQ dmn0
-  LDA DB_R+2,Y
+  LDA R_NDX0,X
   STA rn_x0
   LDA r_nk
   CMP #2
-  BCC dmn3
-  LDA DB_R+3,Y
+  BCC dmn0
+  LDA R_NDX1,X
   STA rn_x1
   LDA r_nk
   CMP #3
-  BCC dmn3
-  LDA DB_R+4,Y
+  BCC dmn0
+  LDA R_NDX2,X
   STA rn_x2
   LDA r_nk
   CMP #4
-  BCC dmn3
-  LDA DB_R+5,Y
+  BCC dmn0
+  LDA R_NDX3,X
   STA rn_x3
-.dmn3
-  TYA
-  CLC
-  ADC r_nk
-  TAY
 .dmn0
-  LDA DB_R+2,Y
+  LDA R_NDISCR,X
   STA rn_r
-  INY
-  INY
-  INY
 .dmn1
-  STY dp_s
   LDA #2
   STA r_md
   LDA rn_n
@@ -621,10 +578,9 @@ ENDMACRO
   TAY
   JMP r_ent
 
-\ r_rowd: row X, the same as the buffer holds, dirty (Y = the next record)
+\ r_rowd: row X, the same as the buffer holds, dirty
 
 .r_rowd
-  STY dp_s
   LDA #1
   STA r_md
   LDA rn_n
@@ -633,7 +589,7 @@ ENDMACRO
   JMP r_ent
 
 \ ============================================================================
-\ r_ent: row X (the next record in dp_s), changed or dirty or both, its new span,
+\ r_ent: row X, changed or dirty or both, its new span,
 \ count, colour and boundaries in the variables; Y = its boundaries; r_md =
 \ 0: the same count and colour as the buffer's row and both spans there
 \ (r_p1), 1: the same row, dirty, 2: any other (r_gen).
@@ -2075,7 +2031,7 @@ ENDMACRO
 .dp_xe   EQUB 0
 .dp_hi   EQUB 0         \ the layer's last row (DP_BEGIN)
 .dp_cov  EQUB 0         \ the first row whose dirty extent is not in hand
-.dp_s    EQUB 0         \ the next record's place; (the second disc's) the
+.dp_s    EQUB 0         \ (the second disc's) the
 .dp_x    EQUB 0         \ slot and the row
 .r_nd    EQUB 0         \ the next dirty row (none: &FF), its place in dq, dq's
 .dq_i    EQUB 0         \ end, and the dirty rows in hand: row, left, right
@@ -2094,7 +2050,7 @@ pw_r = pw_l + 24        \ none: pw_r = 0) and bit 7 if any met the sights
 .R_DBO   EQUB 0
 .r_bon   EQUB 0         \ this frame's rows use boundaries
 .ce_s    EQUB 1         \ the row's list of edges: its start (pe), the span's
-.rn_l    EQUB 0         \ left end (none: 255) and the boundaries, as the record
+.rn_l    EQUB 0         \ left end (none: 255) and the boundaries, as the row
 .rn_x0   EQUB 0         \ has them, then (r_ent) the end after the right end
 .rn_x1   EQUB 0         \ and &FF
 .rn_x2   EQUB 0
