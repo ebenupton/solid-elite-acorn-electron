@@ -43,10 +43,11 @@ import os, re, sys
 OUT = "3-assembled-output/"
 SRC = "1-source-files/main-sources/"
 PROGS = ("flight", "docked")
-FAR = ("farH", "farHj", "farC", "farCj", "farC6", "ovf1", "ovf2", "ovf3")
+FAR = ("farH", "farHj", "farC", "farCj", "farC6", "farC6j", "ovf1", "ovf2", "ovf3")
 HOTCOPIES = ("config", "low", "hot", "hotm", "hotx", "hotl", "hots", "blueprints")   # (the hot side's copies: streams.py)
 WINDOW7 = {"flight": (OUT + "gfx-raster_disc-bank7.asm",
                       OUT + "gfx-raster_disc2-bank7.asm", OUT + "gfx-raster_dpatch-bank7.asm",
+                      OUT + "gfx-frame-bank7.asm", OUT + "gfx-merid-bank7.asm",
                       OUT + "gfx-glue-bank7.asm")}
                         # (bank 7's renderer window: the renderer's bank 7 passes;
                         # elite-layout-flight.asm)
@@ -107,7 +108,9 @@ def check(prog, errors):
                   if os.path.exists(OUT + "elite-%s-ovl%d.asm" % (prog, n))})
     if os.path.exists(OUT + "elite-%s-c6.asm" % prog):        # (the flight code's cold 6
         files[OUT + "elite-%s-c6.asm" % prog] = "cold 6"          # pass, in bank 6)
-    files.update({OUT + "elite-%s-cold.asm" % prog: "cold", OUT + "elite-tokens-cold.asm": "cold",
+    files.update({OUT + "elite-%s-cold.asm" % prog: "cold",
+                  OUT + "elite-tokens-cold.asm": "cold 6" if prog == "flight" else "cold",   # (the
+                                           # flight code's are in its cold 6 pass, with ex)
                   SRC + "elite-layout-%s.asm" % prog: "home", OUT + "resident.asm": "main"})
     show = {OUT + "elite-%s-%s.asm" % (prog, a): "elite-source-%s.asm" % prog for a in HOTCOPIES + ("cold", "c6")}
     show[OUT + "elite-tokens-cold.asm"] = "elite-text-tokens.asm"
@@ -119,8 +122,10 @@ def check(prog, errors):
         errors.append("%s: no symbols (%s-symbols.txt)" % (prog, prog))
         return 0
     area, own, stubs = {}, {}, set()
+    params = {}
     for f, a in files.items():
         own[f] = set()
+        params[f] = set()
         for n, line, labels, mn, op, ok in statements(f):
             if mn == "JSR" and op.strip() in FAR:
                 stubs.update(labels)
@@ -133,6 +138,7 @@ def check(prog, errors):
             m = re.match(r"^(MACRO\s+\w+|FOR)\s+(.*)$", op.strip(), re.I)
             if m:                              # (macro parameters and loop variables)
                 own[f].update(IDENT.findall(m.group(2).split(",")[0] if m.group(1).upper() == "FOR" else m.group(2)))
+                params[f].update(IDENT.findall(m.group(2).split(",")[0] if m.group(1).upper() == "FOR" else m.group(2)))
     for l in list(area):                       # (main RAM: whatever copy defines it)
         if addr.get(l, 0x8000) < 0x8000:
             area[l] = "main"
@@ -160,6 +166,8 @@ def check(prog, errors):
                 errors.append("%s: %s:%d: cold code reads a blueprint through XX0 (%s %s)"
                               % (prog, show.get(f, f), n, mn, op.strip()))
             for x in idents(op):
+                if x in params[f]:             # (a macro's parameter or a loop's
+                    continue                   # variable, which a stub's name may share)
                 if x in stubs and re.search(r"(?<![\w%])" + re.escape(x) + r"\s*[-+]", op):
                     errors.append("%s: %s:%d: %s %s uses an offset from the stub %s (its neighbours are not the routine's)"
                                   % (prog, show.get(f, f), n, mn or "", op.strip(), x))

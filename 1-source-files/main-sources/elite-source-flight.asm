@@ -3120,7 +3120,7 @@ ENDIF
 \   Category: Main loop
 \    Summary: For each nearby ship: If it is a space station, check whether we
 \             are successfully docking with it
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Program flow of the main game loop
 \             Docking checks
 \
@@ -3202,7 +3202,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Main loop
 \    Summary: For each nearby ship: Remove if scooped, or process collisions
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Program flow of the main game loop
 \
 \ ------------------------------------------------------------------------------
@@ -4267,7 +4267,7 @@ ENDIF
 \       Type: Variable
 \   Category: Drawing pixels
 \    Summary: Ready-made single-pixel character row bytes for the screen
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Drawing monochrome pixels on the BBC Micro
 \
 \ ------------------------------------------------------------------------------
@@ -4300,7 +4300,7 @@ ENDIF
 \       Type: Variable
 \   Category: Drawing pixels
 \    Summary: Ready-made double-pixel character row bytes for the screen
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Drawing monochrome pixels on the BBC Micro
 \
 \ ------------------------------------------------------------------------------
@@ -4365,7 +4365,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a line: Calculate the line gradient in the form of deltas
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -4558,7 +4558,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a line: Line has a shallow gradient, step right along x-axis
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -4675,7 +4675,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a shallow line going right and up or left and down
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -4782,7 +4782,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a shallow line going right and down or left and up
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -4877,7 +4877,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a line: Line has a steep gradient, step up along y-axis
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -5002,7 +5002,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a steep line going up and left or down and right
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -5096,7 +5096,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a steep line going up and right or down and left
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Elite's line-drawing algorithm
 \
 \ ------------------------------------------------------------------------------
@@ -5213,7 +5213,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Print a title and draw a horizontal line at row 19 to box it in
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -5236,7 +5236,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a horizontal line at pixel row 19 to box in a title
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -5258,7 +5258,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a horizontal line at pixel row 23 to box in a title
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -5283,7 +5283,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a screen-wide horizontal line at the pixel row in A
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -5374,7 +5374,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a horizontal line from (X1, Y1) to (X2, Y1)
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Drawing monochrome pixels on the BBC Micro
 \
 \ ------------------------------------------------------------------------------
@@ -5552,7 +5552,7 @@ ENDIF
 \   Category: Drawing lines
 \    Summary: Ready-made character rows for the left end of a horizontal line
 \             on the screen (Port: the four-colour screen's)
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -5570,7 +5570,7 @@ ENDIF
 \   Category: Drawing lines
 \    Summary: Ready-made character rows for the right end of a horizontal line
 \             on the screen (Port: the four-colour screen's)
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -5587,7 +5587,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing pixels
 \    Summary: Plot a single pixel at (X, Y) within a character block
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -5828,7 +5828,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing pixels
 \    Summary: Draw a one-pixel dot, two-pixel dash or four-pixel square
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Drawing monochrome pixels on the BBC Micro
 \
 \ ------------------------------------------------------------------------------
@@ -6179,7 +6179,7 @@ ENDIF
 \   Category: Stardust
 \    Summary: Reflect the stardust particles in the screen diagonal and redraw
 \             the stardust field
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -7534,7 +7534,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Add an orientation vector coordinate to an INWK coordinate
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: The space station safe zone
 \
 \ ------------------------------------------------------------------------------
@@ -8444,7 +8444,7 @@ ENDIF
 \       Type: Variable
 \   Category: Text
 \    Summary: A constant used when printing large numbers in BPRNT
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Printing decimal numbers
 \
 \ ------------------------------------------------------------------------------
@@ -8513,7 +8513,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a 16-bit number, left-padded to n digits, and optional point
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -8560,7 +8560,7 @@ ENDIF
 \   Category: Text
 \    Summary: Print a 32-bit number, left-padded to a specific number of digits,
 \             with an optional decimal point
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Printing decimal numbers
 \
 \ ------------------------------------------------------------------------------
@@ -8889,7 +8889,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Make a standard system beep
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -8910,7 +8910,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a character at the text cursor by poking into screen memory
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Drawing text
 \
 \ ------------------------------------------------------------------------------
@@ -11601,7 +11601,7 @@ ENDIF
 \   Category: Maths (Geometry)
 \    Summary: Calculate the dot product of XX15 and one of the space station's
 \             orientation vectors
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -11704,7 +11704,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Calculate the vector from the ideal docking position to the ship
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -11980,7 +11980,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Tactics
 \    Summary: Launch a ship straight ahead of us, below the laser sights
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -12068,7 +12068,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Tactics
 \    Summary: Fire a missile from our ship
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -12114,7 +12114,7 @@ ENDIF
 \   Category: Tactics
 \    Summary: Make a ship or station hostile, and if this is a ship then enable
 \             the ship's AI and give it a kick of speed
-\       Area: hot, main
+\       Area: cold
 \  Deep dive: Aggression and hostility in ship tactics
 \
 \ ------------------------------------------------------------------------------
@@ -12199,7 +12199,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Tactics
 \    Summary: Display the "missile jammed" message
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -12226,7 +12226,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Spawn an escape pod from the current (parent) ship
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Aggression and hostility in ship tactics
 \
 \ ------------------------------------------------------------------------------
@@ -12263,7 +12263,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Spawn a child ship from the current (parent) ship
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -12480,7 +12480,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Moving
 \    Summary: Move a ship in space along one of the coordinate axes
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15053,7 +15053,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Calculate A = arctan(P / Q)
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: The sine, cosine and arctan tables
 \
 \ ------------------------------------------------------------------------------
@@ -15189,7 +15189,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw the laser lines for when we fire our lasers
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15342,7 +15342,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Market
 \    Summary: Work out if we have space for one tonne of cargo
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15393,7 +15393,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Market
 \    Summary: Work out if we have space for a specific amount of cargo
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15511,7 +15511,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Twist the selected system's seeds four times
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Twisting the system seeds
 \             Galaxy and system seeds
 \
@@ -15541,7 +15541,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Twist the selected system's seeds
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Twisting the system seeds
 \             Galaxy and system seeds
 \
@@ -15610,7 +15610,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Print the distance to the selected system in light years
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15656,7 +15656,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a text token and a paragraph break
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15684,7 +15684,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a paragraph break
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -15706,7 +15706,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Set Sentence Case and print a newline
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -15723,7 +15723,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a newline
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -16088,7 +16088,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Calculate system data from the system seeds
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Generating system data
 \             Galaxy and system seeds
 \
@@ -16304,7 +16304,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a set of crosshairs
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -17786,7 +17786,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Print the hyperspace countdown in the top-left of the screen
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -17820,7 +17820,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print 16-bit number, left-padded to 5 digits, no point
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -17850,7 +17850,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a 16-bit number, left-padded to 5 digits, and optional point
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -17902,7 +17902,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a text token followed by a question mark
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -17931,7 +17931,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Set the current system to the nearest system and return to hyp
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -18288,7 +18288,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Market
 \    Summary: Calculate QQ19+3 = economy * |economic_factor|
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -18549,7 +18549,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Spawn a Thargoid ship and a Thargon companion
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Fixing ship positions
 \             Aggression and hostility in ship tactics
 \
@@ -18968,7 +18968,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Add an amount of cash to the cash pot
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19038,7 +19038,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (Y X) = (A P) * 4
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19125,7 +19125,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Print the selected system name
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Generating system names
 \             Galaxy and system seeds
 \
@@ -19209,7 +19209,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Status
 \    Summary: Print the commander's name
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19249,7 +19249,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Print the current system name
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19304,7 +19304,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Print the current galaxy number
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19334,7 +19334,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Status
 \    Summary: Print fuel and cash levels
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19371,7 +19371,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Status
 \    Summary: Print the current amount of cash
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19417,7 +19417,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a text token followed by a newline
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19440,7 +19440,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a text token followed by a colon
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19461,7 +19461,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a colon
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -19476,7 +19476,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a text token
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Printing text tokens
 \
 \ ------------------------------------------------------------------------------
@@ -19603,7 +19603,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a letter in lower case
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19652,7 +19652,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a letter according to Sentence Case
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19717,7 +19717,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a recursive token in the range 128-145
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19745,7 +19745,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Tab to column 21 and print a colon
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19769,7 +19769,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a letter in lower case
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19824,7 +19824,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a character and switch to capitals
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19869,7 +19869,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a character
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19889,7 +19889,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a two-letter token or recursive token 0-95
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -19949,7 +19949,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Text
 \    Summary: Print a recursive token
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Printing text tokens
 \
 \ ------------------------------------------------------------------------------
@@ -20578,7 +20578,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Stardust
 \    Summary: Initialise the stardust field
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20597,7 +20597,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Stardust
 \    Summary: Create a random cloud of stardust
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20656,7 +20656,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Clear the scanner, reset the ball line and sun line heaps
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20734,7 +20734,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing suns
 \    Summary: Reset the sun line heap
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -20998,7 +20998,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Maths (Geometry)
 \    Summary: Calculate the vector to the space station
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21221,7 +21221,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw a dash on the compass
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21450,7 +21450,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Take some damage
-\       Area: hot, main
+\       Area: cold
 \
 \ ------------------------------------------------------------------------------
 \
@@ -21699,7 +21699,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Add a new space station to our local bubble of universe
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -22036,7 +22036,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Flip the sign and double an INWK byte
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -22074,7 +22074,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Unarm missiles and update the dashboard indicators
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -22106,7 +22106,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Set/unset the lock target for a missile and update the dashboard
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -22150,7 +22150,7 @@ ENDMACRO
 \   Category: Dashboard
 \    Summary: Start up the E.C.M. (light up the indicator, start the countdown
 \             and make the E.C.M. sound)
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -22170,7 +22170,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Light up the E.C.M. indicator bulb ("E") on the dashboard
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -22194,7 +22194,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Light up the space station indicator ("S") on the dashboard
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -22216,7 +22216,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw an indicator bulb on the dashboard
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -22281,7 +22281,7 @@ ENDMACRO
 \       Type: Variable
 \   Category: Dashboard
 \    Summary: The character bitmap for the E.C.M. indicator bulb
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -22316,7 +22316,7 @@ ENDMACRO
 \       Type: Variable
 \   Category: Dashboard
 \    Summary: The bitmap definition for the space station indicator bulb
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -22344,7 +22344,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Draw a specific indicator in the dashboard's missile bar
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -23429,7 +23429,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing suns
 \    Summary: Draw the sun: Set up all the variables needed to draw the sun
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Drawing the sun
 \
 \ ------------------------------------------------------------------------------
@@ -23632,7 +23632,7 @@ ENDMACRO
 \   Category: Drawing suns
 \    Summary: Draw the sun: Start from the bottom of the screen and erase the
 \             old sun line by line
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Drawing the sun
 \
 \ ------------------------------------------------------------------------------
@@ -23683,7 +23683,7 @@ ENDMACRO
 \   Category: Drawing suns
 \    Summary: Draw the sun: Continue to move up the screen, drawing the new sun
 \             line by line
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Drawing the sun
 \
 \ ------------------------------------------------------------------------------
@@ -23928,7 +23928,7 @@ ENDMACRO
 \   Category: Drawing suns
 \    Summary: Draw the sun: Continue to the top of the screen, erasing the old
 \             sun line by line
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Drawing the sun
 \
 \ ------------------------------------------------------------------------------
@@ -24056,7 +24056,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing circles
 \    Summary: Draw a circle (for the planet or chart)
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Drawing circles
 \
 \ ------------------------------------------------------------------------------
@@ -24378,7 +24378,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Draw a horizontal line given a centre and a half-width
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -25067,7 +25067,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Set the selected system to the current system
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -25168,7 +25168,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Remove the space station and replace it with the sun
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -25746,7 +25746,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Missions
 \    Summary: Check whether we are in the Constrictor's system in mission 1
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -25796,7 +25796,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Start and end
 \    Summary: Reset most variables
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -25867,7 +25867,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Start and end
 \    Summary: Reset a number of flight variables and workspaces
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -26007,7 +26007,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Display the dashboard's missile indicators in green
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -26054,7 +26054,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Remove an in-flight message from the space view
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -26076,7 +26076,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Universe
 \    Summary: Initialise the INWK workspace to a fairly aggressive ship
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Fixing ship positions
 \             Aggression and hostility in ship tactics
 \
@@ -26193,7 +26193,7 @@ ENDMACRO
 \       Type: Subroutine
 \   Category: Main loop
 \    Summary: Spawn a trader (a Cobra Mk III, Python, Boa or Anaconda)
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Program flow of the main game loop
 \             Ship data blocks
 \             Aggression and hostility in ship tactics
@@ -26478,7 +26478,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Main loop
 \    Summary: Potentially spawn a cop, particularly if we've been bad
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Program flow of the main game loop
 \             Ship data blocks
 \             Fixing ship positions
@@ -26549,7 +26549,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Main loop
 \    Summary: Potentially spawn a lone bounty hunter or up to four pirates
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Program flow of the main game loop
 \             Ship data blocks
 \             Fixing ship positions
@@ -27100,7 +27100,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Status
 \    Summary: Calculate how bad we have been
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27261,7 +27261,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Start and end
 \    Summary: Display the death screen
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27418,7 +27418,7 @@ ENDIF
 \   Category: Loader
 \    Summary: Launch from the station, load a new set of ship blueprints and
 \             jump into the main game loop
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -27446,7 +27446,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Loader
 \    Summary: Load a new ship blueprints file
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Ship blueprints in the BBC Micro disc version
 \
 \ ------------------------------------------------------------------------------
@@ -27557,7 +27557,7 @@ ENDIF
 \       Type: Variable
 \   Category: Loader
 \    Summary: The OS command string for loading a ship blueprints file
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -27821,7 +27821,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Utility routines
 \    Summary: Reset the local bubble of universe and ship status
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27858,7 +27858,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Utility routines
 \    Summary: Zero-fill the page whose number is in X
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -27884,7 +27884,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Utility routines
 \    Summary: Zero-fill a specific page
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28325,7 +28325,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Perform an in-system jump
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: A sense of scale
 \
 \ ------------------------------------------------------------------------------
@@ -28502,7 +28502,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Dashboard
 \    Summary: Switch off the E.C.M. and turn off the dashboard bulb
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -28572,7 +28572,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Tactics
 \    Summary: Add an enemy missile to our local bubble of universe
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -28781,7 +28781,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Sound
 \    Summary: Ask the sound engine for a sound
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -29815,7 +29815,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Erase an old in-flight message and display a new one
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -29852,7 +29852,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Display "E.C.M.SYSTEM DESTROYED" as an in-flight message
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -29871,7 +29871,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Display "FUEL SCOOPS DESTROYED" as an in-flight message
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -29885,7 +29885,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Display an in-flight message
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -29926,7 +29926,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Print a text token, possibly followed by " DESTROYED"
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31623,7 +31623,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing suns
 \    Summary: Port: HLOIN and HLOIN2 for the sun, outside record mode only
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -31896,7 +31896,7 @@ ENDIF
 \       Type: Subroutine
 \   Category: Drawing ships
 \    Summary: Port: record the laser beam of a ship firing at us
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -32031,7 +32031,7 @@ ENDIF
 \   Category: Drawing ships
 \    Summary: Port: show all the splinter's faces for LL9's vertices and the
 \             renderer
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -34334,7 +34334,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Clip line: Work out which end-points are on-screen, if any
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Line-clipping
 \             Extended screen coordinates
 \
@@ -34505,7 +34505,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Clip line: Work out if any part of the line is on-screen
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Line-clipping
 \             Extended screen coordinates
 \
@@ -34598,7 +34598,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Clip line: Calculate the line's gradient
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Line-clipping
 \             Extended screen coordinates
 \
@@ -34733,7 +34733,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Clip line: Call the routine in LL188 to do the actual clipping
-\       Area: cold
+\       Area: cold 6
 \  Deep dive: Line-clipping
 \             Extended screen coordinates
 \
@@ -35039,7 +35039,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing lines
 \    Summary: Move a point along a line until it is on-screen
-\       Area: cold
+\       Area: hot, main
 \  Deep dive: Line-clipping
 \
 \ ------------------------------------------------------------------------------
@@ -35248,7 +35248,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (Y X) = (S x1_lo) * XX12+2 or (S x1_lo) / XX12+2
-\       Area: cold
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -35365,7 +35365,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate (Y X) = (S R) / XX12+2 or (S R) * XX12+2
-\       Area: cold
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -35520,7 +35520,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Maths (Arithmetic)
 \    Summary: Calculate Q = XX12+2, A = S EOR XX12+3 and (S R) = |S R|
-\       Area: cold
+\       Area: hot, main
 \
 \ ------------------------------------------------------------------------------
 \
@@ -37069,7 +37069,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Initialise the space view
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -37145,7 +37145,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Flight
 \    Summary: Draw the laser crosshairs
-\       Area: cold
+\       Area: cold 6
 \
 \ ******************************************************************************
 
@@ -37199,7 +37199,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing the screen
 \    Summary: Clear the screen and set the current view type
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -37229,7 +37229,7 @@ LIGHT_SUN = TRUE
 \   Category: Drawing the screen
 \    Summary: Clear the top part of the screen, draw a border box and configure
 \             the specified view
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \
@@ -37433,7 +37433,7 @@ LIGHT_SUN = TRUE
 \       Type: Subroutine
 \   Category: Drawing the screen
 \    Summary: Clear the bottom three text rows of the space view
-\       Area: cold
+\       Area: cold 6
 \
 \ ------------------------------------------------------------------------------
 \

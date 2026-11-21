@@ -16,6 +16,7 @@
  INCLUDE "3-assembled-output/resident.asm"
  INCLUDE "3-assembled-output/common-entry.asm"
  INCLUDE "3-assembled-output/bank5-entry.asm"
+ INCLUDE "3-assembled-output/gfx-merid-defs.asm"
 
  PROGI% = BPSLOT%
 
@@ -72,24 +73,32 @@ ENDIF
  ORG &8000
 
  INCLUDE "3-assembled-output/elite-flight-cold.asm"
- INCLUDE "3-assembled-output/elite-tokens-cold.asm"
 .OVL%
  INCLUDE "3-assembled-output/elite-flight-ovl2.asm"
  CLEAR OVL%, &C000
  ORG OVL%
  INCLUDE "3-assembled-output/elite-flight-ovl1.asm"
  OVL_END% = &BE00
- CLEAR OVL%, &C000
- ORG OVL%
- FT_GETW = OVL%         \ (the painter's call of R_GETW: a stub in the layout)
+ CLEAR &8000, &C000     \ (the renderer's window, for its labels: anywhere)
+ ORG &8000
+ INCLUDE "3-assembled-output/gfx-frame-bank7low.asm"
+ FT_GETW = OVL%         \ (the painter's call of R_GETW, and the disc part's
+ T_GETW = OVL%          \ calls: in the layout, gfx-glue.asm's bank 7 pass)
+ T_REPAIR = OVL%
+ FT_DPROWS = OVL%
+ f_dpbegin = OVL%
+ f_dpdisc2 = OVL%
 .W7P%                   \ (the painter's pass: its pairs' offsets for the pad
  INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"   \ in the layout)
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
+ INCLUDE "3-assembled-output/gfx-frame-bank7.asm"
+ INCLUDE "3-assembled-output/gfx-merid-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_dpatch-bank7.asm"
 
- CLEAR C6%, C6% + C6SZ  \ (the cold 6 pass, at the start of bank 6, for its
+ CLEAR C6%, &C000       \ (the cold 6 pass, at the start of bank 6, for its
  ORG C6%                \ labels, which the hot pass's stubs name)
  INCLUDE "3-assembled-output/elite-flight-c6.asm"
+ INCLUDE "3-assembled-output/elite-tokens-cold.asm"
 
                         \ The containers' bounds, as labels for the symbols
                         \ (bank 4 also holds the main RAM part's image)

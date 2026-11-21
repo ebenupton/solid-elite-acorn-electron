@@ -765,6 +765,11 @@ def b6(m, name, off=0):
     return m.mem.banks[FBANK][m.S[name] + off - 0x8000]
 
 
+def b7(m, name, off=0):
+    """the disc layer's rows, in the flight code's bank 7 (its symbols)"""
+    return m.mem.banks[COLD][m.F[name] + off - 0x8000]
+
+
 def disc_tests(png_dir):
     import random
     rnd = random.Random(11)
@@ -798,8 +803,8 @@ def disc_tests(png_dir):
             rows = surface_rows(cx, cy, r, surf)
             rb = []
             for y, (p, xs) in rows.items():
-                n = b6(m, 'R_NDN', y)
-                gx = [b6(m, 'R_NDX%d' % k, y) for k in range(n & 0x7F)]
+                n = b7(m, 'R_NDN', y)
+                gx = [b7(m, 'R_NDX%d' % k, y) for k in range(n & 0x7F)]
                 if (n >> 7, gx) != (p & 1, xs):
                     rb.append((y, (n >> 7, gx), (p, xs)))
             check(not rb, 'disc scene %d: PC_ROWS\' rows are planet_caps.py\'s%s' % (i, '' if not rb else ' (row %d: %r, the model %r)' % rb[0]))

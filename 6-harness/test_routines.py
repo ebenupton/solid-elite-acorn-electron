@@ -133,7 +133,8 @@ class Machine:
     def call(self, routine, a=0, x=0, y=0, c=0, mem=None, limit=200000, stop=None):
         mpu = self.mpu
         if getattr(self, "banks", None):          # (the port: main RAM and its banks)
-            bank = self.cold_bank if routine in self.cold_labels else self.home_bank
+            bank = self.cold_bank if routine in self.cold_labels else \
+                6 if routine in getattr(self, "c6_labels", ()) else self.home_bank   # (the cold 6 pass)
             mpu.memory = PagedMemory(list(self.base), {k: list(v) for k, v in self.banks.items()}, bank)
             mpu.memory.main[0xF4] = bank
         else:
@@ -266,7 +267,8 @@ def load():
     def bank(path):
         d = list(open(os.path.join(REPO, path), "rb").read())
         return d + [0] * (16384 - len(d))
-    cand.banks = {4: bank("3-assembled-output/D.CODEH.bin"), 7: bank("3-assembled-output/D.CODEC.bin")}
+    cand.banks = {4: bank("3-assembled-output/D.CODEH.bin"), 7: bank("3-assembled-output/D.CODEC.bin"),
+                  6: bank("3-assembled-output/BANK6.bin")}   # (bank 6: the flight code's cold 6 pass, at its start)
     ce = open(os.path.join(REPO, "3-assembled-output/common-entry.asm")).read()   # (the common block's bytes
     cb = lambda n: int(re.search(r"^%s\s*=\s*&([0-9A-F]+)" % n, ce, re.M).group(1), 16) - 0x8000   # that the
     for b in cand.banks:                                                          # loader writes: the bank
@@ -275,11 +277,13 @@ def load():
     for (a, data) in extra:                       # (the quarter squares, in the home bank)
         if 0x8000 <= a < 0xC000:
             cand.banks[4][a - 0x8000:a - 0x8000 + len(data)] = list(data)
-    cand.cold_labels = set()
+    cand.cold_labels, cand.c6_labels = set(), set()
     for l in open(os.path.join(REPO, "3-assembled-output/flight-banks.txt")):
         f = l.split()
         if len(f) == 2 and f[1] == "C":
             cand.cold_labels.add(f[0])
+        elif len(f) == 2 and f[1] == "6":
+            cand.c6_labels.add(f[0])
     cand.cold = cand
     return ref, cand
 

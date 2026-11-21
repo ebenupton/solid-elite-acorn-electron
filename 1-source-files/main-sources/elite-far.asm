@@ -10,8 +10,9 @@
 \ bytes in each (FAR.bin, which their assemblies take in): a far call runs
 \ in its caller's bank's copy up to the write to ROMSEL, and on in its
 \ target's bank's from the next instruction, so none of it is fetched from
-\ main RAM (the Electron runs main RAM at half speed). Banks 5 and 6 have
-\ no copy: no far call is made from them or into them.
+\ main RAM (the Electron runs main RAM at half speed). Bank 6 holds a copy
+\ too, for the flight code's cold 6 pass there (farC6, below, and its own
+\ far calls out); bank 5 has none: no far call is made from it or into it.
 \
 \ Each of the game's two programs (the flight code and the docked code) runs
 \ with its home bank (ROMSEL = BANK4) paged in at &8000-&BFFF. Its cold code
@@ -77,6 +78,13 @@
  LDA BANK7
  BNE farj               \ Jump to farj (BANK7 is never 0, as in farC)
 
+.farC6j                 \ (the jump into the flight code's cold 6 pass, in
+ PHP                    \ bank 6, for a target that never returns)
+ STA fA
+ LDA BANK6
+ BNE farj               \ Jump to farj (BANK6 is never 0: the second highest
+                        \ of the four slots found)
+
 .farHj
  PHP
  STA fA
@@ -108,10 +116,16 @@
  PLP
  JMP (ft)
 
+.farC6                  \ The far call into the flight code's cold 6 pass, in
+ PHP                    \ bank 6 (streams.py): farC's, with bank 6's number,
+ STA fA                 \ from here (main RAM: the far block is full) into the
+ LDA BANK6              \ caller's bank's copy of the far block, which bank 6
+ JMP farc               \ holds too, so that the call runs on there
+
 \ ******************************************************************************
 \
 \ The far block: farC and farH, at FAR% in each program's home and cold
-\ banks
+\ banks, and in bank 6 for the flight code's cold 6 pass
 \
 \ ******************************************************************************
 

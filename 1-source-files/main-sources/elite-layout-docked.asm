@@ -162,8 +162,13 @@
  ORG FAR%               \ the far block and the common block, as in bank 4
  INCBIN "3-assembled-output/FAR.bin"
  INCBIN "3-assembled-output/COMMON.bin"
- ASSERT P% = COMMON_END%
+ ASSERT P% = COMMON_END% AND P% = DPENT%
 
- SAVE "3-assembled-output/T.CODEC.bin", &8000, COMMON_END%, &8000
+ INCLUDE "3-assembled-output/gfx-glue-dockedbank7.asm"   \ Port: the disc layer's
+                        \ entries, which the frame layer calls (C_T7) in any
+                        \ program's frames: the docked code has no disc
+.DPENTD_END%
+
+ SAVE "3-assembled-output/T.CODEC.bin", &8000, DPENTD_END%, &8000
 
  ASSERT ECMA = SND_ECMA   \ (the sound engine reads ECMA: gfx-sound.asm)

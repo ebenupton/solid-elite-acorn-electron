@@ -36,9 +36,10 @@ import re
 
 OUT = "3-assembled-output/"
 WINDOW7 = {"flight": ("gfx-raster_disc-bank7.asm", "gfx-raster_disc2-bank7.asm",
-                      "gfx-raster_dpatch-bank7.asm", "gfx-glue-bank7.asm")}   # (bank 7's renderer window, the renderer's
+                      "gfx-raster_dpatch-bank7.asm", "gfx-frame-bank7.asm", "gfx-merid-bank7.asm",
+                      "gfx-glue-bank7.asm")}   # (bank 7's renderer window, the renderer's
                                                         # bank 7 passes: elite-layout-flight.asm)
-NAMES = ("farC", "farCj", "farH", "farHj", "BANK4", "BANK7", "BANK5", "BANK6", "PCLI",
+NAMES = ("farC", "farCj", "farH", "farHj", "farC6", "farC6j", "BANK4", "BANK7", "BANK5", "BANK6", "PCLI",
          "IRQG", "NA%", "CHK2", "CHK", "BRBR1", "PANR", "dfsin", "dfsout", "pload",
          "pcb_o", "pis_t", "SREQ")   # (SREQ: the sound engine's queue)
 
@@ -77,14 +78,16 @@ def labels(path):
 
 for prog in ("flight", "docked"):
     with open(OUT + "%s-banks.txt" % prog, "w") as f:
-        for name in labels(OUT + "elite-%s-cold.asm" % prog) + labels(OUT + "elite-tokens-cold.asm") + \
+        for name in labels(OUT + "elite-%s-cold.asm" % prog) + \
+                (labels(OUT + "elite-tokens-cold.asm") if prog != "flight" else []) + \
                 sum((labels(OUT + "elite-%s-ovl%d.asm" % (prog, n)) for n in (1, 2, 3)), []) + \
                 sum((labels(OUT + w) for w in WINDOW7.get(prog, ())), []):
             f.write("%s C\n" % name)
         for name in sum((labels(OUT + "elite-%s-%s.asm" % (prog, c)) for c in ("low", "hot", "hotm", "hotx", "hotl", "hots", "blueprints")), []):
             f.write("%s H\n" % name)
-        for name in labels(OUT + "elite-%s-c6.asm" % prog):     # (the flight code's cold 6
-            f.write("%s 6\n" % name)                            # pass, in bank 6)
+        for name in labels(OUT + "elite-%s-c6.asm" % prog) + \
+                (labels(OUT + "elite-tokens-cold.asm") if prog == "flight" else []):   # (the flight
+            f.write("%s 6\n" % name)              # code's cold 6 pass, in bank 6, with its tokens)
 
 
 # Port: the painter's code in bank 7's renderer window (elite-layout-flight.asm)

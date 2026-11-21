@@ -49,14 +49,13 @@
                         \ bank 4 (PROGI%)
 
  C6% = &8000            \ The flight code's cold 6 pass, at the start of bank 6
- C6SZ = 0               \ (BANK6), before the frame layer, and its room (the
+  C6SZ = &1700           \ (BANK6), before the frame layer, and its room (the
                         \ flight code's layout assembles it there and saves it
                         \ as C6.bin, which bank 6's assembly takes in:
-                        \ streams.py; no block is tagged for it now, it has no
-                        \ room, and its far call, farC6, is gone, as bank 6
-                        \ has no far block (elite-far.asm): the frame layer
-                        \ starts at C6%)
- FHV% = C6% + C6SZ + 41 \ The hangar's background's four jumps into bank 6
+                        \ streams.py); its far calls go through farC6 (the
+                        \ resident block) and bank 6's copy of the far block
+                        \ (elite-far.asm)
+ FHV% = C6% + C6SZ + 17 \ The hangar's background's four jumps into bank 6
                         \ (gfx-bank6.asm's FHV, after the bank's scratch:
                         \ gfx-hangar.asm)
 

@@ -8,9 +8,11 @@
 \ assembled with its caller (its blocks' "Area:" lines, streams.py's passes):
 \ pc_circ and its arithmetic in bank 4, at the end of the flight code's hot
 \ pass, with PF_HOOK (gfx-planet7.asm), where the game's quarter squares
-\ are (a build with _CIRCLES: elite-layout-flight.asm); PC_ROWS in bank 6
-\ with the frame layer, which calls it from f_bounds and has the rows' arrays (R_NDT,
-\ R_NDB, R_NDISCL/R, R_NDN, R_NDX0-3: gfx-frame.asm, gfx-bank6.asm). The
+\ are (a build with _CIRCLES: elite-layout-flight.asm); PC_ROWS in the
+\ flight code's bank 7 with the frame layer's disc part, which calls it from
+\ f_bounds and has the rows' arrays (R_NDT, R_NDB, R_NDISCL/R, R_NDN,
+\ R_NDX0-3: gfx-frame.asm, elite-layout-flight.asm), and the painter that
+\ reads them; the definitions both use are a pass of their own (defs). The
 \ records (PCB), their count (PC_N) and the base colour (pc_inv) are in the
 \ mailbox (gfx-rws.asm), from PF_HOOK in the game's iteration to f_bounds in
 \ its frame.
@@ -60,14 +62,14 @@
 \     P), and reads
 \     the quarter squares (QSL, QSH);
 \
-\   * PC_ROWS (the planet's records), in the frame (bank 6's f_bounds; the
-\     Master port's through T_CAPS): the disc layer's boundaries for rows
-\     R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). They use the rasteriser's
-\     scratch zero page &10-&27 (F_FRAME has saved it).
+\   * PC_ROWS (the planet's records), in the frame (f_bounds, in the
+\     flight code's bank 7; the Master port's through T_CAPS): the disc
+\     layer's boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR),
+\     with its scratch in that bank (PZB).
 \
 \ ******************************************************************************
 
-\       Area: bank 4, bank 6
+\       Area: defs
 
 pm_p  = &18             \ zero page workspace (Elite's temporaries): product,
                         \ quotient
@@ -1346,7 +1348,7 @@ O_RC = pv_rc - pv
 
 
 
-\       Area: bank 6
+\       Area: bank 7
 
 \ ******************************************************************************
 \
@@ -1357,9 +1359,9 @@ O_RC = pv_rc - pv
 \ left limb's toggles flip the start colour of the rows from T1 or T2 down,
 \ and, unless every row is wholly outside its region, its rows from Yc out,
 \ down and up.
-\ Called by f_bounds (bank 6; the Master port's through T_CAPS), during
-\ the frame, with this bank paged; its scratch is this bank's (PZB,
-\ gfx-bank6.asm).
+\ Called by f_bounds (the flight code's bank 7; the Master port's through
+\ T_CAPS), during the frame, with this bank paged; its scratch is this
+\ bank's (PZB, gfx-frame.asm).
 \
 \ ******************************************************************************
 
@@ -2244,10 +2246,10 @@ ASSERT pra1 = pra0 + 7 AND pra3 = pra0 + 21 AND prk1 = prk0 + 7 AND prk3 = prk0 
 \ The engine's variables: pc_circ's in bank 4, with its code (above) and
 \ after the blueprint slot, at PFVS% (bank 4 top: what one call makes and
 \ uses, and reads and writes most), placed by the flight code's layout
-\ (elite-map.asm's addresses); PC_ROWS' in bank 6 (bank 6's pass); and in
-\ main RAM after the glue (the resident block A's main passes) the records'
-\ slots' offsets, which both read (pcb_o, five bytes), and pm_isqrt's table
-\ (pis_t, read once a call)
+\ (elite-map.asm's addresses); PC_ROWS' in the flight code's bank 7 (its
+\ bank 7 pass); and in main RAM after the glue (the resident block A's main
+\ passes) the records' slots' offsets, which both read (pcb_o, five bytes),
+\ and pm_isqrt's table (pis_t, read once a call)
 
 \       Area: main high, main low
 
@@ -2295,7 +2297,7 @@ pm_K2 = wr + R_K2       \ K2, 16.16
 .pm_inv SKIP 1          \ 1 if m was negated
 .pc_v   SKIP 2
 
-\       Area: bank 6
+\       Area: bank 7
 
 \ The frame's (PC_ROWS')
 
@@ -2318,7 +2320,7 @@ pm_K2 = wr + R_K2       \ K2, 16.16
 
 .pcb_o  EQUB 0, RSZ, 2*RSZ, 3*RSZ, 4*RSZ \ the slots' offsets in PCB (and the end):
 ASSERT HI(pcb_o) = HI(pcb_o + 4)         \ in main RAM, as both pc_circ (bank 4) and
-                                         \ the frame's PC_ROWS (bank 6) read it
+                                         \ the frame's PC_ROWS (bank 7) read it
 
 .pis_t                  \ floor(sqrt(256 h)), h = 64..255 (pm_isqrt; in main
  FOR h, 64, 255         \ RAM, where the bank 4 code's room is not spent on

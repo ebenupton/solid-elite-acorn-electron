@@ -115,6 +115,11 @@ DB_WL    = MBOX + &20
 DB_WR    = MBOX + &30
 DB_PY    = MBOX + &64   \ R_GETW: the row of the batch whose writes it puts
  ASSERT DB_PY < R_SCOL AND DB_R + DB_RL <= DB_PY AND 3 * DB_DM + 2 <= DB_RL
+DH_PL    = &10          \ the frame layer's hand-over to its disc part in the
+DH_N     = 12           \ flight code's bank 7 (DP_PREP, gfx-glue.asm): the
+                        \ planet's disc and the sun's (bank 6's F_PLON to
+                        \ F_SUR) in zero page &10-&1B, the rasteriser's
+                        \ scratch, which F_FRAME has kept
 QSGX     = 128          \ the sights' centre, and their arms' reach from it
 QSGY     = 96           \ (r_wq, gfx-raster_dq.asm, and the painter's R_NOTE)
 QSGIN    = 20

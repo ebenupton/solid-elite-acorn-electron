@@ -919,11 +919,18 @@ RPN = 4
 .fbp_scr EQUB HI(BUF0), HI(SCREEN%)
 .f_scr   EQUB HI(SCREEN%)       \ this frame's buffer's screen base, high byte
 
+\       Area: bank 7
+
 \ ------------------------------------------------------------------------------
 \ The discs (Port: the BBC Master port's f_discs and f_disc2, with its disc
-\ layer's row code, the painter, in the flight code's bank 7: gfx-raster_disc.asm
-\ and gfx-raster_disc2.asm, reached through the common block; docs/renderer.md, "The
-\ discs"). The bigger of the sun and the planet (the sun if not smaller) is
+\ layer's row code, the painter: docs/renderer.md, "The discs"). Port (the
+\ Electron): this part of the frame layer is assembled in the flight code's
+\ bank 7 with the painter (gfx-raster_disc.asm, gfx-raster_disc2.asm: its bank
+\ 7 pass, elite-layout-flight.asm), so that the rows it makes are in the
+\ painter's bank: the frame layer in bank 6 calls it twice a frame through
+\ the common block (DP_PREP, DP_DRAW: gfx-glue.asm), handing over the planet's
+\ and the sun's discs in zero page (DH_PL, gfx-rws.asm). The bigger of the
+\ sun and the planet (the sun if not smaller) is
 \ the disc layer, kept on each buffer from frame to frame and drawn where it
 \ changed: its spans (f_sunrows, f_plrows: R_NDISCL/R, R_NDT, R_NDB) and the
 \ planet's surface as boundaries (f_bounds: R_NDN, R_NDX0-3, R_NDF, from the
@@ -941,12 +948,41 @@ RPN = 4
 \ the painter's with them at its next frame (f_dpr: DP_BEGIN's PB_RESET).
 \ ------------------------------------------------------------------------------
 
+ INCLUDE "3-assembled-output/gfx-faces-cols.asm"   \ (the discs' colours, FC_SUNE
+                        \ to FC_PLANO: gfx-faces.asm's, which bank 6 assembles)
+
+.FZB    SKIP 16         \ this part's scratch, in this bank, as the frame
+fz_p    = FZB           \ layer's (FZB, gfx-bank6.asm)
+fz_q    = FZB+2
+fz_i    = FZB+12
+fz_n    = FZB+13
+fz_t    = FZB+14
+fz_u    = FZB+15
+.PZB    SKIP &18        \ PC_ROWS' scratch (gfx-merid.asm), and f_hrec's
+
+.F_PLON  EQUB 0         \ the planet's disc and the sun's this frame, as the
+.F_PLX   EQUW 0         \ frame layer's F_PLANET recorded them (F_PLON to
+.F_PLY   EQUW 0         \ F_SUR, in bank 6), taken from zero page at f_dprep
+.F_PLR   EQUB 0         \ (DH_PL: gfx-rws.asm)
+.F_SUON  EQUB 0
+.F_SUX   EQUW 0
+.F_SUY   EQUW 0
+.F_SUR   EQUB 0
+ ASSERT F_SUR = F_PLON + DH_N - 1
+.F_BACK  EQUB 0         \ the buffer being drawn (f_ddraw: bank 6's F_BACK)
+
 \ f_dprep: which disc is the layer (f_lay: 1 the sun, 2 the planet, 0 none)
 \ and which the second (f_sec), and the layer's rows (F_FRAME, before the
 \ wait, and before anything of the frame uses the mailbox: f_hrec takes the
 \ planet's records from it, PCB, for f_bounds' PC_ROWS)
 
 .f_dprep
+ LDX #DH_N - 1          \ the planet's and the sun's discs, handed over
+.fdh1
+ LDA DH_PL,X
+ STA F_PLON,X
+ DEX
+ BPL fdh1
 IF _CIRCLES             \ (only PF_HOOK makes records: a build with _CIRCLES)
  LDA F_PLON             \ the planet's records: this iteration's, or the last
  BEQ P%+5               \ ones moved with the disc (f_hrec)
@@ -1688,6 +1724,8 @@ f_cx = fpr_cx + 1       \ (the operand of ADC # in the slow disc loop)
 .fnb9
  RTS
 
+\       Area: bank 6
+
 \ F_PFHOLD (FG_PFHOLD): PF_HOOK asks, with A = the planet's radius, whether
 \ it may keep the circles' records it made last (C set) or must make them
 \ (C clear). They are made on every iteration of a close planet, and in
@@ -1741,6 +1779,8 @@ f_cx = fpr_cx + 1       \ (the operand of ADC # in the slow disc loop)
  STA f_pph
  CLC
  RTS
+
+\       Area: bank 7
 
 \ f_hrec: the planet's records for f_bounds, in this bank (f_hcb: PC_ROWS
 \ reads them there). PF_HOOK makes them only on some iterations (F_PFHOLD);
@@ -1884,6 +1924,7 @@ FC_PLLE = &5F : FC_PLLO = &AF
 \ disc layer and the second disc on this buffer
 
 .f_ddraw
+ STA F_BACK             \ (A: the buffer, F_BACK in bank 6)
  LDA #0                 \ (the painter has not drawn yet)
  STA f_dpf
  LDA R_NDT              \ the layer's new rows, within the window (none:
@@ -1966,10 +2007,11 @@ FC_PLLE = &5F : FC_PLLO = &AF
  ORA #PB_RESET
  STA f_dfl
 .fdw11
- LDA f_tlo              \ the text rows whose cells the layer's writes may
- STA RZ_T4              \ be over, first to last (f_tlo, f_thi; none: &FF,
- LDA f_thi              \ 0), which the painter keeps for them (DP_BEGIN
- STA RZ_T5              \ takes them in RZ_T4, RZ_T5); with a second disc
+                        \ the text rows whose cells the layer's writes may
+                        \ be over, first to last (bank 6's f_tlo, f_thi;
+                        \ none: &FF, 0), which the painter keeps for them
+                        \ (DP_BEGIN takes them in DPB_T0, DPB_T1, where
+                        \ bank 6 has put them); with a second disc
  LDA f_sec              \ on this buffer or to come, which wants them too,
  BNE fdw12              \ all
  LDA R_S2B,X
@@ -1977,18 +2019,18 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BCC fdw12d
 .fdw12
  LDA #0
- STA RZ_T4
+ STA DPB_T0
  LDA #23
- STA RZ_T5
+ STA DPB_T1
 .fdw12d
- LDA #FC_PLLE           \ colour B (DP_BEGIN takes it in RZ_T0, RZ_T1) and
- STA RZ_T0              \ the layer's rows (RZ_T2, RZ_T3)
+ LDA #FC_PLLE           \ colour B (DP_BEGIN takes it in DPB_E, DPB_O) and
+ STA DPB_E              \ the layer's rows (DPB_Y0, DPB_Y1)
  LDA #FC_PLLO
- STA RZ_T1
+ STA DPB_O
  LDA f_dy
- STA RZ_T2
+ STA DPB_Y0
  LDA f_dhi
- STA RZ_T3
+ STA DPB_Y1
  LDA #0                 \ nothing put yet
  STA f_dput
  TXA
@@ -2491,10 +2533,34 @@ FC_PLLE = &5F : FC_PLLO = &AF
 .R_NDB   EQUB 0
 .R_NDF   EQUB 0         \ 1: the layer has boundaries (R_NDN, R_NDX0-3)
 
-PB_BON   = 1            \ DP_BEGIN's flags (gfx-raster_disc.asm)
-PB_FOLD  = 2
-PB_BCLR  = &40
-PB_RESET = &80
+\       Area: bank 7 low
+
+\ The discs' half-widths and rows, and the planet's records kept (Port: in
+\ this bank, with the painter that reads the rows, at its start, page
+\ aligned: elite-layout-flight.asm; they were the frame layer's state in
+\ bank 6)
+
+ ASSERT LO(P%) = 0
+.F_HW   SKIP 256        \ the planet's half-widths (f_hwbuild)
+.F_HW2  SKIP 256        \ the sun's
+.R_NDISCR SKIP 192      \ the discs' rows this frame (f_discspans: the layer's,
+.R_NDISCL SKIP 192      \ then the second disc's), spans (L = 255, R = 0 for
+.R_NDN   SKIP 192       \ none), and the layer's boundaries (PC_ROWS): the
+.R_NDX0  SKIP 192       \ count (bits 0-6) and the colour at the span's left
+.R_NDX1  SKIP 192       \ end (bit 7: colour B), and their x, ascending
+.R_NDX2  SKIP 192
+.R_NDX3  SKIP 192
+.f_hcb  SKIP PCX_END-MBOX \ f_hrec's: the planet's records kept, for PC_ROWS
+f_hcn = f_hcb + PC_N - MBOX     \ (as the mailbox's &00 to PC_TU's end: how
+f_hci = f_hcb + pc_inv - MBOX   \ many, the base colour, the unclamped
+f_hct = f_hcb + PC_TU - MBOX    \ thresholds), the disc's centre then, and
+.f_hcx  SKIP 4          \ whether there are any (bit 7)
+.f_hval SKIP 1
+
+                        \ (PB_BON .. PB_RESET, DP_BEGIN's flags: the painter's,
+                        \ gfx-raster_disc.asm)
+
+\       Area: bank 6
 
 
 \ ------------------------------------------------------------------------------
@@ -3990,20 +4056,17 @@ SGOUT = 20
  STA fb_zh
  LDA F_PLZL
  STA fb_zl
- LDA #LO(F_HW)
- LDX #HI(F_HW)
  JMP f_bdisc
 .fbh0
  CLC
  RTS
 
-\ f_bdisc: is ship f_si behind the disc fb_x, fb_y, fb_r (half-widths at
-\ (A, X)), z fb_zh/fb_zl, with the first vertex of its first visible face
-\ inside it? C set if so
+\ f_bdisc: is ship f_si behind the disc fb_x, fb_y, fb_r (the planet's: its
+\ half-widths, F_HW, are with the disc layer's rows in the flight code's
+\ bank 7, f_dphw), z fb_zh/fb_zl, with the first vertex of its first
+\ visible face inside it? C set if so
 
 .f_bdisc
- STA fbh_hw+1
- STX fbh_hw+2
  LDX f_si               \ further away than the disc?
  LDA fb_zl
  CMP F_SZL,X
@@ -4056,8 +4119,7 @@ SGOUT = 20
  BCS fbh8
 .fbh3
  TAX
-.fbh_hw
- LDA F_HW,X             \ (patched: the half-width table)
+ JSR f_dphw             \ (Port: the planet's half-width, from bank 7)
  CMP f_bdx
  BCC fbh8
  SEC

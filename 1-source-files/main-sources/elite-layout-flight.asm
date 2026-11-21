@@ -35,9 +35,9 @@
 \     loads them and they run, overlay 1 in D.LOW with the second, third and
 \     fourth main RAM parts;
 \
-\   * bank 7 (saved as D.CODEC): the cold pass from &8000, then the recursive
-\     text tokens (QQ18, elite-text-tokens.asm's blocks tagged cold), then the
-\     renderer's window (WIN7%: the bank 7 passes of
+\   * bank 7 (saved as D.CODEC): the disc layer's rows and half-widths
+\     (page aligned, from &8000), the cold pass, then the renderer's window
+\     (WIN7%: the bank 7 passes of
 \     the renderer's files, the flight code's own parts of the renderer),
 \     with the far block, the common block and the painter's entries
 \     (DPENT%) in it, before the painter's operands' patch.
@@ -55,6 +55,9 @@
  INCLUDE "3-assembled-output/common-entry.asm"          \ The common block's
                                                         \ labels (elite-common.asm)
  INCLUDE "3-assembled-output/bank5-entry.asm"           \ Bank 5's entries
+ INCLUDE "3-assembled-output/gfx-merid-defs.asm"        \ The circle engine's
+                                                        \ definitions, for its
+                                                        \ bank 4 and bank 7 passes
 
 
  PROGI% = BPSLOT%       \ The main RAM part's image, at the start of the
@@ -200,11 +203,13 @@ ENDIF
  CLEAR &8000, &C000
  ORG &8000
 
+ INCLUDE "3-assembled-output/gfx-frame-bank7low.asm"   \ Port: the disc layer's
+                        \ half-widths and rows (gfx-frame.asm), page aligned
+                        \ at the bank's start
+
 .COLD_START%
 
  INCLUDE "3-assembled-output/elite-flight-cold.asm"
-
- INCLUDE "3-assembled-output/elite-tokens-cold.asm"
 
 .COLD_END%
 
@@ -254,10 +259,12 @@ ENDIF
 
                         \ Port: the renderer's window in bank 7, after the cold
                         \ pass: the parts of the renderer that only the flight
-                        \ code uses and that banks 5 and 6 have no room for,
-                        \ loaded with the flight code (docs/renderer.md): the
-                        \ bank 7 passes of the disc layer's painter, the second
-                        \ disc and their operands' patch (streams.py), then each
+                        \ code uses, loaded with the flight code
+                        \ (docs/renderer.md): the disc layer whole, the bank 7
+                        \ passes of its painter, the second disc and their
+                        \ operands' patch, of the frame layer's disc part, which
+                        \ makes the rows, with the rows' arrays, and of the
+                        \ circle engine's rows (PC_ROWS) (streams.py), then each
                         \ buffer's disc state, not in the image, to DFSSAVE%
                         \ (DPST%: gfx-raster_disc.asm)
 
@@ -267,6 +274,8 @@ ENDIF
                         \ SAMEPAGE pair of the painter in one page: layout-info.py)
  INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
+ INCLUDE "3-assembled-output/gfx-frame-bank7.asm"
+ INCLUDE "3-assembled-output/gfx-merid-bank7.asm"
 
 .WIN7_MID%
 
@@ -285,15 +294,18 @@ ENDIF
 
 .WIN7_END%
 
- PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", FAR%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
+ PRINT "Flight bank 7: the disc layer's rows &8000-", ~COLD_START%-1, ", the cold pass ", ~COLD_START%, "-", ~COLD_END%-1, ", the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", FAR%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
  ASSERT WIN7_END% <= DPST%         \ (the disc state, to DFSSAVE%: Port:
                                    \ the end of the bank)
 
  SAVE "3-assembled-output/D.CODEC.bin", &8000, WIN7_END%, &8000
 
  CLEAR C6%, C6% + C6SZ  \ the cold 6 pass, at the start of bank 6 (streams.py:
- ORG C6%                \ Area: cold 6), saved as C6.bin for bank 6's assembly
+ ORG C6%                \ Area: cold 6), saved as C6.bin for bank 6's assembly,
  INCLUDE "3-assembled-output/elite-flight-c6.asm"
+ INCLUDE "3-assembled-output/elite-tokens-cold.asm"   \ with the recursive text
+                        \ tokens (QQ18, elite-text-tokens.asm's blocks tagged
+                        \ cold), which only the pass's ex reads
 .C6_END%
  PRINT "Flight cold 6: ", ~C6%, "-", ~C6_END%-1, " (", C6_END%-C6%, " bytes), free ", C6% + C6SZ - C6_END%
  ASSERT C6_END% <= C6% + C6SZ

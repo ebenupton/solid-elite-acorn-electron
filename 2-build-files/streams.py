@@ -560,7 +560,7 @@ def direct_calls(lines, bl, eff, cold, hot):
     return out
 
 
-def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c6falls=()):
+def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c6falls=(), c6into=()):
     """the stubs between the sides, written into the copies at their places;
     returns (stubs into the cold pass, stubs out of it, the direct calls)"""
     noreturn = NORETURN[prog]
@@ -756,7 +756,7 @@ def glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c
     nh = place_stubs(groups, ("hot", "low", "blueprints"), "hot")
     no = overlay_stubs(prog, src, copies, errors, lines, bl, eff, copy_of, hotcopies, cold, hot, direct,
                        where, barea, host, macros, noreturn)
-    no += cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies, c6falls)
+    no += cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies, c6falls, c6into)
     # a cold block that falls into a low routine the cold pass calls directly
     # falls into a jump to it, at that routine's place in the cold copy
     for side, entry in falls:
@@ -899,16 +899,16 @@ def overlay_stubs(prog, src, copies, errors, lines, bl, eff, copy_of, hotcopies,
 # directly.
 
 
-def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies, c6falls=()):
+def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, hotcopies, c6falls=(), c6into=()):
     """the cold 6 copy's names and stubs, and the stubs into it; returns how
     many stubs"""
     if "c6" not in copies:
         return 0
     cc = copies["c6"]
     own = {n for n, i in defined(cc)}
-    ovl = set()
+    ovl = {}
     for c in [c for c in copies if c.startswith("ovl")]:
-        ovl.update(n[:-2] for n, i in defined(copies[c]) if n.endswith("_O"))
+        ovl.update((n[:-2], c[3:]) for n, i in defined(copies[c]) if n.endswith("_O"))
     out = {}                                 # stub -> (far, target as assembled, place)
     for i, l in enumerate(cc):
         code, comment = split_code(l)
@@ -917,16 +917,19 @@ def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, 
         new, pos = "", 0
         for off, st in statements(code):
             m = re.match(r"^(\s*)(JSR|JMP)(\s+)([A-Za-z_][A-Za-z0-9_]*%?)(.*)$", st, re.I)
-            if m and m.group(4) not in own and m.group(4) not in direct:
+            if m and m.group(4) not in own and m.group(4) not in direct and m.group(4) != "P%":
                 t = m.group(4)
                 if m.group(5).strip():
                     errors.append("%s:%d: %s %s%s from cold 6: a stub can only call a label"
                                   % (src, i + 1, m.group(2), t, m.group(5)))
                 place = alias.get(t, t)
                 nr = place in noreturn or t in noreturn
-                if t in ovl:
-                    errors.append("%s:%d: cold 6 calls %s, in an overlay" % (src, i + 1, t))
-                    stub = t
+                if t in ovl:               # (through ovfN, which loads the overlay if
+                    if nr:                 # need be and makes a far call: farret
+                        errors.append("%s:%d: cold 6 jumps to %s, in an overlay, which never returns"
+                                      % (src, i + 1, t))   # pages bank 6 back, as farC's does)
+                    stub = "x6o_" + t
+                    out.setdefault(stub, ("ovf" + ovl[t], t + "_O", t))
                 elif t in cold:
                     stub = ("j6c_" if nr else "x6c_") + t
                     out.setdefault(stub, ("farCj" if nr else "farC", t + "_C", t))
@@ -983,6 +986,8 @@ def cold6(src, copies, errors, cold, hot, direct, alias, noreturn, where, host, 
             for a, b, name in tokens(split_code(l)[0]):
                 if name in own:
                     need.setdefault(name, set()).add("hot")
+    for sd, entry in c6into:                 # (a block that falls into a cold 6 routine
+        need.setdefault(entry, set()).add(sd)   # falls into its stub, at its place)
     for c in ["cold"] + [c for c in copies if c.startswith("ovl")]:
         for j, l in enumerate(copies[c]):
             code, comment = split_code(l)
@@ -1116,6 +1121,7 @@ def program(prog, phase, errors):
     falls = []
     hotfalls = []                          # (k, k2): hot block k falls into hot block k2
     c6falls = []                           # the entry labels cold 6 blocks fall into
+    c6into = []                            # (side, entry): a block of that side falls into a cold 6 one
     lowseams = []
     ovlseams = []                          # (overlay copy, cold label, by a branch)
     for k, b in enumerate(bl):
@@ -1139,6 +1145,15 @@ def program(prog, phase, errors):
                     and entry_label(lines, b2.s, b2.e, macros):
                 c6falls.append(entry_label(lines, b2.s, b2.e, macros))   # (into its stub in the
                                                                          # cold 6 copy)
+            elif eff[k2] == "c6" and eff[k] in ("hot", "cold") and not bit_skip(st) and not b.runson \
+                    and entry_label(lines, b2.s, b2.e, macros):
+                c6into.append((side(eff[k]), entry_label(lines, b2.s, b2.e, macros)))   # (into the
+                                                                         # cold 6 routine's stub, at its
+                                                                         # place in the falling block's copy)
+            elif eff[k2] == "c6" and eff[k].startswith("ovl") and not bit_skip(st) and not b.runson \
+                    and entry_label(lines, b2.s, b2.e, macros):
+                ovlseams.append((eff[k], entry_label(lines, b2.s, b2.e, macros), False))   # (a JMP to
+                c6into.append(("cold", entry_label(lines, b2.s, b2.e, macros)))           # its cold copy's stub)
             elif "c6" in (eff[k], eff[k2]):
                 errors.append("%s:%d: %s (%s) can fall through its end (%s) into %s (%s): a cold 6 block may "
                               "only fall into an entry label of the hot or cold side, and nothing may fall into "
@@ -1255,6 +1270,19 @@ def program(prog, phase, errors):
                 if eff[k3] == eff[k]:
                     if k in pos:
                         join(pos[k], pos[k3])
+                elif eff[k3] == "c6" and eff[k] == "cold":
+                    pass                   # (to the cold 6 routine's stub, at its place
+                                           # in the cold copy, among the cold blocks)
+                elif eff[k3] == "c6" and eff[k].startswith("ovl"):
+                    ovlseams.append((eff[k], m.group(2), True))   # (a JMP to its cold copy's
+                                                                  # stub, in reach)
+                elif eff[k3] == "c6" and k in pos:
+                    hk = next((j for j in range(k3 - 1, -1, -1) if eff[j] == "hot" and ASM[j]), None)
+                    if hk is None:         # (as a branch to a cold routine: its stub
+                        errors.append("%s:%d: %s branches to %s (%s), whose stub has no place"
+                                      % (src, i + 1, b.name, m.group(2), eff[k3]))
+                    else:                  # is in the copy of the nearest hot
+                        join(pos[k], pos[hk])   # block before it)
                 elif "c6" in (eff[k], eff[k3]):
                     errors.append("%s:%d: %s branches to %s in another area (%s): cold 6 branches stay in it"
                                   % (src, i + 1, b.name, m.group(2), eff[k3]))
@@ -1403,8 +1431,9 @@ def program(prog, phase, errors):
             else:
                 copies[copy_of[k]][spot[0]] = "FALL_%d = P%%" % (b.e + 1) + note % (b.name, b2.name)
                 copies[copy_of[k2]][spot2[0]] = " ASSERT P% = FALL_" + str(b.e + 1) + note % (b.name, b2.name)
-    nstubs = glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c6falls)
+    nstubs = glue(prog, src, copies, errors, lines, bl, eff, copy_of, falls, hotcopies, c6falls, c6into)
     seams = {}
+    c6labs = {n[:-2] for n, i in defined(copies["c6"]) if n.endswith("_6")} if "c6" in copies else set()
     for c, entry, br in ovlseams:          # (a branch's JMP serves a fall too)
         seams[(c, entry)] = seams.get((c, entry), False) or br
     for (c, entry), br in sorted(seams.items()):
@@ -1415,22 +1444,27 @@ def program(prog, phase, errors):
         if code_part(copies[c][i]):
             errors.append("%s:%d: the overlay's seam into %s: its line is not blank in %s" % (src, i + 1, entry, c))
             continue
+        tgt = ("xs_" + entry) if entry in c6labs else (entry + "_C")   # (a cold 6 routine: its
+                                           # stub in the cold copy, at its place)
         if br:                             # (the branches to it in this copy go to
             offs = set()                   # the JMP instead, and a branch to it
             for j, l in enumerate(copies[c]):   # plus or minus n to a JMP to that)
                 code, comment = split_code(l)
-                m = re.match(r"^(\s*(?:\.[A-Za-z_]\w*\s+)*(?:BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS)\s+)%s_C\b(?:([+-])(\d+))?(.*)$"
-                             % re.escape(entry), code)
+                m = re.match(r"^(\s*(?:\.[A-Za-z_]\w*\s+)*(?:BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS)\s+)%s\b(?:([+-])(\d+))?(.*)$"
+                             % re.escape(tgt), code)
                 if m:
                     n = int(m.group(3) or 0) * (-1 if m.group(2) == "-" else 1)
                     offs.add(n)
                     copies[c][j] = m.group(1) + entry + "_ob" + (("_%d" % n if n > 0 else "_m%d" % -n) if n else "") \
                         + m.group(4) + comment
-            copies[c][i] = " : ".join((".%s_ob JMP %s_C" % (entry, entry)) if not n else
-                                      (".%s_ob_%s JMP %s_C%+d" % (entry, n if n > 0 else "m%d" % -n, entry, n))
+            if entry in c6labs and offs - {0}:
+                errors.append("%s: the overlay's branch into %s, in cold 6, is to an offset from it" % (src, entry))
+            copies[c][i] = " : ".join((".%s_ob JMP %s" % (entry, tgt)) if not n else
+                                      (".%s_ob_%s JMP %s%+d" % (entry, n if n > 0 else "m%d" % -n, tgt, n))
                                       for n in sorted(offs | {0}))
         else:
-            copies[c][i] = " JMP %s_C              \\ (the overlay's fall-through into %s, in the cold pass)" % (entry, entry)
+            copies[c][i] = " JMP %s              \\ (the overlay's fall-through into %s, in the %s pass)" \
+                % (tgt, entry, "cold 6" if entry in c6labs else "cold")
     for k, entry in lowseams:
         i = next(i for n, i in defined(lines) if n == entry and ACTIVE[i])
         a = copy_of[k]
@@ -1508,9 +1542,9 @@ RFILES = ("gfx-glue.asm", "gfx-raster_poly.asm", "gfx-raster_line.asm", "gfx-ras
           "gfx-raster_reset.asm", "gfx-planet7.asm", "gfx-merid.asm", "gfx-frame.asm",
           "gfx-flare.asm", "gfx-frame_cold.asm", "gfx-hangar.asm", "gfx-finit.asm",
           "gfx-raster_disc.asm", "gfx-raster_disc2.asm", "gfx-raster_dpatch.asm", "gfx-light.asm")
-RPLACES = ("bank 4", "bank 4 top", "bank 5 runs", "bank 5", "bank 5 gap", "bank 5 end", "bank 6", "bank 7", "main",
+RPLACES = ("defs", "bank 4", "bank 4 top", "bank 5 runs", "bank 5", "bank 5 gap", "bank 5 end", "bank 6", "bank 7", "bank 7 low", "main",
            "main low", "main high", "main part", "docked main", "bank 4 high", "bank 6 top", "bank 6 entries",
-           "bank 6 init")
+           "bank 6 init", "docked bank 7")
 
 
 def renderer_passes(errors):
@@ -1548,6 +1582,15 @@ def renderer_passes(errors):
             with open(OUTDIR + "%s-%s.asm" % (base, p.replace(" ", "")), "w", encoding="latin-1") as f:
                 f.write("\n".join(l if t is None or p in t else "" for l, t in zip(lines, tags)))
             n += 1
+    # the discs' colours (gfx-faces.asm's FC_SUNE to FC_PLANO, which faces.py
+    # writes and bank 6 assembles) for the frame layer's disc part, in the
+    # flight code's bank 7 (gfx-frame.asm), so that they have one source
+    cols = [l for l in open(SRCDIR + "gfx-faces.asm", encoding="latin-1").read().split("\n")
+            if re.match(r"^FC_(SUNE|PLANE)\b", l)]
+    if len(cols) != 2:
+        errors.append("%sgfx-faces.asm: the discs' colours (FC_SUNE, FC_PLANE) not found" % SRCDIR)
+    with open(OUTDIR + "gfx-faces-cols.asm", "w", encoding="latin-1") as f:
+        f.write("\\ the discs' colours, from gfx-faces.asm (2-build-files/streams.py)\n" + "\n".join(cols) + "\n")
     return "renderer: %d files, %d passes" % (len(RFILES), n)
 
 

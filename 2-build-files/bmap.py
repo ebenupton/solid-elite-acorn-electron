@@ -116,8 +116,9 @@ row("bank 4 (docked)", bp_end, qsl, "(free)", 0)
 row("bank 4 (docked)", qsl, 0xC000, "the quarter squares `QSL`, `QSH` (made by the loader)")
 dfss = C["DFSSAVE_P"]
 dpst = dfss - 0xC00
-row("bank 7 (flight)", 0x8000, FL["WIN7%"], "the cold pass, `QQ18`")
-row("bank 7 (flight)", FL["WIN7%"], far, "the renderer's window (bank 7 passes: the disc layer's painter, the second disc)", FL["WIN7_MID%"] - FL["WIN7%"])
+row("bank 7 (flight)", 0x8000, FL["COLD_START%"], "the disc layer's half-widths and rows, page aligned (`gfx-frame.asm`'s bank 7 low pass; in the image, as zeros)")
+row("bank 7 (flight)", FL["COLD_START%"], FL["WIN7%"], "the cold pass (`ovload`, `LOWLD` and the blocks that the overlays reach into, or that read what they do)")
+row("bank 7 (flight)", FL["WIN7%"], far, "the renderer's window (bank 7 passes): the disc layer whole, its painter, the second disc, the frame layer's disc part, the circle engine's `PC_ROWS`", FL["WIN7_MID%"] - FL["WIN7%"])
 row("bank 7 (flight)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 7 (flight)", com, com_end, COMMON, B5["COMMON_USED%"] - com)
 row("bank 7 (flight)", com_end, dpst, "the painter's entries (`DPENT%`), which the common block calls, and its own call of bank 5; the painter's operands' patch", FL["WIN7_END%"] - com_end)
@@ -125,7 +126,8 @@ row("bank 7 (flight)", dpst, dfss, "the workspace: each buffer's disc state (not
 row("bank 7 (docked)", 0x8000, far, "the set's face lists, the cold pass, `QQ18`", DK["COLD_END%"] - 0x8000)
 row("bank 7 (docked)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 7 (docked)", com, com_end, COMMON, B5["COMMON_USED%"] - com)
-row("bank 7 (docked)", com_end, dfss, "(free)", 0)
+row("bank 7 (docked)", com_end, DK["DPENTD_END%"], "the disc layer's entries (`DPENT%`: the frame layer's calls in the docked code's frames, which have no disc: `gfx-glue.asm`'s docked bank 7 pass)")
+row("bank 7 (docked)", DK["DPENTD_END%"], dfss, "(free)", 0)
 
 rjt, img, st = B5["RJT"], B5["R_IMAGE"], B5["R_DIRTYL0"]
 run0, vars0 = B5["r_run0"], B5["r_ypg"]
@@ -147,13 +149,14 @@ row("bank 5", rjt, 0xC000, "`RJT`, the jump table", B5["RJT_END"] - rjt)
 
 fcslot, fjt = C["FCSLOT"], C["FJT_P"]
 if B6["F_START"] > C["C6_P"]:
-    row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`)", FL["C6_END%"] - C["C6_P"])
+    row("bank 6", C["C6_P"], B6["F_START"], "the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`), with the flight code's recursive text tokens (`QQ18`)", FL["C6_END%"] - C["C6_P"])
 row("bank 6", B6["F_START"], B6["F_CODEEND"], "the frame layer's code (bank 6 passes)")
 row("bank 6", B6["F_CODEEND"], B6["F_TABEND"], "the faces' and the lighting's tables")
-row("bank 6", B6["F_TABEND"], B6["f_plm"] + 1, "the state: the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, the planet's records kept")
-row("bank 6", B6["f_plm"] + 1, com, "(free: the common block and the page-aligned state that follow are placed as high as they go)", 0)
+row("bank 6", B6["F_TABEND"], far, "(free)", 0)
+row("bank 6", far, com, FAR + ", and in bank 6, for the cold 6 pass", LD["FAR_USED%"] - far)
 row("bank 6", com, com_end, COMMON, B5["COMMON_USED%"] - com)
-row("bank 6", com_end, fcslot, "the state, page aligned: the discs' half-widths (`F_INIT`'s code in the sun's until they are first written), the text map, the discs' rows; then calls out of the bank (`gfx-glue.asm`)", B6["F_TOPEND"] - com_end)
+row("bank 6", com_end, B6["F_SMEND"], "the state, page aligned: the text map, then the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, `F_PFHOLD`'s")
+row("bank 6", B6["F_SMEND"], fcslot, "`F_INIT`, the lens flare's call, the screens drawn directly, the hangar (bank 6 passes)", B6["F_END"] - B6["F_SMEND"])
 row("bank 6", fcslot, fjt, "`FCSLOT`: the face lists of the set loaded")
 row("bank 6", fjt, 0xC000, "`FJT%`, the entries: a table of jumps; then calls out of the bank", B6["FJT_END"] - fjt)
 
