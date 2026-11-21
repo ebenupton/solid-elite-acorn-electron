@@ -31,9 +31,13 @@
 \     the main RAM part's image there, and stops short of the quarter
 \     squares, which the loader makes);
 \
+\   * the overlays, in the staging area at STAGE% (main RAM), where ovload
+\     loads them and they run, overlay 1 in D.LOW with the second, third and
+\     fourth main RAM parts;
+\
 \   * bank 7 (saved as D.CODEC): the cold pass from &8000, then the recursive
-\     text tokens (QQ18, elite-text-tokens.asm's blocks tagged cold), the
-\     overlay region, then the renderer's window (WIN7%: the bank 7 passes of
+\     text tokens (QQ18, elite-text-tokens.asm's blocks tagged cold), then the
+\     renderer's window (WIN7%: the bank 7 passes of
 \     the renderer's files, the flight code's own parts of the renderer),
 \     with the far block, the common block and the painter's entries
 \     (DPENT%) in it, before the painter's operands' patch.
@@ -120,7 +124,8 @@ ENDIF
                         \ in buffer 0's space view, which the next frame
                         \ clears: below its dashboard's rows)
 
- SAVE "3-assembled-output/D.LOW.bin", PROGS%, PROGKI% + PROGK_END% - PROGK%, PROGS%
+                        \ (D.LOW is saved below, after the overlays: it
+                        \ carries overlay 1 into the staging area)
  SAVE "3-assembled-output/D.LOWK.bin", PROGK%, PROGK_END%, PROGK%   \ (the third
                         \ part where it runs, for the harness)
 
@@ -203,12 +208,22 @@ ENDIF
 
 .COLD_END%
 
-                        \ Port: the overlay region (ovf1, ovload in the flight
-                        \ source): each overlay is assembled at OVL% from its
-                        \ copy and saved as D.OVn; overlay 1 last, so that
-                        \ the bank 7 image holds it (OVLCUR starts as 1)
+                        \ Port: the overlays (ovf1, ovload in the flight
+                        \ source) run in main RAM, in the staging area
+                        \ (STAGE%, where ovload loads them: it copies one onto
+                        \ itself), which nothing else uses in flight: their
+                        \ code runs only at events, and bank 7 has the disc
+                        \ layer to hold. Each overlay is assembled at OVL% from
+                        \ its copy and saved as D.OVn; overlay 1 last, so that
+                        \ D.LOW, which LOWLD loads each time the flight code
+                        \ starts (DEEOR), holds it in place (OVLCUR starts as
+                        \ 1). They are the cold side's (streams.py): ovf1 calls
+                        \ them with bank 7 paged in
 
-.OVL%
+ OVL% = STAGE%
+
+ CLEAR OVL%, PROGS%
+ ORG OVL%
 
  INCLUDE "3-assembled-output/elite-flight-ovl2.asm"
 
@@ -216,7 +231,7 @@ ENDIF
 
  SAVE "3-assembled-output/D.OV2.bin", OVL%, OVL2_END%, OVL%
 
- CLEAR OVL%, &C000
+ CLEAR OVL%, PROGS%
  ORG OVL%
 
  INCLUDE "3-assembled-output/elite-flight-ovl1.asm"
@@ -226,12 +241,16 @@ ENDIF
  SAVE "3-assembled-output/D.OV1.bin", OVL%, OVL1_END%, OVL%
 
  OVL_END% = OVL% + (OVL1_END% - OVL% + OVL2_END% - OVL% + ABS(OVL1_END% - OVL2_END%)) DIV 2
- SKIP OVL_END% - P%     \ (the region: the bigger of the overlays)
 
- ASSERT STAGE% + OVL_END% - OVL% <= PROGS%   \ (as staged in flight, ovload, an
-                        \ overlay ends below the fourth main RAM part)
+ ASSERT OVL_END% <= PROGS%   \ (an overlay ends below the fourth main RAM part)
 
- PRINT "Flight overlays: ", ~OVL%, "-", ~OVL_END%-1, " (1: ", OVL1_END%-OVL%, " bytes, 2: ", OVL2_END%-OVL%, ")"
+ SAVE "3-assembled-output/D.LOW.bin", OVL%, PROGKI% + PROGK_END% - PROGK%, OVL%   \ (the
+                        \ main RAM parts that DEEOR loads, LOWLD: overlay 1, the
+                        \ fourth and second parts, the third's image)
+
+ PRINT "Flight overlays: ", ~OVL%, "-", ~OVL_END%-1, " (1: ", OVL1_END%-OVL%, " bytes, 2: ", OVL2_END%-OVL%, "), free ", PROGS%-OVL_END%
+
+ ORG COLD_END%
 
                         \ Port: the renderer's window in bank 7, after the cold
                         \ pass: the parts of the renderer that only the flight
@@ -244,6 +263,8 @@ ENDIF
 
 .WIN7%
 
+ INCLUDE "3-assembled-output/win7pad.asm"   \ (Port: the pad that puts each
+                        \ SAMEPAGE pair of the painter in one page: layout-info.py)
  INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
 
@@ -264,7 +285,7 @@ ENDIF
 
 .WIN7_END%
 
- PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the overlays to ", ~OVL_END%-1, ", the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", FAR%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
+ PRINT "Flight bank 7: &8000-", ~COLD_END%-1, " (the cold pass), the renderer's window ", ~WIN7%, "-", ~WIN7_END%-1, " (free ", FAR%-WIN7_MID%, " and ", DPST%-WIN7_END%, "), with the far block and the common block ", ~FAR%, "-", ~COMMON_END%-1, " and the painter's entries to ", ~DPENT_END%-1, " in it, and the painter's state ", ~DPST%, "-", ~DFSSAVE%-1
  ASSERT WIN7_END% <= DPST%         \ (the disc state, to DFSSAVE%: Port:
                                    \ the end of the bank)
 

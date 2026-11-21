@@ -82,7 +82,8 @@ ENDIF
  CLEAR OVL%, &C000
  ORG OVL%
  FT_GETW = OVL%         \ (the painter's call of R_GETW: a stub in the layout)
- INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"
+.W7P%                   \ (the painter's pass: its pairs' offsets for the pad
+ INCLUDE "3-assembled-output/gfx-raster_disc-bank7.asm"   \ in the layout)
  INCLUDE "3-assembled-output/gfx-raster_disc2-bank7.asm"
  INCLUDE "3-assembled-output/gfx-raster_dpatch-bank7.asm"
 

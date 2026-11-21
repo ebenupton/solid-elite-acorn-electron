@@ -125,7 +125,7 @@ order("main RAM", [
     ("the interrupt's variables", C["RESH_P"], C["PFVH_P"]),
     ("the circle engine's variables (main high)", C["PFVH_P"], FL.get("PFVH_END%", C["PFVH_P"])),
     ("VEC", C["VEC"], C["VEC"] + 2),
-    ("the staging area", C["STAGE_P"], C["PROGS_P"]),
+    ("the staging area (in flight, the overlays' region)", C["STAGE_P"], C["PROGS_P"]),
     ("the flight code's fourth main RAM part", C["PROGS_P"], C["PROGS_END_P"]),
     ("the flight code's second main RAM part", C["PROGL_P"], C["PROGL_END_P"]),
     ("buffer 0", C["BUF0"], C["SCREEN_P"]),
@@ -169,8 +169,7 @@ nlab += inside(DK, OUT + "elite-docked-hot.asm", 0x8000, DK["HOME_END%"], "the h
 nlab += inside(DK, OUT + "elite-docked-blueprints.asm", bp, bp_end, "the blueprint slot")
 dfss = C["DFSSAVE_P"]
 dpst = dfss - 0xC00
-ovl_end = FL["WIN7%"]
-order("flight bank 7", [("the cold pass", 0x8000, FL["COLD_END%"]), ("the overlay region", FL["OVL%"], ovl_end),
+order("flight bank 7", [("the cold pass", 0x8000, FL["COLD_END%"]),
                         ("the renderer's window", FL["WIN7%"], FL["WIN7_MID%"]), ("the far block", far, LD["FAR_USED%"]),
                         ("the common block", com, com_end),
                         ("the painter's entries and the rest of the window", C["DPENT_P"], FL["WIN7_END%"]),
@@ -178,7 +177,7 @@ order("flight bank 7", [("the cold pass", 0x8000, FL["COLD_END%"]), ("the overla
 for c in ("cold",):
     nlab += inside(FL, OUT + "elite-flight-%s.asm" % c, 0x8000, FL["COLD_END%"], "the cold pass")
 for n in (1, 2):
-    nlab += inside(FL, OUT + "elite-flight-ovl%d.asm" % n, FL["OVL%"], ovl_end, "the overlay region")
+    nlab += inside(FL, OUT + "elite-flight-ovl%d.asm" % n, C["STAGE_P"], C["PROGS_P"], "the staging area (the overlays' region)")
 for f in ("gfx-raster_disc", "gfx-raster_disc2"):
     nlab += inside(FL, OUT + "%s-bank7.asm" % f, FL["WIN7%"], far, "the renderer's window")
 for f in ("gfx-glue", "gfx-raster_dpatch"):

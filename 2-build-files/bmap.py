@@ -83,7 +83,8 @@ row("main RAM", C["RESH_P"], C["PFVH_P"], "the interrupt's: `SNDH+1`, non-zero w
 pfvh_used = FL.get("PFVH_END%", C["PFVH_P"]) - C["PFVH_P"]
 row("main RAM", C["PFVH_P"], C["VEC"], "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
 row("main RAM", C["VEC"], C["VEC"] + 2, "`VEC`")
-row("main RAM", C["STAGE_P"], C["PROGS_P"], "the staging area (`STAGE%`, on over buffer 0 for a program's images; the overlays, loaded in flight, end here; a blueprint file stages over buffer 0, `BPSTAGE%`)", 0)
+m = re.search(r"Flight overlays: &([0-9A-F]+) -&([0-9A-F]+)  \(1: (\d+)  bytes, 2: (\d+)", cp)
+row("main RAM", C["STAGE_P"], C["PROGS_P"], "the staging area (`STAGE%%`, on over buffer 0 for a program's images; a blueprint file stages over buffer 0, `BPSTAGE%%`); in flight the overlays' region, where they run (`D.OV1` %s bytes, which `D.LOW` carries, `D.OV2` %s)" % (m.group(3), m.group(4)), max(int(m.group(3)), int(m.group(4))))
 row("main RAM (flight)", C["PROGS_P"], C["PROGS_END_P"], "the fourth main RAM part (`hots`: more of the hot pass's blocks tagged `Area: hot, main`), in the staging area's top, where nothing stages in flight; `D.LOW` loads it in its place", FL["PROGS_USED%"] - C["PROGS_P"])
 row("main RAM (flight)", C["PROGL_P"], C["PROGL_END_P"], "the second main RAM part, `D.LOW` (`hotl`: the hot pass's blocks tagged `Area: hot, main`, loaded by `DEEOR`)", FL["PROGL_USED%"] - C["PROGL_P"])
 row("main RAM", C["BUF0"], C["SCREEN_P"], "buffer 0: a MODE 5 screen, the space view and the dashboard")
@@ -115,9 +116,7 @@ row("bank 4 (docked)", bp_end, qsl, "(free)", 0)
 row("bank 4 (docked)", qsl, 0xC000, "the quarter squares `QSL`, `QSH` (made by the loader)")
 dfss = C["DFSSAVE_P"]
 dpst = dfss - 0xC00
-row("bank 7 (flight)", 0x8000, FL["OVL%"], "the cold pass, `QQ18`")
-m = re.search(r"Flight overlays: &([0-9A-F]+) -&([0-9A-F]+)  \(1: (\d+)  bytes, 2: (\d+)", cp)
-row("bank 7 (flight)", FL["OVL%"], FL["WIN7%"], "the overlay region (`D.OV1` %s bytes, `D.OV2` %s)" % (m.group(3), m.group(4)))
+row("bank 7 (flight)", 0x8000, FL["WIN7%"], "the cold pass, `QQ18`")
 row("bank 7 (flight)", FL["WIN7%"], far, "the renderer's window (bank 7 passes: the disc layer's painter, the second disc)", FL["WIN7_MID%"] - FL["WIN7%"])
 row("bank 7 (flight)", far, com, FAR, LD["FAR_USED%"] - far)
 row("bank 7 (flight)", com, com_end, COMMON, B5["COMMON_USED%"] - com)

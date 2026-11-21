@@ -63,9 +63,22 @@ def main_part(home, mc):
     low = os.path.join(REPO, "3-assembled-output/D.LOW.bin")
     if "PROGK%" in mc and os.path.exists(low):
         d = open(low, "rb").read()
-        k = mc["PROGKI%"] - mc["PROGS%"]
-        out += [(mc["PROGS%"], d[:k]), (mc["PROGK%"], d[k:k + mc["PROGK_END%"] - mc["PROGK%"]])]
+        at = d_low_address(mc)               # (where D.LOW loads: overlay 1
+        k = mc["PROGKI%"] - at               # from STAGE%, then the fourth and
+        out += [(at, d[:k]), (mc["PROGK%"], d[k:k + mc["PROGK_END%"] - mc["PROGK%"]])]   # second parts)
     return out
+
+
+def d_low_address(mc):
+    """the address D.LOW loads at, as the build's build.json gives it for the
+    harness (STAGE%, with overlay 1 before the fourth main RAM part, which
+    starts at PROGS%)"""
+    import json
+    b = json.load(open(os.path.join(REPO, "3-assembled-output/build.json")))
+    for name, _, addr in b["flight"]["images"]:
+        if name == "D.LOW.bin":
+            return int(addr, 16)
+    return mc["PROGS%"]
 
 
 def flight_constants(path):

@@ -62,9 +62,11 @@
 
  PUTFILE "3-assembled-output/D.OV1.bin", "D.OV1", &008000, &008000
  PUTFILE "3-assembled-output/D.OV2.bin", "D.OV2", &008000, &008000
- PUTFILE "3-assembled-output/D.LOW.bin", "D.LOW", PROGS%, PROGS%   \ (the flight
-                        \ code's second, third and fourth main RAM parts,
-                        \ loaded by DEEOR: elite-map.asm)
+ PUTFILE "3-assembled-output/D.LOW.bin", "D.LOW", STAGE%, STAGE%   \ (overlay 1, in
+                        \ the staging area where the overlays run, and the
+                        \ flight code's second, third and fourth main RAM
+                        \ parts, loaded by DEEOR: elite-map.asm,
+                        \ elite-layout-flight.asm)
  PUTFILE "3-assembled-output/D.CODEH.bin", "D.CODEH", &008000, &008000
  PUTFILE "3-assembled-output/D.CODEC.bin", "D.CODEC", &008000, &008000
  PUTFILE "3-assembled-output/T.CODEH.bin", "T.CODEH", &008000, &008000
