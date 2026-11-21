@@ -22088,11 +22088,11 @@ End macro CGADV
      9999   8D BF 9C   STA &9CBF
      999C   AC FB 98   LDY &98FB
 .l1
-     999F   B9 40 1E   LDA &1E40,Y
+     999F   BD C0 82   LDA &82C0,X
 .r_p2l22
      99A2   DD C0 B4   CMP &B4C0,X
      99A5   D0 1B      BNE &99C2
-     99A7   B9 50 1E   LDA &1E50,Y
+     99A7   BD 00 82   LDA &8200,X
 .r_p2r22
      99AA   DD 80 B5   CMP &B580,X
      99AD   D0 13      BNE &99C2
@@ -22108,13 +22108,13 @@ End macro CGADV
      99BF   D0 C2      BNE &9983
      99C1   60         RTS
 .ch
-     99C2   B9 40 1E   LDA &1E40,Y
+     99C2   BD C0 82   LDA &82C0,X
 .r_psl40
      99C5   DD 00 B4   CMP &B400,X
      99C8   90 26      BCC &99F0
 .r_psr40
      99CA   BD 40 B6   LDA &B640,X
-     99CD   D9 50 1E   CMP &1E50,Y
+     99CD   DD 00 82   CMP &8200,X
      99D0   90 1E      BCC &99F0
 .r_p2l23
      99D2   BD C0 B4   LDA &B4C0,X
@@ -22126,10 +22126,10 @@ End macro CGADV
 .r_p2r23
      99DD   DD 80 B5   CMP &B580,X
      99E0   90 0E      BCC &99F0
-     99E2   B9 40 1E   LDA &1E40,Y
+     99E2   BD C0 82   LDA &82C0,X
 .r_p2l24
      99E5   9D C0 B4   STA &B4C0,X
-     99E8   B9 50 1E   LDA &1E50,Y
+     99E8   BD 00 82   LDA &8200,X
 .r_p2r24
      99EB   9D 80 B5   STA &B580,X
      99EE   B0 CA      BCS &99BA
@@ -22140,13 +22140,13 @@ End macro CGADV
 .wo
      99F9   2C BD 9C   BIT &9CBD
      99FC   30 C4      BMI &99C2
-     99FE   B9 40 1E   LDA &1E40,Y
+     99FE   BD C0 82   LDA &82C0,X
 .r_psl42
      9A01   DD 00 B4   CMP &B400,X
      9A04   90 08      BCC &9A0E
 .r_psr42
      9A06   BD 40 B6   LDA &B640,X
-     9A09   D9 50 1E   CMP &1E50,Y
+     9A09   DD 00 82   CMP &8200,X
      9A0C   B0 AC      BCS &99BA
 .w0
      9A0E   20 EB 9B   JSR &9BEB
@@ -22373,9 +22373,9 @@ End macro CGADV
      9BEB   8C FB 98   STY &98FB
      9BEE   8E FC 98   STX &98FC
      9BF1   8E BC 9C   STX &9CBC
-     9BF4   B9 40 1E   LDA &1E40,Y
+     9BF4   BD C0 82   LDA &82C0,X
      9BF7   8D 0A 99   STA &990A
-     9BFA   B9 50 1E   LDA &1E50,Y
+     9BFA   BD 00 82   LDA &8200,X
      9BFD   8D 11 99   STA &9911
      9C00   B9 60 1E   LDA &1E60,Y
      9C03   8D 14 99   STA &9914
@@ -23661,16 +23661,16 @@ End macro CGADV
      A5E4   C9 FF      CMP #&FF
      A5E6   F0 0C      BEQ &A5F4
      A5E8   29 FE      AND #&FE
-     A5EA   9D 40 1E   STA &1E40,X
+     A5EA   99 C0 82   STA &82C0,Y
      A5ED   B9 00 82   LDA &8200,Y
      A5F0   09 01      ORA #&01
      A5F2   D0 07      BNE &A5FB
 .fdb6
      A5F4   A9 FF      LDA #&FF
-     A5F6   9D 40 1E   STA &1E40,X
+     A5F6   99 C0 82   STA &82C0,Y
      A5F9   A9 00      LDA #&00
 .fdb7
-     A5FB   9D 50 1E   STA &1E50,X
+     A5FB   99 00 82   STA &8200,Y
      A5FE   C8         INY
      A5FF   E8         INX
      A600   EC DE A6   CPX &A6DE

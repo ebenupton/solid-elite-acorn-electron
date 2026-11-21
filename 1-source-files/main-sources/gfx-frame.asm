@@ -2269,9 +2269,9 @@ FC_PLLE = &5F : FC_PLLO = &AF
 
 \ f_dbat: the second disc's rows f_dy .. f_dhi (f_dy <= f_dhi) through the
 \ painter (DP_DISC2, with A = its colour change, &FF or 0), 16 at a time,
-\ each batch's slots filled from R_NDISCL/R in R_NDT .. R_NDB (empty
-\ outside), with what was written on its rows; with each batch bank 5 puts
-\ what the last one wrote (T_GETW)
+\ each batch's rows made ready in place in R_NDISCL/R (R_NDT .. R_NDB, empty
+\ outside), with what was written on them in the mailbox's slots; with each
+\ batch bank 5 puts what the last one wrote (T_GETW)
 
 .f_dbat
  STA f_dc2
@@ -2289,8 +2289,8 @@ FC_PLLE = &5F : FC_PLLO = &AF
  LDY f_dy
  LDX f_dput
  JSR FT_GETW
- LDX #0                 \ the slots
- LDY f_dy
+ LDX #0                 \ the rows made ready in place, which DP_DISC2 reads
+ LDY f_dy               \ (Port: it is in this bank)
 .fdb3
  CPY R_NDT
  BCC fdb6
@@ -2302,16 +2302,16 @@ FC_PLLE = &5F : FC_PLLO = &AF
  CMP #&FF               \ odd)
  BEQ fdb6
  AND #&FE
- STA DB_NL,X
+ STA R_NDISCL,Y
  LDA R_NDISCR,Y
  ORA #1
  BNE fdb7               \ (always)
 .fdb6
  LDA #&FF               \ an empty span
- STA DB_NL,X
+ STA R_NDISCL,Y
  LDA #0
 .fdb7
- STA DB_NR,X
+ STA R_NDISCR,Y
  INY
  INX
  CPX f_dn

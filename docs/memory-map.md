@@ -102,11 +102,21 @@ Master port, each program is emitted in three passes, **low**, **hot** and
   sides call and that needs nothing of either: the cold pass calls it
   directly, with no stub (`3-assembled-output/direct-flight.txt`,
   `direct-docked.txt`).
-* **`Area: cold`** is the cold pass, bank 7 from `&8000`.
+* **`Area: cold`** is the cold pass, in bank 7 (in the flight code after
+  the disc layer's rows, which are at `&8000`: [renderer.md](renderer.md),
+  "The discs").
 * **`Area: cold 6`** (flight code only) is the second cold pass, in bank 6
   from `C6%` (`&8000`), before the frame layer, in a room of `C6SZ` bytes
-  (`elite-map.asm`): code that runs rarely, moved out of the hot side to
-  make room there. Its copy, `elite-flight-c6.asm`, is assembled by the
+  (`elite-map.asm`): code that runs rarely, moved out of bank 7 to make
+  room there for the disc layer, which is whole in that bank. It holds
+  nearly all the flight code's cold code, with the recursive text tokens
+  (`QQ18`, which only its `ex` reads); what stays in bank 7 is what has to
+  (`ovload`, which writes the bank, and `LOWLD`, which `DEEOR` calls by its
+  body's name), what the overlays reach into or read (`TT81`..`TT111`,
+  `TT162`, `pr2`, `QQ23` and `GVL`, which reads it, `OUCH`, which falls
+  into it); the sun's lines (`SUN`) and the line clipping's tail (`LL118`
+  to `LL129`) are in main RAM (`Area: hot, main`), for the room in bank 6.
+  Its copy, `elite-flight-c6.asm`, is assembled by the
   flight code's layout at `C6%` with its labels named `X_6` and saved as
   `C6.bin`, which bank 6's assembly takes in (`gfx-bank6.asm`), so the bank
   6 image the loader loads holds it; the flight code is the only program
@@ -115,9 +125,15 @@ Master port, each program is emitted in three passes, **low**, **hot** and
   hot copies, `.xs_X JSR farC6 : EQUW X_6` in the cold copy (for the cold
   pass and the overlays), and in its own copy `.x6_H JSR farH : EQUW H` and
   `.x6c_C JSR farC : EQUW C_C` at the places of the hot and cold routines
-  it calls (it calls the low pass's directly). A cold 6 block may not fall
-  into another area, be fallen into, or branch out of its area, and it
-  reads only main RAM and itself (`bankcheck.py`). Its routines' variables
+  it calls (it calls the low pass's directly), and `.x6o_O JSR ovfN :
+  EQUW O_O` at an overlay routine's (`ovf1` makes the call through the far
+  block, which bank 6 holds a copy of). A block of another area that falls
+  into a cold 6 routine falls into its stub, at its place in the falling
+  block's copy (an overlay's into a jump to the cold copy's), and a hot,
+  cold or overlay block may branch to one's stub as to a cold routine's;
+  a cold 6 block may fall only into another area's entry label (its stub),
+  may not branch out of its area, and reads only main RAM and itself
+  (`bankcheck.py`). Its routines' variables
   are in bank 6 as loaded once at boot, not reloaded with the flight code:
   a block that relies on its assembled data at each load does not belong
   here.
@@ -125,13 +141,17 @@ Master port, each program is emitted in three passes, **low**, **hot** and
   events: overlay 1 holds the charts, the hyperspace jump with the
   mis-jump, the launch and the escape pod; overlay 2 the data, status,
   market and inventory screens. Each overlay is assembled at the same
-  place in bank 7, `OVL%`, after the cold pass (`D.OV1`, `D.OV2`); the
-  region is as big as the bigger one, so the smaller one costs nothing.
+  place, `OVL%`, the staging area in main RAM (`STAGE%`, `&2000-&244F`,
+  which nothing else uses in flight), where `ovload` loads it and it runs
+  (`D.OV1`, `D.OV2`; `D.LOW` carries overlay 1, so each start of the flight
+  code has it); the region is as big as the bigger one. They are the cold
+  side: `ovf1` calls them with bank 7 paged in.
   Calls into an overlay go through stubs `JSR ovfN : EQUW routine_O` at the
   routine's place in the other copies; `ovf1` (the low pass) loads overlay
   N from disc with `ovload` if the other is in the region (`OVLCUR`), then
   makes the call as `farC` does. An overlay's falls and branches into the
-  cold pass become jumps (`routine_ob JMP routine_C`). An overlay may
+  cold pass become jumps (`routine_ob JMP routine_C`), and into the cold 6
+  pass jumps to their stubs in the cold copy. An overlay may
   call any pass but not the other overlay, even through code in between:
   `2-build-files/ovlcheck.py` checks every path at build time.
 * **`Area: blueprints`** (the docked code's own ship blueprints) is bank 4's
@@ -163,7 +183,7 @@ code; the room below its per-x tables; the code after the disc layer's
 requests), `bank 6` (the frame layer), `bank 7` (the flight code's cold bank:
 the disc layer's painter in the renderer's window) and `main` (the glue, in
 the resident block A, and after it `gfx-merid.asm`'s `pcb_o`, the records'
-offsets, which bank 4's `pc_circ` and bank 6's `PC_ROWS` both read: one copy,
+offsets, which bank 4's `pc_circ` and bank 7's `PC_ROWS` both read: one copy,
 seen with either bank paged), and for the circle engine's variables `main low`
 (`PFVA%`, in the resident block A's room), `main high` (`PFVH%`, after the
 high resident block) and `bank 4 top` (`PFVS%`, in the flight code's home
@@ -338,8 +358,9 @@ The far calls' code (`farC`, `farH`) is the far block (`elite-far.asm`, `FAR%`, 
 below the common block), the same bytes in each program's home and cold images, so
 that a far call runs on from its caller's bank's copy into its target's and none of it is fetched
 from main RAM; the jump forms (`farCj`, `farHj`), for targets that never return, are in the
-resident block. Bank 6 has no far block, so the cold 6 pass's `farC6` is gone with the pass's room
-(no block is tagged for it). A far call takes three bytes of stack, and passes A, X,
+resident block, as is `farC6` (and `farC6j`), farC's for bank 6, from where it runs on into the
+caller's bank's copy of the far block: bank 6 holds one too, for the cold 6 pass
+A far call takes three bytes of stack, and passes A, X,
 Y and the flags both ways. The harness (`6-harness/blib.mjs`) sees through
 far-call frames by the label `farret`.
 
@@ -383,11 +404,11 @@ The flight code also loads its overlays itself, at any time in flight
 `&90-&E1` in bank 7's workspace at `OVSTASH` (`&B300`, buffer 0's disc
 state, which the load makes dead), puts DFS's workspace back (`dfsin`),
 reloads the catalogue (`CATD`), loads `D.OVn` to `STAGE%` with `pload` and
-copies it to `OVL%`, keeps DFS's workspace (`dfsout`), puts the rest back
+copies it onto itself (`OVL%` is `STAGE%`), keeps DFS's workspace (`dfsout`), puts the rest back
 and marks buffer 0 as used (`GSTASH`: the next frame starts it afresh and
-forgets its disc state). The bank 7
-image in `D.CODEC` holds overlay 1, so a load of the flight code starts
-with it (`OVLCUR` = 1). In the gate's run the loads cost about 85 cycles
+forgets its disc state). `D.LOW`, which
+`DEEOR` loads at each start of the flight code (`LOWLD`), holds overlay 1
+in its place, so the flight code starts with it (`OVLCUR` = 1). In the gate's run the loads cost about 85 cycles
 an iteration on average (two loads a hyperspace jump at most).
 * Anything else (`*CAT`, `*DELETE`, `*DIR`) is copied into main RAM and
   passed to the MOS.
