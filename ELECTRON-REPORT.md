@@ -215,21 +215,22 @@ and the disc and MOS work at load time.
 | `&1100-&18FF` | the flight code's third main RAM part (`hotx`), in DFS's pages for open files, which the game never has: copied there from `D.LOW` by `LOWLD` |
 | `&1900-&1E3F` | the program's main RAM part: the low pass (`WSCAN`, `DELAY`, `ovf1`, the flight code's `kbfast`, `kbkeys` and `kbkey`), then `hotm`: the flight code's coldest hot blocks |
 | `&1E40-&1FFF` | the mailbox, the missile's blueprint, the shared variables (`GVARS`), the interrupt's ways out of bank 5 (`IRQE%`, `IRQM%`), the circle engine's variables, `VEC` |
-| `&2000-&244F` | the staging area (`STAGE%` = `&2000`, on over buffer 0 for a program's images; the overlays loaded in flight end below `&2450`; a blueprint file stages over buffer 0, `BPSTAGE%`) |
+| `&2000-&244F` | the staging area (`STAGE%` = `&2000`, on over buffer 0 for a program's images; a blueprint file stages over buffer 0, `BPSTAGE%`); in flight the overlays (the charts, the jump, the launch, the escape pod; the data, status, market and inventory screens), which run there, loaded there by `ovload`, overlay 1 with `D.LOW` |
 | `&2450-&2C4F` | the flight code's fourth main RAM part (`hots`), loaded in its place by `D.LOW` |
 | `&2C50-&2FFF` | the flight code's second main RAM part, `D.LOW` (`hotl`: `TACTICS`, `TT17` to `SFX`), which `DEEOR` loads each time the flight code starts (`LOWLD`), as a program's load stages over it |
 | `&3000-&57FF` | buffer 0 |
 | `&5800-&7FFF` | buffer 1 (the direct-mode screen) |
-| banks 4-7 | as the Model B port: 4 home, 7 cold (its last page, the Model B's DFS page, now the disc state's), 5 the rasteriser (with the sound engine and the interrupt handler), 6 the frame layer; each holds the common block (`elite-common.asm`, `&B1A3-&B1FF`: the code that pages the banks), and banks 4 and 7 the far block below it (`elite-far.asm`, `&B13D-&B1A2`: `farC`, `farH`) |
+| banks 4-7 | as the Model B port: 4 home, 5 the rasteriser (with the sound engine and the interrupt handler), 6 the frame layer, and in flight the flight code's cold 6 pass at its start (cold code that bank 7 has no room for, reached by `farC6`), 7 cold: in flight the disc layer whole (the rows' tables at its start; the code that makes the rows, `PC_ROWS` and the painter that reads them in place, in the renderer's window after the cold pass; the painter's state in its last three pages); each holds the common block (`elite-common.asm`: the code that pages the banks), and banks 4, 6 and 7 the far block below it (`elite-far.asm`: `farC`, `farH`) |
 
 `3-assembled-output/memory-map.md` is the full map as built
 (`2-build-files/bmap.py`; `mapcheck.py` fails the build unless every place
 is in order and in its room, every pass copy's labels are in their place,
 and the six images hold the common block's bytes and the four programs'
-images the far block's). Free: flight bank 4 42 bytes, the flight main RAM
-parts 1,040 (`hotm`) and 40 (`hots`), flight bank 7 320, bank 5 about
-1,050 (most in the row runs' tails), bank 6 10; the docked program has
-2.5K in bank 4 and 4.8K in bank 7.
+images the far block's). Free: flight bank 4 29 bytes, the flight main RAM
+parts 55 (`hotm`) and 2 (`hots`), flight bank 7 857 in the renderer's
+window and 202 after it, the cold 6 pass 134, bank 5 about 240 (and the
+row runs' tails), bank 6 398; the docked program has 2K in bank 4 and 1.2K
+in bank 7.
 
 **Which code is in main RAM.** The flight code's hot pass is placed by
 measurement: a hot block whose header says `Area: hot, main`
@@ -393,20 +394,21 @@ the 2 MHz clock, fewer is faster; each figure from a build made by `make`,
 measured with the harness of the same commit; its noise is about 1.5%
 between builds whose code moves, and none between runs of one build).
 "Before" is 268367b, the end of the performance pass; "common block" is
-8f9a917, the end of the grind's first stream; "now" is be3865f, the end of
-the rasteriser's (the keys' commit after it changes no scene):
+8f9a917, the end of the grind's first stream; "rasteriser" is be3865f, the
+end of its second; 7f569ed the end of the circle engine's stream, where
+the second grind started; "now" is the end of the second grind:
 
-| Scene | The original (BBC Micro, wireframe) | Model B port | Electron, before | common block | now | change | against the original | against the Model B port |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Flight | 278,661 | 227,289 | 271,630 | 197,351 | 187,940 | -30.8% | 1.48 | 1.21 |
-| Combat | 132,101 | 118,957 | 140,403 | 106,617 | 104,012 | -25.9% | 1.27 | 1.14 |
-| Beach ball | 286,830 | 266,741 | 315,588 | 216,834 | 210,918 | -33.2% | 1.36 | 1.26 |
-| Sun | 235,743 | 266,224 | 295,817 | 227,949 | 214,823 | -27.4% | 1.10 | 1.24 |
-| Docking | 328,282 | 479,984 | 527,016 | 377,943 | 356,548 | -32.3% | 0.92 | 1.35 |
-| Station's zone | 386,321 | 417,851 | 487,775 | 356,109 | 335,151 | -31.3% | 1.15 | 1.25 |
-| Rear view | 290,628 | 254,519 | 304,347 | 221,229 | 217,513 | -28.5% | 1.34 | 1.17 |
-| Approach | | 255,537 | 284,670 | 213,890 | 211,805 | -25.6% | | 1.21 |
-| Departure | | 376,912 | 423,761 | 307,611 | 306,149 | -27.8% | | 1.23 |
+| Scene | The original (BBC Micro, wireframe) | Model B port | Electron, before | common block | rasteriser | 7f569ed | now | change | against the original | against the Model B port |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Flight | 278,661 | 227,289 | 271,630 | 197,351 | 187,940 | 184,839 | 178,481 | -34.3% | 1.56 | 1.27 |
+| Combat | 132,101 | 118,957 | 140,403 | 106,617 | 104,012 | 104,136 | 101,698 | -27.6% | 1.30 | 1.17 |
+| Beach ball | 286,830 | 266,741 | 315,588 | 216,834 | 210,918 | 207,329 | 196,722 | -37.7% | 1.46 | 1.36 |
+| Sun | 235,743 | 266,224 | 295,817 | 227,949 | 214,823 | 212,030 | 198,689 | -32.8% | 1.19 | 1.34 |
+| Docking | 328,282 | 479,984 | 527,016 | 377,943 | 356,548 | 353,071 | 330,334 | -37.3% | 0.99 | 1.45 |
+| Station's zone | 386,321 | 417,851 | 487,775 | 356,109 | 335,151 | 329,392 | 317,749 | -34.9% | 1.22 | 1.32 |
+| Rear view | 290,628 | 254,519 | 304,347 | 221,229 | 217,513 | 214,326 | 203,472 | -33.1% | 1.43 | 1.25 |
+| Approach | | 255,537 | 284,670 | 213,890 | 211,805 | 207,862 | 197,907 | -30.5% | | 1.29 |
+| Departure | | 376,912 | 423,761 | 307,611 | 306,149 | 303,295 | 287,758 | -32.1% | | 1.31 |
 
 ("Against" is speed: the other's cycles over the Electron's. The Model B
 port's figures are its public main's, a4f2c46, with the approach and
@@ -420,7 +422,9 @@ three hyperspace jumps, most of it on the long approaches to big planets):
 | before the performance pass | 5.98 | 334,348 | 0.52 | 0.84 |
 | before the grind (268367b) | 6.39 | 312,855 | 0.56 | 0.89 |
 | common block (8f9a917) | 8.41 | 237,761 | 0.73 | 1.18 |
-| now (be3865f) | 8.59 | 232,880 | 0.75 | 1.20 |
+| rasteriser (be3865f) | 8.59 | 232,880 | 0.75 | 1.20 |
+| circle engine (7f569ed) | 8.71 | 229,664 | 0.76 | 1.22 |
+| now | 9.05 | 220,884 | 0.79 | 1.27 |
 
 The Model B port's figure is its gate's (7.15, 279,710 cycles), on the
 Model B's run of the same pilot.
@@ -490,6 +494,140 @@ rebase, still says no gap pass is INCLUDEd), and the two stubs before the
 jump table are kept within a page by a skip to the next page's second byte
 (no entry's low byte may be 0).
 
+### The second grind (7f569ed to 6a76546)
+
+The user's instruction for it: touching main RAM is death; account for
+every remaining use, the stack included; replace `(zp),Y` with patched
+`abs,Y`; inline more; replace calls with jumps whose way back is patched,
+in its low byte only where the page is known. Sixteen commits, each gated
+in full. The gate's own cycles an iteration at each (its pilot's run is the
+same throughout, so the series compares), and the scenes the commit's
+change shows in:
+
+| Commit | What | The gate's cycles an iteration | Scenes |
+|---|---|---:|---|
+| (7f569ed) | the start | 229,664 | |
+| c723930 | the circle engine: `pm_fdiv16` in line at its two calls | 229,643 | approach -0.01% |
+| f0b0505 | `pm_isqrt`'s n' and square, and `pcl4`'s X, off zero page | 229,582 | departure -0.02% |
+| eb78c6f | a ship block in `K%`'s first page copied by unrolled code (one main-RAM read and one zero-page write a byte) | 228,688 (-0.39%) | flight -1.5%, combat -1.7%, zone -0.7% |
+| e02ec17 | LL9: the projection's division in line, its result bits in bank 4 | 228,474 (-0.09%) | combat -0.9%, zone -0.9% |
+| 8e5b88d | LL9: part 6's orientation vectors read from a copy in bank 4 | 228,437 (-0.02%) | zone -0.15% |
+| 53b32b8 | lighting: `L_REC`'s dot products in line, no calls | 228,457 (+0.01%) | flight -0.2%, zone -0.1% |
+| c2dd102 | the painter: `cg3` makes a byte with an edge in line, not through `cg_byte` | 228,041 (-0.18%) | docking -0.8%, sun -0.6% |
+| 16903cd | the painter: `cg3` passes the edges before a byte in line | 228,098 (+0.02%) | docking -2.0%, sun -1.7% |
+| 1c8774c | the painter: routines with one caller jumped to and back, not called | 227,538 (-0.25%) | sun -0.5%, docking -0.4% |
+| f40d84d | the painter: `pe`'s way back patched in its low byte only | 226,989 (-0.24%) | departure -0.4%, approach -0.3% |
+| ad63fa3 | the painter: `cg_bw` makes its byte in line | 226,786 (-0.09%) | approach -0.2% |
+| 2cf5ed3 | the overlays run in the staging area in main RAM, not a region of bank 7 (the painter's pass padded so that `pe`'s ways back stay in one page) | 226,776 (-0.00%) | room: bank 7 +1,098 bytes |
+| ae6c2ea | the disc layer's rows made in the flight code's bank 7, with the painter (the cold code it displaced to a cold 6 pass in bank 6; `ANGRY`, `OOPS` cold) | 227,056 (+0.12%) | sun -0.4% |
+| 2c0201d | the painter reads the rows where they are made, not the mailbox | 220,884 (-2.72%) | departure -4.1%, beach ball -3.9%, rear -3.5%, approach -3.3%, docking -2.8%, sun -2.4%, zone -1.4%, flight -1.3% |
+| 1dbaa28 | the second disc's spans read in place too; the docs | 220,884 (+0.00%) | sun -0.3% |
+| 6a76546 | harness: the bank 7 labels made with `.^` named as bank 7's | (the same binaries) | |
+
+From 7f569ed to now the gate's run went from 8.71 to 9.05 flight
+iterations a second (229,664 to 220,884 cycles an iteration, -3.8%), and the
+scenes by 2.3% (combat) to 6.4% (docking); since be3865f, the end of the
+first grind, from 8.59 to 9.05.
+
+**What was tried and not landed.** `MVS5` (the rotation of a ship's
+orientation vectors, the largest single user of zero page left, 690 lost
+cycles an iteration in the gate's run) was rewritten as a loop entered by
+a jump with a patched way back, `ADD` in line, every temporary in bank 4 or
+a patched operand. With both halves in line it grew by 200 bytes, which
+pushed `DVID4`, `MULT12`, `FAROF`, `MFRAME` and `LL42F` out of bank 4 into
+main RAM (flight +0.2%, rear +0.3%; approach -0.14%, departure -0.18%); as
+one body run twice, at its old size, it saved 142 and 197 cycles an
+iteration in the approach and departure scenes and cost 110 in flight.
+The profile showed why: `MVS5`'s own cycles in the approach scene went from
+2,769 to 2,757. Its zero-page traffic is mostly `INWK` (the ship's block,
+which every routine of the game reads where it is), and moving a temporary
+from zero page to sideways RAM swaps a 1 MHz access for an absolute
+address's extra cycle: nearly nothing is saved unless the access goes
+away. Dropped.
+
+**The account now, by kind.** `eramacc.mjs --from 100 --iters 1000`
+(898 flight iterations), at 7f569ed and now, accesses and the cycles lost
+to them (each main-RAM access takes about 2.1 cycles where a sideways RAM
+access takes one), per iteration:
+
+| Kind | 7f569ed: accesses | lost | now: accesses | lost |
+|---|---:|---:|---:|---:|
+| zero-page operands | 4,047 | 4,873 | 3,937 | 4,604 |
+| `(zp),Y` pointer fetches | 506 | 703 | 546 | 731 |
+| stack: `JSR`/`RTS` | 2,208 | 2,479 | 1,810 | 2,002 |
+| stack: `PHA`/`PLA`, `PHP`/`PLP`, interrupts, page 1 as data | 285 | 343 | 274 | 327 |
+| other data below the screen | 3,670 | 4,941 | 1,908 | 2,584 |
+| screen reads | 560 | 721 | 560 | 747 |
+| screen writes | 481 | 491 | 481 | 491 |
+| code in main RAM | 786 | 811 | 1,105 | 1,131 |
+| hardware (`&FC00-&FEFF`) | 385 | 455 | 409 | 467 |
+| total | 12,928 | 15,816 (6.4% of 246,308) | 11,029 | 13,085 (5.6% of 235,516) |
+
+The mailbox's rows are gone (other data -48%), the stack's calls in the
+painter, the circle engine, LL9 and the lighting (-19%); the code in main
+RAM grew by the room those commits took from bank 4 (the dashboard,
+`DIALS` to `DADD`, went to main RAM for the unrolled ship copy, eb78c6f,
+and `SUN` and `LL118`-`LL129` for the disc layer, ae6c2ea, each measured
+a net gain in its commit).
+
+**What remains, and why it stays** (cycles lost an iteration, the same
+run):
+
+* **The filing system, 1,100.** DFS's own code and its zero page and
+  `(zp),Y` copies at each load (three launches, two dockings, three jumps
+  in the run), and the hardware it drives: the MOS's, not the port's.
+* **Waiting, 520.** `WSCAN` (the vertical sync) and the frame's wait for
+  the last flip (`ff2`, `GFLIP`) spin on a main-RAM flag; the time is idle
+  whatever they read.
+* **The screen, 1,240** (reads 747, writes 491): the disc layer's fills
+  (`r_fa` to `r_fe`, `r_gc` to `r_gi`: 805) and the dashboard's plots. The
+  screen is main RAM; the painter already writes whole bytes.
+* **The hardware, 470**: ROMSEL, the ULA, the keyboard: unavoidable.
+* **The ship blocks, 710** (`mal2f`, `mal3f`, `MAL2`, `MAL3`): each
+  iteration copies each ship's 37-byte block from `K%` to `INWK` and back,
+  now one main-RAM read and one zero-page write a byte (eb78c6f), the
+  least the copy can be while `K%` is in main RAM (the harness compares it
+  there, and every routine of the game and the frame reads it) and `INWK`
+  in zero page.
+* **Zero page, 4,600, and `(zp),Y`, 730.** The game's own variables (`P`,
+  `Q`, `R`, `S`, `T`, `T1`, `INWK`, `XX16`, `K`...), which the original's
+  code reads in every routine, the frame layer's save and restore of
+  `&06-&27` each frame (`ffz1`, `ffz2`: 180) and the line routines' and
+  DFS's pointers. A temporary moved to sideways RAM costs an absolute
+  operand's extra cycle for each 1.1 saved: `MVS5`, the largest user left
+  (930 with `ADD`), gained nothing measurable when rewritten so (above).
+  Only a removed access pays, and the remaining ones are spread at under
+  300 cycles a routine.
+* **The stack, 2,330.** About 1,800 `JSR`/`RTS` accesses an iteration over
+  some 200 call edges, none above 14 calls an iteration (`MVS5` to `ADD`;
+  then the painter's `cg1d` to `cg_bw` and `ps4` to `cgs`, 9.6 and 9.2,
+  whose bodies hold the per-buffer patch sites, `r_ga` to `r_gc`, that a
+  second copy would need patched too; `MV40` to `MULT3`, 6). A call made
+  a jump with a patched way back saves the five stack accesses (about 5.5
+  cycles) and spends six on the patch; only inlining saves the call, and
+  bank 4, where the game's are, has 29 bytes free. The common block's
+  calls between banks (`C_T5`, `C_T7`, `GCALL`: `cgj`, `ctail`, 390 with
+  their `PHA`/`PLA`) keep the caller's bank on the stack; a patched slot
+  in each bank's copy instead would hold only if no chain of calls between
+  banks ever re-entered a bank already in a call (the frame in bank 6 calls
+  the painter in bank 7, which calls bank 5; the game calls the frame
+  layer), which nothing checks, for 390 cycles at most.
+* **The stardust, 660** (`STC1`, `stc3`, `stl_*`, `R_STARPLOT`): its
+  arrays `SX`..`SZL` are in `WP`, which the harness compares as the
+  original's, and the cold 6 pass's `FLIP` and `nWq` write them; and the
+  stars' records go to bank 5 through the mailbox.
+* **Code in main RAM, 1,130**: the dashboard (`DIALS` to `DADD`: 405),
+  `IRQG` and the interrupt's ways out of bank 5 (134), `kbkeys` (110:
+  paging the keyboard's ROM unmaps the banks), `H_CIRC`, `BLINE`, `SUN`,
+  `farC6`. Bank 4 is full: each byte brought in sends a byte of colder code
+  out, and the tags were set by measurement; the dashboard came out of bank
+  4 for the ship copy, which saved more.
+* **The mailbox, 1,130** (`&1E40` on, with the flip flag that the wait
+  above polls): the frame's inputs (the ship lists, the circle engine's
+  records, `pcy0`, the stars'), which the game in bank 4 writes for banks
+  5 and 6: the one memory both sides see. `K%` itself, 380, is the ship
+  copy's above; the far calls' variables (`fA`, `ft`), 64.
+
 ## Main-RAM traffic
 
 `6-harness/eramacc.mjs`, over iterations 100 to 1099 of the gate's run (998
@@ -502,7 +640,12 @@ cycles they take:
 | before the performance pass | 10,249 | 14,816 | 8,753 | 1,397 | 514 | 7,577 | 43,304 | 95,405 | 27% of 354,430 |
 | before the grind (268367b) | 10,106 | 11,288 | 7,889 | 1,397 | 514 | 4,391 | 35,585 | 79,179 | 24% of 330,458 |
 | common block (8f9a917) | 5,796 | 2,705 | 3,929 | 560 | 474 | 768 | 14,231 | 31,768 | 13% of 245,879 |
-| now (be3865f) | 5,795 | 2,684 | 3,929 | 552 | 474 | 767 | 14,202 | 31,643 | 13% of 244,337 |
+| rasteriser (be3865f) | 5,795 | 2,684 | 3,929 | 552 | 474 | 767 | 14,202 | 31,643 | 13% of 244,337 |
+| circle engine (7f569ed)* | 4,543 | 2,481 | 3,666 | 559 | 480 | 785 | 12,514 | 27,842 | 11% of 246,308 |
+| now* | 4,473 | 2,072 | 1,903 | 559 | 480 | 1,105 | 10,591 | 23,173 | 10% of 235,516 |
+
+(* over iterations 100 to 999, 898 flight iterations, with the account by
+kind: "The second grind" above.)
 
 The stack fell by 76% (the calls in the inner loops of LL9, the stardust,
 the planet's rows, the disc layer and the rasteriser are gone, and the code
@@ -514,8 +657,9 @@ working values, the circle engine's operands), the other low data by 50%
 ship blocks are copied a byte an access), the screen reads by 60% (the
 painter writes whole bytes).
 
-**What is left, and why.** About 31,600 cycles an iteration, 13% of the
-run:
+**What was left at be3865f, and why** (the second grind's account, and
+what is left now, are in "The second grind" above). About 31,600 cycles
+an iteration, 13% of the run:
 
 * **Zero page, 5,800 accesses (12,800 cycles).** The game's own variables,
   shared by every bank and by the original's code throughout: the moving of
@@ -682,6 +826,29 @@ The best candidates: for the Model B port fc0d345, b1c6981, 194cc80,
 for the Master and Tube ports fc0d345, d6c944b, c117d45, 7c4ab52's edges,
 85d30c5, f6d4346, the text rows' bounds, and what is left of LL9 and the
 stardust, recast for their log arithmetic.
+
+### From the second grind (7f569ed..6a76546)
+
+* **General:** the disc layer made, kept and painted in one bank, the
+  painter comparing the rows where they are made (ae6c2ea, 2c0201d,
+  1dbaa28: -2.4% to -4.1% in the planet scenes here; the Model B and
+  Master ports hand the rows over through records in the same way, and
+  would save the hand-over's copy of each row and each batch's far call:
+  on a 2 MHz machine with fast memory perhaps half the gain, an estimate); the unrolled copy of a ship block in `K%`'s first
+  page (eb78c6f, flight -1.5%: on any 6502 an unrolled `LDA abs,Y` /
+  `STA zp` saves the loop's `DEY`/`BPL` and the pointer, about a third of
+  the copy); the painter's one-caller routines jumped to and back
+  (1c8774c: two `JMP`s, 6 cycles, for a `JSR` and `RTS`, 12, on any
+  machine); LL9's division and `L_REC`'s dot products in line (e02ec17,
+  53b32b8).
+* **Electron-specific:** f40d84d (`pe`'s way back patched, `LDA #`,
+  `STA`, `JMP`, `JMP`: as many cycles as `JSR` and `RTS` where the
+  stack is fast; it gains the five slow stack accesses only), f0b0505 and
+  8e5b88d (zero page to sideways RAM:
+  on a machine with fast zero page they cost a cycle an access), 2cf5ed3
+  (room in bank 7), and the build's pad that keeps patched ways back in
+  one page (`win7pad.asm`), which any port that patches low bytes only
+  needs.
 
 ## Open issues
 
