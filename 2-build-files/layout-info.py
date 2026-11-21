@@ -35,7 +35,7 @@
 import re
 
 OUT = "3-assembled-output/"
-WINDOW7 = {"flight": ("gfx-raster_disc-bank7.asm", "gfx-raster_disc2-bank7.asm",
+WINDOW7 = {"flight": ("gfx-frame-bank7low.asm", "gfx-raster_disc-bank7.asm", "gfx-raster_disc2-bank7.asm",
                       "gfx-raster_dpatch-bank7.asm", "gfx-frame-bank7.asm", "gfx-merid-bank7.asm",
                       "gfx-glue-bank7.asm")}   # (bank 7's renderer window, the renderer's
                                                         # bank 7 passes: elite-layout-flight.asm)
@@ -70,7 +70,7 @@ def labels(path):
         t = open(path, encoding="latin-1").read()
     except FileNotFoundError:          # (before streams.py's place: run again after it)
         return []
-    out = re.findall(r"^\s*\.([A-Za-z_][\w%]*)", t, re.M)
+    out = re.findall(r"^\s*\.\^?([A-Za-z_][\w%]*)", t, re.M)   # (with .^, a label made global)
     for inc in re.findall(r'^\s*INCLUDE\s+"(1-source-files/main-sources/[^"]+)"', t, re.M):
         out += labels(inc)
     return out
