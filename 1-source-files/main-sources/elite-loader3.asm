@@ -662,6 +662,27 @@ NEXT
  DEX
  BPL lsh
 
+IF _ROMCHECK
+
+ LDX #rcsrc_end - rcsrc - 1   \ romcheck=on: copy the read-only checker's page
+.lrc                    \ summer to RCODE% (gfx-rcheck.asm), and set its
+ LDA rcsrc,X            \ variables: the palette as normal, learning, the
+ STA RCODE%,X           \ docked code first, no failure
+ DEX
+ BPL lrc
+ LDA #ULAPAL0
+ STA RCPAL0
+ LDA #ULAPAL1
+ STA RCPAL1
+ LDA #1
+ STA RCFLAG
+ LDA #2
+ STA RCPROG
+ LDA #0
+ STA RCFAIL
+
+ENDIF
+
  SEI                    \ Disable interrupts while we change the screen
 
  LDA #0                 \ Show buffer 1 (SCREEN%), as the frame layer's direct
@@ -723,6 +744,49 @@ NEXT
  JMP (VEC)
 
  ASSERT P% - sndh = SNDHSZ AND IRQE% = RESH% + 2 AND IRQM% = RESH% + 8
+
+IF _ROMCHECK
+
+.rcsrc
+
+                        \ romcheck=on: the read-only checker's page summer, run
+                        \ at RCODE% (copied there by LOAD): add the 256 bytes
+                        \ of page X of slot A (main RAM's for X < &80, where
+                        \ the slot does not matter) into (RCSH RCSL), with the
+                        \ slot in &F4 meanwhile (an interrupt pages &F4 back),
+                        \ then page the caller's bank back in. Called by
+                        \ RCHECK in bank 6 (gfx-rcheck.asm), never with the
+                        \ keyboard or BASIC paged
+
+ STX RCODE% + rcs1 - rcsrc + 2   \ the page, in the ADC below
+ LDX &F4                \ keep the caller's bank
+ STX RCSV
+ STA &F4                \ page the slot in
+ STA ROMSEL
+ LDY #0
+ LDX RCSH
+ LDA RCSL
+ CLC
+.rcs1
+ ADC &FF00,Y            \ (patched: the page)
+ BCC rcs2
+ INX
+ CLC
+.rcs2
+ INY
+ BNE rcs1
+ STA RCSL
+ STX RCSH
+ LDA RCSV               \ the caller's bank back
+ STA &F4
+ STA ROMSEL
+ RTS
+
+.rcsrc_end
+
+ ASSERT RCODE% + rcsrc_end - rcsrc <= RCPAL0
+
+ENDIF
 
 .cbset
 

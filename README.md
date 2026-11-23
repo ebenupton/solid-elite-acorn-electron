@@ -40,7 +40,7 @@ As for Mark's source (see [his build instructions](#building-bbc-micro-disc-elit
 make
 ```
 
-`make` writes the disc to `5-compiled-game-discs/elite-electron.ssd` and copies it to `solid-elite-acorn-electron.ssd` in the root (a pre-commit hook, `git config core.hooksPath 2-build-files/hooks`, refuses a commit whose two discs differ). If `python` or `beebasm` is not on your path, pass `PYTHON=python3` or `BEEBASM=...`. `make circles=off` draws the planets as plain discs. The gate (below) needs Node.js, jsbeeb for the reference and clkh for the Electron ([6-harness/clkh](6-harness/clkh/README.md)).
+`make` writes the disc to `5-compiled-game-discs/elite-electron.ssd` and copies it to `solid-elite-acorn-electron.ssd` in the root (a pre-commit hook, `git config core.hooksPath 2-build-files/hooks`, refuses a commit whose two discs differ). If `python` or `beebasm` is not on your path, pass `PYTHON=python3` or `BEEBASM=...`. `make circles=off` draws the planets as plain discs. `make romcheck=on` is a debug build that checks the memory which should not change, a page a frame, and shows a failure in the palette (`gfx-rcheck.asm`: each part of memory fails in its own colours; its map is measured by `6-harness/romap.mjs`). The gate (below) needs Node.js, jsbeeb for the reference and clkh for the Electron ([6-harness/clkh](6-harness/clkh/README.md)).
 
 ## Speed
 

@@ -78,6 +78,10 @@
  INCLUDE "1-source-files/main-sources/gfx-faces.asm"
  INCLUDE "1-source-files/main-sources/gfx-light6.asm"
  INCLUDE "1-source-files/main-sources/gfx-font.asm"
+IF _ROMCHECK
+.rcmap                  \ romcheck=on: the read-only checker's map (gfx-rcheck.asm,
+ INCLUDE "1-source-files/main-sources/gfx-rcmap.asm"   \ 6-harness/romap.mjs)
+ENDIF
 .F_TABEND
  ASSERT P% <= FAR%      \ (the far block, elite-far.asm, and the common block
  SKIP FAR% - P%         \ after it: the code that pages the banks, the same
@@ -116,6 +120,9 @@ F_SRN = MAXSH * 15      \ (the most faces is 15)
  INCLUDE "3-assembled-output/gfx-frame_cold-bank6.asm"
  INCLUDE "3-assembled-output/gfx-hangar-bank6.asm"
  INCLUDE "3-assembled-output/gfx-finit-bank6.asm"
+IF _ROMCHECK
+ INCLUDE "1-source-files/main-sources/gfx-rcheck.asm"   \ romcheck=on: the
+ENDIF                                                   \ read-only checker
 .F_END
  ASSERT F_END <= FCSLOT \ the face lists of the blueprint set loaded, to FJT
                         \ (FCSLOT and its size: gfx-faces.asm; F_SETLD)

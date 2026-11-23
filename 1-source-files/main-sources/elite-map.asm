@@ -235,6 +235,17 @@
                         \ blueprint tables point (the original's &7F00 is
                         \ buffer 1's)
 
+ RCODE% = &1FC0         \ romcheck=on (_ROMCHECK): the read-only checker's page
+                        \ summer, in main RAM as it pages other banks in, and
+ RCPAL0 = &1FF0         \ its variables, at the top of the circle engine's main
+ RCPAL1 = &1FF1         \ high room (gfx-rcheck.asm): the palette the interrupt
+ RCFLAG = &1FF2         \ writes (ULAPAL0 and 1, or a failure's), non-zero to
+ RCPROG = &1FF3         \ start learning again (a load), the program (1 flight,
+ RCSL = &1FF4           \ 2 docked), the region's running sum, the caller's
+ RCSH = &1FF5           \ bank, and the failed region + 1 (0: none)
+ RCSV = &1FF6
+ RCFAIL = &1FF7
+
  VEC = &1FFE            \ The MOS's IRQ1V handler, kept by the loader (the
                         \ original's VEC, at &7FFE)
 

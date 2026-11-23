@@ -46,6 +46,7 @@
 \
 \ ******************************************************************************
 
+ INCLUDE "1-source-files/main-sources/elite-build-options.asm"
  INCLUDE "1-source-files/main-sources/elite-map.asm"
  INCLUDE "1-source-files/main-sources/gfx-rws.asm"
 

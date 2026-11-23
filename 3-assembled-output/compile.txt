@@ -5848,6 +5848,8 @@ End macro FLHW
 .R_LOEND
 Bank 5 (rasteriser): the row runs &8000-&90FF  (made at start), &9100 -&A7EE  (free 17 ), &AE00 -&BFA8  (the jump table &&BF7F -&BFA8 ; free 87 ), free 129 , the common block &B19F -&B1FE  (free 1 ), r_gl, r_wq, the 32-bit divide and the interrupt handler to &B3FD  (free 2 )
 Saving file '3-assembled-output/BANK5.bin'
+Including file 1-source-files/main-sources/elite-build-options.asm
+Processed file '1-source-files/main-sources/elite-build-options.asm' ok
 Including file 1-source-files/main-sources/elite-map.asm
 Processed file '1-source-files/main-sources/elite-map.asm' ok
 Including file 1-source-files/main-sources/gfx-rws.asm

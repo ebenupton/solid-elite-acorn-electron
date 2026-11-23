@@ -76,10 +76,17 @@
  LDA #30                \ Set the line scan counter to a non-zero value, as
  STA DL%                \ LINSCN did, so WSCAN can wait for it to change
 
+IF _ROMCHECK
+ LDA RCPAL0             \ Write the palette (black, cyan, magenta, yellow, or
+ STA &FE08              \ the read-only checker's failure's: gfx-rcheck.asm)
+ LDA RCPAL1
+ STA &FE09
+ELSE
  LDA #ULAPAL0           \ Write the palette (black, cyan, magenta, yellow)
  STA &FE08
  LDA #ULAPAL1
  STA &FE09
+ENDIF
 
  LDA LASCT%             \ Decrement the value of LASCT, but not below zero (this
  BEQ P%+5               \ controls the pulsing of pulse lasers)

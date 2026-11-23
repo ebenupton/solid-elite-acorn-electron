@@ -76,6 +76,11 @@
  LDA &F4                \ Note the caller's bank
  STA pbank
 
+IF _ROMCHECK
+ LDA #1                 \ romcheck=on: a load, so the read-only checker learns
+ STA RCFLAG             \ its sums again (gfx-rcheck.asm)
+ENDIF
+
  LDA #&FF               \ Tell the frame layer that the screen buffers have
  STA GSTASH             \ been used (the staging area and DFS's workspace are
                         \ in buffer 0), so that its next frame blanks both

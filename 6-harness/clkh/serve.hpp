@@ -59,6 +59,11 @@ struct Server {
 	// hist: the last 4096 opcode fetches (pc, slot)
 	uint32_t histv[4096] = {}; uint32_t histp = 0;
 
+	// romap (romap.mjs): pages written while rotag is non-zero (1 flight,
+	// 2 docked: or'd in), sixteen slots of 64 pages then main RAM's 128
+	int rotag = 0;
+	std::vector<uint8_t> rowr = std::vector<uint8_t>(16 * 64 + 128, 0);
+
 	// write tracking (blib.mjs's runElite)
 	std::vector<uint8_t> region = std::vector<uint8_t>(32768, 0);	// the compared regions
 	std::vector<std::pair<unsigned, unsigned>> regions;				// in order, for "snap"
@@ -202,6 +207,7 @@ struct Server {
 	}
 	bool in_ovload() const { return lpc >= ov_lo && lpc < ov_hi && int(m.active_rom_) == ov_slot; }
 	void on_write(uint16_t a, uint8_t v) {
+		if(rotag) rowr[16 * 64 + (a >> 8)] |= uint8_t(rotag);
 		if(watch[a]) watchgen++;
 		if(wlogm[a] && wlogtxt.size() < 200000) { char b[64]; std::snprintf(b, sizeof b, "%u %04x=%02x pc=%04x slot=%u\n", iter, a, v, lpc, unsigned(lrom)); wlogtxt += b; }
 		const bool sys = sys_writer();
@@ -294,6 +300,7 @@ struct Server {
 		m.opcode_hook = [this](uint16_t pc, uint8_t rom, uint8_t) { on_opcode(pc, rom); };
 		m.ram_write_hook = [this](uint16_t a, uint8_t v) { on_write(a, v); };
 		m.swram_write_hook = [this](uint8_t rom, uint16_t a, uint8_t v) {
+			if(rotag) rowr[(rom & 15) * 64 + ((a >> 8) & 63)] |= uint8_t(rotag);
 			if(stash_lo >= 0x8000 && int(rom) == ov_slot && a >= stash_lo && a < stash_hi && in_ovload()) {	// (the stash in bank 7)
 				const unsigned x = m.m6502_.value_of(R::X);
 				if(stash_base < 0) stash_base = int(a) - int(x);
@@ -369,6 +376,9 @@ struct Server {
 		if(c == "watch") { for(size_t i = 1; i < a.size(); i++) watch[size_t(std::strtol(a[i].c_str(), nullptr, 0)) & 0x7fff] = 1; return false; }
 		if(c == "dump") { dump(m, a.size() > 1 ? a[1] : "dump"); send("ok"); return false; }
 		if(c == "shot") { send(png()); return false; }
+		// romap: rotag N; roget: the pages' bits, hex, a byte a page
+		if(c == "rotag") { rotag = int(num(1)); return false; }
+		if(c == "roget") { std::string out; char b[4]; for(uint8_t x : rowr) { std::snprintf(b, sizeof b, "%02x", x); out += b; } send(out); return false; }
 		// write tracking
 		if(c == "treg") {		// treg ADDR LEN: a compared region (in order)
 			const unsigned ad = unsigned(num(1)), n = unsigned(num(2));

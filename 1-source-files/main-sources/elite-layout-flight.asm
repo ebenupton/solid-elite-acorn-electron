@@ -169,7 +169,7 @@ IF _CIRCLES             \ the circle engine's variables (elite-map.asm): the
  INCLUDE "3-assembled-output/gfx-planet7-mainhigh.asm"
  INCLUDE "3-assembled-output/gfx-merid-mainhigh.asm"
 .PFVH_END%
- ASSERT P% <= &7FFE          \ (VEC)
+ ASSERT P% <= RCODE%         \ (below the read-only checker's room, then VEC)
  ORG PFVA%
  INCLUDE "3-assembled-output/gfx-merid-mainlow.asm"
 .PFVA_END%

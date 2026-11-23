@@ -29,6 +29,10 @@ PYTHON?=python
 #                       (the beach ball and the craters: the circle engine's
 #                       game part at the end of the flight code's bank 4)
 #
+#   romcheck=on         A debug build: check the memory that stays read-only
+#                       (gfx-rcheck.asm, its map from 6-harness/romap.mjs) a
+#                       page a frame, and show a failure in the palette
+#
 # So, for example:
 #
 #   make commander=max match=no verify=no
@@ -85,6 +89,12 @@ else
   circles-on=TRUE
 endif
 
+ifeq ($(romcheck), on)
+  romcheck-on=TRUE
+else
+  romcheck-on=FALSE
+endif
+
 variant-number=2
 folder=sth
 
@@ -97,6 +107,7 @@ all:
 	echo _MAX_COMMANDER=$(max-commander) >> 1-source-files/main-sources/elite-build-options.asm
 	echo _INTERLACE_FIX=$(interlace-fix) >> 1-source-files/main-sources/elite-build-options.asm
 	echo _CIRCLES=$(circles-on) >> 1-source-files/main-sources/elite-build-options.asm
+	echo _ROMCHECK=$(romcheck-on) >> 1-source-files/main-sources/elite-build-options.asm
 	$(PYTHON) 2-build-files/streams.py measure > 3-assembled-output/compile.txt
 	$(PYTHON) 2-build-files/bank5.py $(BEEBASM)
 	$(BEEBASM) -i 1-source-files/main-sources/elite-missile.asm -v >> 3-assembled-output/compile.txt

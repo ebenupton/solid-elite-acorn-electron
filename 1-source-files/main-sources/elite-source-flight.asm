@@ -2097,6 +2097,12 @@
 
 IF _STH_DISC OR _IB_DISC
 
+IF _ROMCHECK
+ LDA #1                 \ romcheck=on: this program (flight) has started, so
+ STA RCPROG             \ the read-only checker learns its sums again, with
+ STA RCFLAG             \ this program's map (gfx-rcheck.asm)
+ENDIF
+
                         \ Port: the port's code is not scrambled (the loader
                         \ copies its images into sideways RAM as they are), so
                         \ there is nothing to decrypt, as in the sideways RAM

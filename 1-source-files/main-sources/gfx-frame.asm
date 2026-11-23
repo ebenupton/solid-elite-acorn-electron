@@ -675,6 +675,9 @@ RPN = 4
 
 .F_FRAME
  STY f_ysav
+IF _ROMCHECK
+ JSR RCHECK             \ romcheck=on: a page of the read-only checker's sums
+ENDIF                   \ (gfx-rcheck.asm)
  LDA QQ11
  BEQ ff1
  JMP f_reset            \ not a space view: just forget what was recorded
