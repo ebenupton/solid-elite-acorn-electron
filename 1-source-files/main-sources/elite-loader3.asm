@@ -622,12 +622,6 @@ NEXT
  LDX #FG_INIT           \ Start the frame layer: direct mode, buffer 1 (SCREEN%)
  JSR GCALL              \ on show
 
- LDX #LO(LTLI)          \ Set (Y X) to point to LTLI ("L.T.CODE")
- LDY #HI(LTLI)
-
- JSR PCLI               \ Call PCLI to run the OS command in LTLI, which loads
-                        \ the docked code into its banks
-
  LDX #LO(LTPN)          \ Load the dashboard's image, P.DIALS, to STAGE%
  LDY #HI(LTPN)          \ (through PCLI, which passes the command to the MOS)
  JSR PCLI
@@ -644,6 +638,17 @@ NEXT
 
  INX
  BNE ldp1
+
+                        \ Port: the dashboard first, as it stages at STAGE%
+                        \ too: the docked code's cold image must still be
+                        \ there when its DEEOR copies the face lists that
+                        \ start it into the frame layer's slot (F_SETLD)
+
+ LDX #LO(LTLI)          \ Set (Y X) to point to LTLI ("L.T.CODE")
+ LDY #HI(LTLI)
+
+ JSR PCLI               \ Call PCLI to run the OS command in LTLI, which loads
+                        \ the docked code into its banks
 
  JSR b0fix              \ Make buffer 0 black, with a copy of buffer 1's last
                         \ eight rows (the staging has been through it)
@@ -701,9 +706,9 @@ NEXT
                         \ plays, then the handler's two ways out of bank 5
                         \ (they refer to no address of their own, so they run
                         \ there as assembled here): at IRQE%, the write to
-                        \ ROMSEL that pages the interrupted ROM back in and
-                        \ clears the ULA's interrupt (A, from the handler),
-                        \ and the return; at IRQM%, the interrupted ROM back
+                        \ ROMSEL that pages the interrupted ROM back in (A,
+                        \ from the handler, which has cleared the ULA's
+                        \ interrupt), and the return; at IRQM%, the interrupted ROM back
                         \ in from &F4, and on to the MOS's handler through
                         \ VEC, where the loader kept the MOS's IRQ1V
 
@@ -1078,8 +1083,11 @@ NEXT
 \
 \ Port: the game lives in four sideways RAM banks (docs/memory-map.md). This
 \ tests each slot from 15 down to 0, passing over any that the MOS has a ROM
-\ in (its entry in the ROM type table at &02A1 is non-zero), and takes the
-\ first four that hold what is written to them, in BANKS: the programs' home
+\ in (its entry in the ROM type table is non-zero: the Electron's MOS keeps
+\ the table at &02A0, slot 0's entry first, where the BBC's starts at &02A1),
+\ and takes the first four that hold what is written to them at both ends (a
+\ bank partly locked, as the ElkSD128 locks the bottom 13.5K of the bank its
+\ MMFS runs in, is not taken), in BANKS: the programs' home
 \ bank, their cold bank, then the renderer's two banks. Without four, it
 \ prints a message and stops.
 \
@@ -1096,7 +1104,8 @@ NEXT
 
 .prb1
 
- LDA &02A1,X            \ If the MOS has a ROM in slot X, skip it
+ LDA &02A0,X            \ If the MOS has a ROM in slot X, skip it (the
+                        \ Electron's table starts at &02A0)
  BNE prb2
 
  CPX #12                \ Port: skip slots 8 to 11 (the Electron's keyboard and
@@ -1112,12 +1121,18 @@ NEXT
  STX ROMSEL
 
  LDA #&AA               \ If the slot does not hold &AA and &55 when they are
- STA &BFFF              \ written to it, it is not RAM, so skip it
- CMP &BFFF
+ STA &BFFF              \ written to it, at its top and its bottom, it is not
+ CMP &BFFF              \ RAM, so skip it
+ BNE prb2
+ STA &8000
+ CMP &8000
  BNE prb2
  LDA #&55
  STA &BFFF
  CMP &BFFF
+ BNE prb2
+ STA &8000
+ CMP &8000
  BNE prb2
 
  TXA                    \ Slot X is RAM, so store it in the Y-th byte of BANKS

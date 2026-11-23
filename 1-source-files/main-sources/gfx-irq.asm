@@ -50,7 +50,10 @@
 \ Every other interrupt goes on to the MOS (IRQM%).
 \
 \ The ULA's interrupts are cleared by bits 4 to 6 of a write to ROMSEL, which
-\ also pages bits 0 to 3's ROM: the way out's write.
+\ also pages bits 0 to 3's ROM. The handler clears them with bank 5's own
+\ number there, and the way out's write pages the interrupted ROM back with
+\ bits 4 to 7 clear, as the ElkSD128 needs (from its firmware 136, a write
+\ with any of them set pages nothing).
 \
 \ ******************************************************************************
 
@@ -112,10 +115,17 @@
  LDA #SSA1
  STA &FE03
 
- LDA &F4                \ The interrupted ROM, with the display-end interrupt
- ORA #%00110000         \ cleared (bit 4 of ROMSEL), and a clock interrupt
-                        \ left pending (bit 5)
+ LDA #%00110000         \ Clear the display-end interrupt (bit 4 of ROMSEL) and
+                        \ a clock interrupt left pending (bit 5)
 .rirq4
+
+ ORA CBME               \ Clear them with bank 5's own number in bits 0 to 3,
+ STA ROMSEL             \ so the write pages nothing new: the ElkSD128 (from
+                        \ firmware 136) pages only on a write whose bits 4 to
+                        \ 7 are clear, so clearing and paging back in one write
+                        \ would leave bank 5 in
+
+ LDA &F4                \ The interrupted ROM, a plain number
 
  LDX irqx               \ Restore X, and go out through IRQE%, which writes
  JMP IRQE%              \ ROMSEL and returns from the interrupt: the display
@@ -129,9 +139,8 @@
  BIT GMODE
  BPL rirq6
 
- LDA &F4                \ In space mode, clear the clock's interrupt (bit 5 of
- ORA #%00100000         \ ROMSEL) and return
- BNE rirq4
+ LDA #%00100000         \ In space mode, clear the clock's interrupt (bit 5 of
+ BNE rirq4              \ ROMSEL) and return
 
 .rirq6
 

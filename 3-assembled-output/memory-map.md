@@ -3,7 +3,7 @@
 | main RAM | `&0000-&00FF` | zero page: the game's (the rasteriser's &06-&27 and the frame layer's &D2-&E1 during a frame, kept) | 256 | 0 |
 | main RAM | `&0100-&01FF` | the stack, down from `&01FF`, and `XX3`, the heap of projected vertices, up from `&0100`, sharing the page as in the original (as measured over the gate's runs and an eight-session soak, `page1Watch`: in flight the stack down to `&01BA` and `XX3` up to `&016F`, 74 bytes untouched; docked the stack down to `&01B1`, `XX3` up to `&0193` and the filing system's writes up to `&010B`, 29 untouched) | 256 | 0 |
 | main RAM | `&0300-&03CF` | `UP`, the game's workspace | 208 | 0 |
-| main RAM | `&0400-&06BF` | resident block A (`elite-resident.asm`): `BANKS`, the far calls' variables and jump forms, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 572 | 132 |
+| main RAM | `&0400-&06BF` | resident block A (`elite-resident.asm`): `BANKS`, the far calls' variables and jump forms, `PCLI` with `dfsin`, `dfsout`, `pload`, `WRCHR`, `BRKR`, the last saved commander and the break handler, `IRQG` (the interrupt's entry, which pages bank 5 in for the handler, `RIRQ`) | 592 | 112 |
 | main RAM | `&06C0-&06BF` | the circle engine's variables (main low: `gfx-merid.asm`) | 0 | 0 |
 | main RAM | `&06C0-&07BF` | `pcb_o`, the circle engine's table that banks 4 and 6 read (main: `gfx-merid.asm`); then `cbcopy` (`elite-resident.asm`) | 243 | 13 |
 | main RAM | `&07C0-&07FF` | `SNE`, `ACT` | 64 | 0 |
@@ -61,7 +61,7 @@
 | bank 5 | `&AE00-&B11D` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 798 | 0 |
 | bank 5 | `&B11E-&B19E` | (free: the room below the per-x tables, to the common block) | 0 | 129 |
 | bank 5 | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
-| bank 5 | `&B200-&B3FF` | the room below the per-x tables: `r_gl`, `r_wq`, `rp_div32`, the interrupt handler (`RIRQ`, `gfx-irq.asm`) | 506 | 6 |
+| bank 5 | `&B200-&B3FF` | the room below the per-x tables: `r_gl`, `r_wq`, `rp_div32`, the interrupt handler (`RIRQ`, `gfx-irq.asm`) | 510 | 2 |
 | bank 5 | `&B400-&BF7E` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2943 | 0 |
 | bank 5 | `&BF7F-&BFFF` | `RJT`, the jump table | 42 | 87 |
 | bank 6 | `&8000-&96FF` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`), with the flight code's recursive text tokens (`QQ18`) | 5754 | 134 |
@@ -75,4 +75,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 245, main RAM (flight) 57, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 1060, bank 7 (docked) 4795, bank 5 876, bank 6 533.
+Free, by place: main RAM 225, main RAM (flight) 57, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 1060, bank 7 (docked) 4795, bank 5 872, bank 6 533.

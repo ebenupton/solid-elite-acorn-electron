@@ -179,6 +179,10 @@
  CMP #'R'               \ that was paged, which now holds the new program)
  BNE prest
 
+ LDA #12                \ Port: through slot 12 first (the ULA ignores a write
+ STA ROMSEL             \ of 0 to 7 while 8 to 11 is paged, as the MOS may
+                        \ have left it after the command)
+
  LDA BANK4              \ Otherwise run the program at S% in its home bank
  STA &F4
  STA ROMSEL
@@ -200,6 +204,10 @@
                         \ back in and return
 
 .prest
+
+ LDA #12                \ Port: through slot 12 first (the ULA ignores a write
+ STA ROMSEL             \ of 0 to 7 while 8 to 11 is paged, as the MOS may
+                        \ have left it after the command)
 
  LDA pbank              \ Page the caller's bank back in and return
  STA &F4
@@ -400,6 +408,11 @@
  LDA &F4                \ Store the caller's ROM on the stack
  PHA
 
+ LDA #12                \ Port: through slot 12 first, as the ULA ignores a
+ STA ROMSEL             \ write of 0 to 7 while the keyboard or BASIC (8 to
+                        \ 11) is paged in, which OSWRCH's caller may
+                        \ have paged
+
  LDA BANK4              \ Page the program's home bank in
  STA &F4
  STA ROMSEL
@@ -436,6 +449,11 @@
 
  \ (Port: the Model B restarted its rupture here, in case a
                         \ disc command ended here with an error
+
+ LDA #12                \ Port: through slot 12 first, as the ULA ignores a
+ STA ROMSEL             \ write of 0 to 7 while the keyboard or BASIC (8 to
+                        \ 11) is paged in, which the MOS has paged for
+                        \ BRKV
 
  LDA BANK4              \ Page the program's home bank in
  STA &F4

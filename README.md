@@ -26,7 +26,7 @@ What it has:
 
 ## Playing it
 
-Download [solid-elite-acorn-electron.ssd](solid-elite-acorn-electron.ssd) and run it on an Acorn Electron with a Plus 3 running the ACP 1770 DFS (the Plus 3's own ROM is ADFS) and four 16K banks of sideways RAM, or in an emulator set up that way (Elkulator, MAME's `electron_plus3`, Clock Signal), then press SHIFT-BREAK. The loader finds the four banks itself (counting down from slot 15, with no ROM in them), so any sideways RAM in four free slots will do. The DFS ROM the disc is run with is in [roms/](roms/) (`DFS-1770-2.20.rom`); the MOS and BASIC ROMs are not included.
+Download [solid-elite-acorn-electron.ssd](solid-elite-acorn-electron.ssd) and run it on an Acorn Electron with a Plus 3 running the ACP 1770 DFS (the Plus 3's own ROM is ADFS) and four 16K banks of sideways RAM, or in an emulator set up that way (Elkulator, MAME's `electron_plus3`, Clock Signal), then press SHIFT-BREAK. The loader finds the four banks itself (counting down from slot 15, with no ROM in them), so any sideways RAM in four free slots will do. On an ElkSD128, put the disc on its card and run it from MMFS (`*DIN` it, then SHIFT-BREAK). The DFS ROM the disc is run with is in [roms/](roms/) (`DFS-1770-2.20.rom`); the MOS and BASIC ROMs are not included.
 
 The keys are the BBC Micro version's, with three differences, as in Acornsoft's Electron Elite: FUNC (CAPS LK) with a digit is the BBC Micro's function key of that number (FUNC-1 is the front view, FUNC-0 launches, and so on); SHIFT-0 is @ (the disc menu); "-" fires the energy bomb, as the Electron has no TAB key; and FUNC pressed alone is CAPS LOCK, which toggles keyboard damping in the pause menu. The disc is the current build of this branch, rebuilt with every change.
 
@@ -70,7 +70,7 @@ Every commit is checked against the released game (the Stairway to Hell disc): t
 
 * The escape pod's dashboard colours and the death's hidden dashboard have no fixed-palette equivalent: the dashboard stays on show in its colours. The energy bomb flashes colour 0 white for a field.
 * The title's Cobra fills the window, so its frames are slow and a key must be held for a few tenths of a second there.
-* Untested on real hardware: the ULA's paging quirk, the Plus 3's DFS and sideways RAM in slots other than 12-15 are handled as documented, but have run only in emulators.
+* Real hardware: it runs on an Electron with an ElkSD128 (firmware 136, the game on its MMFS card), which pages only on a write to `&FE05` with bits 4 to 7 clear and locks the bottom 13.5K of the bank its MMFS runs in; the loader and the interrupt allow for both. A crash in combat seen there before these fixes has not yet been seen again or ruled out. The Plus 3's DFS has run only in emulators.
 
 ## Credits
 
