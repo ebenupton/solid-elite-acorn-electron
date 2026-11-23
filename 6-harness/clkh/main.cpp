@@ -230,6 +230,38 @@ int main(int argc, char **argv) {
 	// (--shiftbreak N: SHIFT+BREAK after N cycles, the disc's !Boot run, for
 	// any disc; 0: none, even for a disc the analyser would autoboot)
 	if(shiftbreak >= 0) m->shift_restart_counter_ = int(shiftbreak);
+	// SWFILL (environment): fill every writable sideways RAM slot before boot:
+	// a number = that byte, "rand" (or "rand:SEED") = pseudo-random bytes, as a
+	// real machine's banks hold whatever was there before
+	if(const char *sf = std::getenv("SWFILL")) {
+		uint32_t seed = 12345;
+		const bool rnd = std::strncmp(sf, "rand", 4) == 0;
+		if(rnd && sf[4] == ':') seed = uint32_t(std::strtoul(sf + 5, nullptr, 0));
+		const uint8_t fill = rnd ? 0 : uint8_t(std::strtoul(sf, nullptr, 0));
+		for(int sl = 0; sl < 16; sl++) {
+			if(!m->rom_write_masks_[sl] || m->rom_inserted_[sl]) continue;
+			for(int a = 0; a < 16384; a++) {
+				if(rnd) { seed = seed * 1103515245u + 12345u; m->roms_[sl][a] = uint8_t(seed >> 16); }
+				else m->roms_[sl][a] = fill;
+			}
+		}
+	}
+	// ELKSDLAYOUT (environment): the ElkSD128's slots: ROMs (read-only, with a
+	// header) in 12, 14 and 15, nothing in 13, MMFS's bank in 7 (a header, its
+	// bottom 13.5K locked), sideways RAM in 0-6
+	if(std::getenv("ELKSDLAYOUT")) {
+		for(int s : {7, 12, 14, 15}) {
+			uint8_t *r = m->roms_[s];
+			std::fill(r, r + 16384, 0xff);
+			const uint8_t hdr[] = {0, 0, 0, 0x4c, 0x20, 0x80, 0x82, 0x0f, 1, 'E', 'L', 'K', 'S', 'D', uint8_t('0' + (s % 10)), 0, '(', 'C', ')', 0};
+			std::copy(hdr, hdr + sizeof(hdr), r);
+			r[0x20] = 0x60;
+			if(s != 7) m->rom_write_masks_[s] = false;
+		}
+		std::fill(m->roms_[13], m->roms_[13] + 16384, 0xff);
+		m->rom_write_masks_[13] = false;
+		m->elksd_lock7_ = true;
+	}
 	// (--soundlog FILE: every write to &FE06 and &FE07, a line each: the 2 MHz
 	// cycle, the register (6 or 7) and the value, hex)
 	static FILE *sndf = nullptr;

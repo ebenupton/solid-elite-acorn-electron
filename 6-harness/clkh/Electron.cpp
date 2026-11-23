@@ -5,13 +5,16 @@
 //  clkh's copy of CLK's Machines/Acorn/Electron/Electron.cpp (the CLK tree is
 //  used read-only). Its changes are marked "clkh:": a count of the 2 MHz
 //  cycles run since the machine was made (total_cycles), and which slots
-//  hold a ROM's image (rom_image_).
+//  hold a ROM's image (rom_image_), and the ElkSD128's paging and slots
+//  (ELKSD136, ELKSDLAYOUT: main.cpp).
 //
 //  Created by Thomas Harte on 03/01/2016.
 //  Copyright 2016 Thomas Harte. All rights reserved.
 //
 
 #include "Electron.hpp"
+
+#include <cstdlib>
 
 #include "Activity/Source.hpp"
 #include "Machines/MachineTypes.hpp"
@@ -346,7 +349,11 @@ public:
 						}
 						// The ULA latches the paging bits on every write (FPGA ElectronULA.vhd
 						// L823-833); while 8-11 is selected only values with bit 3 set are honoured.
-						if((active_rom_ & 0xc) != 0x8 || (*value & 0x08)) {
+						// clkh: ELKSD136 (environment): the ElkSD128's firmware 136 on, which pages only
+						// on a write whose bits 4-7 are clear.
+						static const bool elksd136 = std::getenv("ELKSD136") != nullptr;
+						if(elksd136 && (*value & 0xf0)) {}
+						else if((active_rom_ & 0xc) != 0x8 || (*value & 0x08)) {
 							active_rom_ = *value & 0xf;
 							keyboard_is_active_ = (active_rom_ & 0xe) == 0x8;
 							basic_is_active_ = (active_rom_ & 0xe) == 0xa;
@@ -515,7 +522,7 @@ public:
 							if(basic_is_active_) {
 								*value &= roms_[int(ROM::BASIC)][address & 16383];
 							}
-						} else if(rom_write_masks_[active_rom_]) {
+						} else if(rom_write_masks_[active_rom_] && !(elksd_lock7_ && active_rom_ == 7 && (address & 16383) < 0x3600)) {
 #ifdef CLK_HEADLESS
 							if(swram_write_hook) swram_write_hook(uint8_t(active_rom_), address, *value);
 #endif
@@ -765,6 +772,7 @@ private:
 
 	// Things that directly constitute the memory map.
 	uint8_t roms_[16][16384];
+	bool elksd_lock7_ = false;	// clkh: ELKSDLAYOUT: the bottom 13.5K of slot 7 (MMFS) locked
 	bool rom_inserted_[16] = {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false};
 	bool rom_write_masks_[16] = {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false};
 	uint8_t os_[16384], ram_[32768];

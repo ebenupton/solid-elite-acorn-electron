@@ -25,6 +25,14 @@ The harness finds the binary at `6-harness/clkh/build/clkh`, or `$CLKH`.
 `&FE07`) to F, a line each: the 2 MHz cycle, the register (6 or 7) and the
 value in hex (`6-harness/soundwav.py` renders it as WAV).
 
+The ElkSD128, for the port's real-hardware faults, by environment variables:
+`ELKSD136` pages as its firmware 136 does (a write to `&FE05` with any of
+bits 4 to 7 set pages nothing); `ELKSDLAYOUT` puts its slots in (ROMs in 12,
+14 and 15, nothing in 13, MMFS's bank in 7 with its bottom 13.5K locked,
+sideways RAM in 0 to 6); `SWFILL=N` or `SWFILL=rand[:SEED]` fills the
+writable sideways RAM before the boot, as a real machine's banks hold what
+was there before.
+
 ROMs: `--rompath DIR` holding `os.rom`, `basic.rom` and `DFS-1770-2.20.rom`
 (`~/elite-electron-roms`, the harness's default, or `$ELK_ROMS`; the DFS is
 in the repository's `roms/`, the MOS and BASIC are not).
