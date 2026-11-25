@@ -49,7 +49,7 @@
 | bank 7 (flight) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 7 (flight) | `&B200-&B3FF` | the painter's entries (`DPENT%`), which the common block calls, and its own call of bank 5; the painter's operands' patch | 310 | 202 |
 | bank 7 (flight) | `&B400-&BFFF` | the workspace: each buffer's disc state (not in the image: `DP_BEGIN` sets it up), buffer 0's sharing its first `&2E2` bytes with `ovload`'s stash of `WP` and the zero page during an overlay's load (`OVSTASH`) | 3072 | 0 |
-| bank 7 (docked) | `&8000-&B138` | the set's face lists, the cold pass, `QQ18` | 11362 | 1239 |
+| bank 7 (docked) | `&8000-&B138` | the set's face lists, the cold pass, `QQ18` | 11370 | 1231 |
 | bank 7 (docked) | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks | 102 | 0 |
 | bank 7 (docked) | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 7 (docked) | `&B200-&B21C` | the disc layer's entries (`DPENT%`: the frame layer's calls in the docked code's frames, which have no disc: `gfx-glue.asm`'s docked bank 7 pass) | 29 | 0 |
@@ -75,4 +75,4 @@
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 217, main RAM (flight) 57, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 482, bank 7 (docked) 4795, bank 5 863, bank 6 542.
+Free, by place: main RAM 217, main RAM (flight) 57, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 482, bank 7 (docked) 4787, bank 5 863, bank 6 542.
