@@ -8476,15 +8476,15 @@ ENDIF
                         \ Port: if the indicator is already drawn with this
                         \ length and colour, leave it (in both buffers) and
                         \ just move on to the next one: DLAST keeps each
-                        \ indicator's last length and colour, as Q + 16 * the
-                        \ colour byte's low nibble (Q is 0 to 15, the colour
-                        \ &F0 or &FF), and the X and Y that DIL leaves are dead
+                        \ indicator's last length and colour, as Q + 128 * bit
+                        \ 0 of the colour byte (Q is 0 to 20: the speed's DIL-1
+                        \ goes to 20, the fuel's DILX+2 to 17; the colour &F0
+                        \ or &FF), and the X and Y that DIL leaves are dead
 
- ASL A                  \ Set A = Q + 16 * (COL AND 15)
- ASL A
- ASL A
- ASL A
- ORA Q
+ LSR A                  \ Set A = Q + 128 * (COL AND 1), a key no two of them
+ LDA #0                 \ share (with 16 * the colour's low nibble, as before,
+ ROR A                  \ the fuel's 16 and 17 in &FF, which its flashing gives
+ ORA Q                  \ a low tank, were 0 and 1's keys)
 
  LDX DLIX               \ If DLAST for this indicator is A, it is drawn: jump
  CMP DLAST,X            \ to DL6 to move on to the next one

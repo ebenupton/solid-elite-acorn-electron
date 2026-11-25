@@ -13042,10 +13042,9 @@ S% workspace (flight) from &8000 to &8015 inclusive
      8C52   A5 40      LDA &40
 .DL31
      8C54   85 91      STA &91
-     8C56   0A         ASL A
-     8C57   0A         ASL A
-     8C58   0A         ASL A
-     8C59   0A         ASL A
+     8C56   4A         LSR A
+     8C57   A9 00      LDA #&00
+     8C59   6A         ROR A
      8C5A   05 81      ORA &81
      8C5C   AE 2F 25   LDX &252F
      8C5F   DD 30 25   CMP &2530,X
@@ -31955,10 +31954,9 @@ S.ELTA &8000  &82A1  &8000  &8000
      879D   A5 40      LDA &40
 .DL31
      879F   85 91      STA &91
-     87A1   0A         ASL A
-     87A2   0A         ASL A
-     87A3   0A         ASL A
-     87A4   0A         ASL A
+     87A1   4A         LSR A
+     87A2   A9 00      LDA #&00
+     87A4   6A         ROR A
      87A5   05 81      ORA &81
      87A7   AE 5A 88   LDX &885A
      87AA   DD 5B 88   CMP &885B,X
