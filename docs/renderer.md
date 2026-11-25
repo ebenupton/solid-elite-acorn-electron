@@ -555,6 +555,30 @@ into the back buffer, every ghost's density stepped down by the probes not
 in sight (`fl_vred`), each ghost's box marked dirty (`R_MARKBOX`) so that
 the next frame on the buffer repairs it.
 
+### Inside the station
+
+The game docks only once the station's centre is within 127 of us on every
+axis (main flight loop part 8, then `ISDK`), but the face with the docking
+slot is 160 from a Coriolis station's centre along its nose (196 for the
+Dodo). So for the last two or three iterations of every docking we are past
+the plane of that face, inside the station's hull, and part 5 of `LL9`
+finds every face turned away: the station draws nothing, and the stars, the
+sun and the lens flare beyond it showed through (the original's wireframe
+station vanishes there too, over its stars). As in the Master port, the
+frame now shows the black of the slot instead. `F_SHIP` tests for it as it
+records the station (`TYPE` is `SST` for both stations): if none of its
+faces is visible, it sets the star count at `ff_stars` to 0, so the frame
+plots no stars, and this buffer's old ones are erased as ever at the
+frame's start (`T_STARERASE`), leaving its star records empty. The station
+is recorded before the sun, which is parked while the station holds slot 1
+and runs after the ship slots (`SUNSC`), so `F_PLANET` takes `F_SUON` from
+the same byte: 0, the sun off, so its disc goes as a disc that has left the
+screen does (`f_dprep`, the disc layer's incremental path, in each buffer in
+turn), with no flare. `f_reset` puts the count back after every frame. As
+the station is convex, a station with no face visible is one we are inside;
+anywhere else some face is visible, so the approach, other views and other
+ships are as before. `6-harness/bdockview.mjs` flies the scene.
+
 ### The shading
 
 Every dithered fill is a 2 x 4 ordered dither (ELECTRON-REPORT.md,

@@ -562,6 +562,17 @@ RPN = 4
  STA fsh2+2
  LDA GTYPE
  STA F_STYP,X
+ LDA TYPE               \ the station (the Coriolis or the Dodo) with none of
+ CMP #SST               \ its faces visible: we are inside it, past the plane
+ BNE fsi9               \ of its slot's face, in the last iterations before
+ LDY GNF                \ docking (docking needs |x|, |y| and z under 128;
+.fsi1                   \ the slot's face is 160 out, the Dodo's 196), and it
+ LDA XX2-1,Y            \ draws nothing: then the frame plots no stars (the
+ BNE fsi9               \ count at ff_stars, which f_reset puts back) and
+ DEY                    \ draws no sun (fpl1, as the station is recorded
+ BNE fsi1               \ before the sun, parked after the ship slots)
+ STA ff_stars+1
+.fsi9
  LDA GNF
  STA F_SNF,X
  LDA XX4
@@ -662,8 +673,8 @@ RPN = 4
  STA F_SUY+1
  LDA K
  STA F_SUR
- LDA #&FF
- STA F_SUON
+ LDA ff_stars+1         \ (none inside the station, F_SHIP: its disc goes as a
+ STA F_SUON             \ disc that has left the screen does, and no flare)
  RTS
 
 \ ------------------------------------------------------------------------------
@@ -733,7 +744,7 @@ ENDIF                   \ (gfx-rcheck.asm)
  JSR f_lasers           \ our laser beams
  JSR f_flt              \ the lens flare (gfx-flare.asm), then the text on top
  JSR f_sight2           \ and the sights
-.ff_stars
+.ff_stars               \ (the count is 0 inside the station: F_SHIP)
  LDA #NDSTAR            \ stardust, on black only (last: erasing it next
  STA R_SN               \ time restores black, so it needs no WL/WR): stars
  LDA F_SLV+16           \ 1..NOST, recorded by the hooks straight into the
@@ -766,6 +777,8 @@ ENDIF                   \ (gfx-rcheck.asm)
 .f_reset
  LDA #&80               \ no docking slot (f_poly2 records one, f_slot uses it)
  STA F_SLV+16
+ LDA #NDSTAR            \ and not inside the station (F_SHIP)
+ STA ff_stars+1
 .f_lists
  LDA #0                 \ empty the per-frame lists
  STA GLASV              \ (the beams show for one frame per LASLI)
