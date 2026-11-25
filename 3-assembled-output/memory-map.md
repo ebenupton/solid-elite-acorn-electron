@@ -56,23 +56,23 @@
 | bank 7 (docked) | `&B21D-&BFFF` | (free) | 0 | 3555 |
 | bank 5 | `&8000-&8BFF` | the 24 row runs, two a page, made at start by `R_INIT` (not in `R.BANK`); in the 30 bytes after each of the first five, variables | 2459 | 613 |
 | bank 5 | `&8C00-&90FF` | the row tables (made at start by `R_INIT`), the stars' records, the bank's copies of its inputs and its scratch (`r_zb`), the variables (not in `R.BANK`); and the sound engine in three gaps (`gfx-sound.asm`, `SND5A`, `SND5B`, `SND5D`: copied there by the loader) | 1257 | 23 |
-| bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE`, the lens flare | 5871 | 17 |
+| bank 5 | `&9100-&A7FF` | `R_POLY`, `R_LINE`, the lens flare | 5868 | 20 |
 | bank 5 | `&A800-&ADFF` | the state: the dirty and written extents, `R_POLY`'s edge tables | 1536 | 0 |
 | bank 5 | `&AE00-&B11D` | `R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic | 798 | 0 |
 | bank 5 | `&B11E-&B19E` | (free: the room below the per-x tables, to the common block) | 0 | 129 |
 | bank 5 | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 5 | `&B200-&B3FF` | the room below the per-x tables: `r_gl`, `r_wq`, `rp_div32`, the interrupt handler (`RIRQ`, `gfx-irq.asm`) | 510 | 2 |
-| bank 5 | `&B400-&BF7E` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2943 | 0 |
-| bank 5 | `&BF7F-&BFFF` | `RJT`, the jump table | 42 | 87 |
+| bank 5 | `&B400-&BF78` | the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF` | 2937 | 0 |
+| bank 5 | `&BF79-&BFFF` | `RJT`, the jump table | 42 | 93 |
 | bank 6 | `&8000-&96FF` | the flight code's cold 6 pass (`Area: cold 6`: `elite-flight-c6.asm`, `C6.bin`; the room `C6SZ`), with the flight code's recursive text tokens (`QQ18`) | 5754 | 134 |
-| bank 6 | `&9700-&AC60` | the frame layer's code (bank 6 passes) | 5473 | 0 |
-| bank 6 | `&AC61-&B0DE` | the faces' and the lighting's tables | 1150 | 0 |
-| bank 6 | `&B0DF-&B138` | (free) | 0 | 90 |
+| bank 6 | `&9700-&AC5A` | the frame layer's code (bank 6 passes) | 5467 | 0 |
+| bank 6 | `&AC5B-&B0D8` | the faces' and the lighting's tables | 1150 | 0 |
+| bank 6 | `&B0D9-&B138` | (free) | 0 | 96 |
 | bank 6 | `&B139-&B19E` | the far block (`elite-far.asm`): the far calls `farC` and `farH`, the same bytes in each program's home and cold banks, and in bank 6, for the cold 6 pass | 102 | 0 |
 | bank 6 | `&B19F-&B1FF` | the common block (`elite-common.asm`): the code that pages the banks (`C_POLY`, `C_T5`, `C_T7`, `GCALL`, `C_HOME`), the same bytes in every bank | 96 | 1 |
 | bank 6 | `&B200-&B783` | the state, page aligned: the text map, then the ship records, the zero page `F_FRAME` keeps, the faces' levels, the docking slot, `F_PFHOLD`'s | 1412 | 0 |
-| bank 6 | `&B784-&BC70` | `F_INIT`, the lens flare's call, the screens drawn directly, the hangar (bank 6 passes) | 953 | 308 |
+| bank 6 | `&B784-&BC70` | `F_INIT`, the lens flare's call, the screens drawn directly, the hangar (bank 6 passes) | 950 | 311 |
 | bank 6 | `&BC71-&BFBF` | `FCSLOT`: the face lists of the set loaded | 847 | 0 |
 | bank 6 | `&BFC0-&BFFF` | `FJT%`, the entries: a table of jumps; then calls out of the bank | 64 | 0 |
 
-Free, by place: main RAM 225, main RAM (flight) 57, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 482, bank 7 (docked) 4795, bank 5 872, bank 6 533.
+Free, by place: main RAM 225, main RAM (flight) 57, main RAM (docked) 1171, bank 4 (flight) 30, bank 4 (docked) 2488, bank 7 (flight) 482, bank 7 (docked) 4795, bank 5 881, bank 6 542.

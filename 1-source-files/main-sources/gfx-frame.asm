@@ -2834,8 +2834,7 @@ fsd_zl = fz_p : fsd_zh = fz_p+1 : fsd_rl = fz_q : fsd_q = fz_q+1 : fsd_x = fz_u
 .fsh_face
  LDY f_f
  CPY f_nf
- BCC P%+5
- JMP fsh_done
+ BCS fsh_done
 .^flv_0
  LDA &FFFF,Y            \ visibility (the levels: f_shpat)
  BEQ fsh_skip
@@ -4030,7 +4029,10 @@ SGOUT = 20
 
 .f_behind
  LDA F_PLON             \ the planet's disc, if any
- BEQ fbh0
+ BNE fbhg
+ CLC
+ RTS
+.fbhg
  LDX #4
 .fbhp
  LDA F_PLX,X            \ (F_PLX, F_PLY, F_PLR)
@@ -4040,11 +4042,7 @@ SGOUT = 20
  LDA F_PLZH
  STA fb_zh
  LDA F_PLZL
- STA fb_zl
- JMP f_bdisc
-.fbh0
- CLC
- RTS
+ STA fb_zl              \ (and on into f_bdisc, which follows)
 
 \ f_bdisc: is ship f_si behind the disc fb_x, fb_y, fb_r (the planet's: its
 \ half-widths, F_HW, are with the disc layer's rows in the flight code's
