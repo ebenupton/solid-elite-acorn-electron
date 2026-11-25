@@ -164,7 +164,8 @@ keeps its colours and stays on show.
   switched off at the ULA (`&FE00`) while no sound plays, as nothing in
   flight needs the tick (the game reads the keyboard itself, and the
   handler ticks the sound engine, in the same bank, while a sound plays). Any other interrupt goes on to
-  the MOS.
+  the MOS, with the display end hidden from the MOS's handler (`IRQP%`:
+  below, "The consistency sweep").
   No game code touches the System VIA's old addresses (on the Electron
   they mirror the ULA's registers): the joystick's fire button reads as up
   and `MT26` no longer enables the VIA's CA2 interrupt.
@@ -226,11 +227,11 @@ and the disc and MOS work at load time.
 (`2-build-files/bmap.py`; `mapcheck.py` fails the build unless every place
 is in order and in its room, every pass copy's labels are in their place,
 and the six images hold the common block's bytes and the four programs'
-images the far block's). Free: flight bank 4 29 bytes, the flight main RAM
-parts 55 (`hotm`) and 2 (`hots`), flight bank 7 857 in the renderer's
-window and 202 after it, the cold 6 pass 134, bank 5 about 240 (and the
-row runs' tails), bank 6 398; the docked program has 2K in bank 4 and 1.2K
-in bank 7.
+images the far block's). Free: flight bank 4 30 bytes, the flight main RAM
+parts 55 (`hotm`) and 2 (`hots`), flight bank 7 279 in the renderer's
+window and 202 after it, bank 5 863 (in pieces, the row runs' tails among
+them), bank 6 542, the resident main RAM 217; the docked program has 2.4K
+in bank 4 and 4.7K in bank 7.
 
 **Which code is in main RAM.** The flight code's hot pass is placed by
 measurement: a hot block whose header says `Area: hot, main`
@@ -849,6 +850,90 @@ stardust, recast for their log arithmetic.
   (room in bank 7), and the build's pad that keeps patched ways back in
   one page (`win7pad.asm`), which any port that patches low bytes only
   needs.
+
+## The consistency sweep (2026-11-25)
+
+The Model B port's wins of 92b80d7..648c455 and a49019f..86edb63
+(`MODELB-REPORT.md`, from "The Electron port's general wins"), many of
+them the Electron's own, and the BBC Master port's kept disc rows, each
+checked against this port; each one landed is a gated commit (both
+layouts), measured with `bbench.mjs`, with both screen buffers compared
+with the parent's at every iteration of each scene's first two windows
+(576; identical at every commit).
+
+**Landed:**
+
+* **The disc rows kept** when the disc and the window are unchanged
+  (cd9bb84; the Master port's 4d5e721): the rows made into
+  `R_MDISCL/R`, which only `f_discspans` writes, and the painter's
+  widened rows made from them by `f_lbat` and `f_dbat`; the key is the
+  last build's own `f_cx`, `f_cxh`, `f_cy`, `f_r` and table, compared as
+  `f_rows` takes the disc's (`F_DROK`, `fdk_w`, `fdk_t`, `fdk_b`). 578
+  bytes of bank 7 (the rows 384). Beachball -1.7%, docking -0.9%, zone
+  -0.6%, rear -1.7%, departure -1.3%, flight -0.6%; the gate's run
+  -0.4%.
+* **Jumps to the next instruction gone** (a4c4e81; the Model B's
+  ea8675e): four `JMP`s fall through, two branches taken direct; 18 bytes
+  of banks 5 and 6, sun -63 cycles.
+* **The display end hidden from the MOS's handler** (a4fd6ca): the
+  split-screen race the Model B port found with its ADC, in the
+  Electron's form. `RIRQ` passes an expansion's interrupt (a Plus 1's
+  ADC or printer, on the cartridge bus) on to the MOS; a display end in
+  the 70 to 90 cycles before the MOS's handler reads the status was the
+  MOS's (it writes the game's `DLY` and `de` and clears it: no flip, no
+  `LASCT`, no palette that field). `RIRQ` now clears the display end's
+  bit in the MOS's copy of the enables (`&025B`) and has the MOS's
+  handler return through `IRQP%` (main RAM, `RESH%` + 16), which puts the
+  copy back; the display end stays pending for `RIRQ`. The clock's
+  interrupt, which goes to the MOS in direct mode, could not do it (the
+  MOS services only the clock's when both are pending). `birqrace.mjs`
+  (clkh's new `xirq`): the parent loses the display end at 85 of 481
+  times tried, this at none.
+* **The dashboard's keys** (bddd3ad): `DLAST`'s key was Q + 16 * the
+  colour's low nibble, which the fuel's 16 and 17 shared with 0 and 1 in
+  the flashing colour (the Model B's dcdf84e noted it); now Q + 128 * the
+  colour's bit 0, 2 cycles a call less.
+
+**Not landed:**
+
+* **`PR_PUT` calling `pr_ins`** (the Model B's 97fb538): the patched way
+  on is this port's on purpose, as `JSR` and `RTS` take the stack in slow
+  main RAM (f40d84d's finding): departure +410 cycles, approach +104.
+* **`MULT3`'s `QSMUL7` and `DOEXP`'s return here** (d1e9906; `CIRCLE`'s
+  `RTS2` is already on this side): `MULT3` hardly runs in the scenes, and
+  the 12 bytes it frees move bank 4's code after it: sun +6, departure +2
+  (`QSMUL7` alone zone +69, `DOEXP`'s alone +5 in eight scenes).
+* **`SCAN`'s early returns** (822f39d): not applicable, `LYN` and `SCAN`
+  are one unit in bank 4 here.
+* **The painter's per-row copy** (59ae4d7, 6f9bc21): this painter reads
+  the rows in place already, and its slot put-back is jumped to
+  (1c8774c). It stores each byte it compares (`rn_l` to `rn_x2`); moving
+  those stores to the exits (the bytes before the first difference read
+  again) gave beachball and rear -850 but sun +955, docking +1,537, zone
+  +290, approach +283, departure +423 (the changed and dirty rows read
+  again). The long-span queue (2a7b945) has no counterpart: this painter
+  writes its bytes itself.
+* **The repair's run page once a character row** (0d36e97): present
+  (`newcr`, `r_pgtag`).
+* **Tail calls' stubs in place of their `JMP`s** (787ed22, 0f6b3c2):
+  `streams.py` had no inlining (so no latent fall-into bug); ported, it
+  saved 3 to 6 cycles an iteration but moved `RDKEY` between the main
+  RAM parts, sun +2 cycles (its profile: `RDKEY` +2.1).
+* Present already: the unrolled ship-block copy both ways (eb78c6f,
+  `MAL2` and `MAL3`), the stardust's quotient cache, the disc layer in one
+  bank, `f_hrec`'s records and the circle engine's patched products.
+
+**Speed** (1a97c8d -> bddd3ad, cycles an iteration): flight 178,525 ->
+177,511 (-0.6%), combat 101,625 -> 101,720 (+0.1%, the flip's wait: its
+work is less), beachball 196,772 -> 193,502 (-1.7%), sun 198,740 ->
+198,569 (-0.1%), docking 330,418 -> 327,421 (-0.9%), zone 317,830 ->
+315,758 (-0.7%), rear 203,525 -> 200,136 (-1.7%), approach 197,955 ->
+197,848 (-0.1%), departure 287,830 -> 284,007 (-1.3%). The gate's run
+(VERIFY PASS in both layouts): 9.09 flight iterations a second, 220,055.5
+cycles an iteration (1a97c8d: 9.05, 220,946.7). The tree's clkh binary
+predated cf1246f (no `acckinds`, so no `--prof`): the profiles are from a
+clkh built from this tree's source, whose bbench figures are the same.
+`romcheck=on`'s map was measured again for the new layout (e0c18e9).
 
 ## Open issues
 
