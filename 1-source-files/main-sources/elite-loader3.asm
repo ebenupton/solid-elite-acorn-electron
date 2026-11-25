@@ -653,7 +653,7 @@ NEXT
  JSR b0fix              \ Make buffer 0 black, with a copy of buffer 1's last
                         \ eight rows (the staging has been through it)
 
- LDX #SNDHSZ - 1        \ Port: set up the interrupt's 16 bytes at RESH%
+ LDX #SNDHSZ - 1        \ Port: set up the interrupt's 24 bytes at RESH%
                         \ (elite-map.asm)
 .lsh
 
@@ -722,7 +722,7 @@ ENDIF
 
 .sndh
 
-                        \ Port: the interrupt's 16 bytes, copied to RESH% above
+                        \ Port: the interrupt's 24 bytes, copied to RESH% above
                         \ (elite-map.asm): SNDH+1, non-zero while a sound
                         \ plays, then the handler's two ways out of bank 5
                         \ (they refer to no address of their own, so they run
@@ -731,7 +731,13 @@ ENDIF
                         \ from the handler, which has cleared the ULA's
                         \ interrupt), and the return; at IRQM%, the interrupted ROM back
                         \ in from &F4, and on to the MOS's handler through
-                        \ VEC, where the loader kept the MOS's IRQ1V
+                        \ VEC, where the loader kept the MOS's IRQ1V; at
+                        \ IRQP%, where the MOS's handler returns to (the
+                        \ handler pushes the return): the MOS's copy of the
+                        \ ULA's interrupt enables put back as it was (the
+                        \ handler hides the display end from it and patches
+                        \ the copy's value in), and on to the interrupted
+                        \ code, with A and the flags as the MOS left them
 
  EQUB 0, 0
 
@@ -743,7 +749,13 @@ ENDIF
  STA ROMSEL
  JMP (VEC)
 
- ASSERT P% - sndh = SNDHSZ AND IRQE% = RESH% + 2 AND IRQM% = RESH% + 8
+ PHA                    \ (IRQP%)
+ LDA #0
+ STA &025B
+ PLA
+ RTI
+
+ ASSERT P% - sndh = SNDHSZ AND IRQE% = RESH% + 2 AND IRQM% = RESH% + 8 AND IRQP% = RESH% + 16
 
 IF _ROMCHECK
 

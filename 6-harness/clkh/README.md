@@ -65,6 +65,7 @@ Numbers are decimal or `0x` hex.
 | `bd ID PC`, `bc` | | delete one; all |
 | `r` | an event (`R`) | the registers |
 | `ra V` `rx V` `ry V` `rs V` `rp V` | | set A, X, Y, S, P |
+| `xirq 0/1` | | hold or release an expansion's interrupt line (the cartridge bus's IRQ, which the ULA's status does not show: `birqrace.mjs`) |
 | `m SLOT A N` | N bytes | read: SLOT -1 is the CPU's view (main RAM, the paged slot, the MOS), 0-15 a slot |
 | `w SLOT A HEX` | | write |
 | `k CODE 0/1`, `kn NAME 0/1`, `kc` | | a key up or down (CLK's codes; `main.cpp`'s names); all up |

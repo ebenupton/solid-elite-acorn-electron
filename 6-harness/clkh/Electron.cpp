@@ -762,11 +762,17 @@ private:
 		}
 
 		if constexpr (has_scsi_bus) {
-			m6502_.set_irq_line((scsi_interrupt_state_ && scsi_interrupt_mask_) | (interrupt_status_ & 1));
+			m6502_.set_irq_line((scsi_interrupt_state_ && scsi_interrupt_mask_) | (interrupt_status_ & 1) | ext_irq_);
 		} else {
-			m6502_.set_irq_line(interrupt_status_ & 1);
+			m6502_.set_irq_line((interrupt_status_ & 1) | ext_irq_);
 		}
 	}
+
+	// clkh: an expansion's interrupt (the cartridge bus's IRQ line, held by the
+	// harness's xirq: a Plus 1's ADC or printer, say), which the ULA's status
+	// does not show
+	bool ext_irq_ = false;
+	void set_ext_irq(bool v) { ext_irq_ = v; evaluate_interrupts(); }
 
 	CPU::MOS6502::Processor<CPU::MOS6502::Personality::P6502, ConcreteMachine, false> m6502_;
 

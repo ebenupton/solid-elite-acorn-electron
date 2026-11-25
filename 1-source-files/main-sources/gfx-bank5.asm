@@ -122,7 +122,7 @@
 
  CLEAR r_tfree, r_tables \ (gfx-raster.asm skips it)
  ORG r_tfree             \ the room below the per-x tables: the common block,
-.R_GAPMID                \ then r_gl, r_wq, the 32-bit divide and the interrupt handler
+.R_GAPMID                \ then r_gl, r_wq and the interrupt handler
  ASSERT R_GAPMID <= COMMON%
 
  INCLUDE "1-source-files/main-sources/elite-common.asm"   \ (at COMMON%: the code
@@ -133,7 +133,6 @@
 
  ORG COMMON_END%
  INCLUDE "3-assembled-output/gfx-raster_dq-bank5gap.asm"
- INCLUDE "3-assembled-output/gfx-raster-bank5gap.asm"
  INCLUDE "1-source-files/main-sources/gfx-irq.asm"   \ (the interrupt handler,
                         \ RIRQ: the resident block's IRQG pages this bank in
                         \ for it)

@@ -79,7 +79,7 @@ for prog, sy in (("flight", FL), ("docked", DK)):
 row("main RAM", C["MBOX"], C["MBOX_END"], "the mailbox, `MBOX`: the rasteriser's inputs (the stars at its end, `&67-&9F`); sharing its polygon vertices, `PCLI`'s command and OSFILE block, the circle records from `PF_HOOK` to the frame (`&00-&49`, `&52-&5D`) and the disc layer's batches (`&00-&65`)")
 row("main RAM", C["MISSILE_P"], C["GVARS"], "the missile's blueprint")
 row("main RAM", C["GVARS"], C["RESH_P"], "`GVARS`, the renderer's shared variables (the game's hooks, the interrupt and the frame layer's)", C["PF_CLS"] + 1 - C["GVARS"])
-row("main RAM", C["RESH_P"], C["PFVH_P"], "the interrupt's: `SNDH+1`, non-zero while a sound plays, and the handler's two ways out of bank 5 (`IRQE%`, `IRQM%`: set up by the loader's `LOAD`)", 16)
+row("main RAM", C["RESH_P"], C["PFVH_P"], "the interrupt's: `SNDH+1`, non-zero while a sound plays, the handler's two ways out of bank 5 (`IRQE%`, `IRQM%`) and the MOS's handler's way back (`IRQP%`: set up by the loader's `LOAD`)", 24)
 pfvh_used = FL.get("PFVH_END%", C["PFVH_P"]) - C["PFVH_P"]
 row("main RAM", C["PFVH_P"], C["VEC"], "the circle engine's variables (main high: `gfx-planet7.asm`, `gfx-merid.asm`)", pfvh_used)
 row("main RAM", C["VEC"], C["VEC"] + 2, "`VEC`")
@@ -143,7 +143,7 @@ row("bank 5", st, st + 0x600, "the state: the dirty and written extents, `R_POLY
 row("bank 5", st + 0x600, B5["r_tfree"], "`R_SETBUF`, `r_pgfix`, the spans' core, the arithmetic")
 row("bank 5", B5["r_tfree"], com, "(free: the room below the per-x tables, to the common block)", 0)
 row("bank 5", com, com_end, COMMON, B5["COMMON_USED%"] - com)
-row("bank 5", com_end, B5["r_tables"], "the room below the per-x tables: `r_gl`, `r_wq`, `rp_div32`, the interrupt handler (`RIRQ`, `gfx-irq.asm`)", B5["R_GAPEND"] - com_end)
+row("bank 5", com_end, B5["r_tables"], "the room below the per-x tables: `r_gl`, `r_wq`, the interrupt handler (`RIRQ`, `gfx-irq.asm`)", B5["R_GAPEND"] - com_end)
 row("bank 5", B5["r_tables"], rjt, "the per-x tables, the stars, `r_setup`, the repair, `R_GETW`, `r_pclip`, `r_pset`, `R_SPAN`, `R_MARKDIRTY`, `R_INIT`, `R_LINE`'s cold part, `R_RESETBUF`")
 row("bank 5", rjt, 0xC000, "`RJT`, the jump table", B5["RJT_END"] - rjt)
 

@@ -339,13 +339,13 @@
                         \ which hold nothing between two calls of R_POLY, and
                         \ nothing draws during a disc command
 
- RESH% = GVARS + 16     \ The interrupt's 16 bytes, after the renderer's
+ RESH% = GVARS + 16     \ The interrupt's 24 bytes, after the renderer's
                         \ shared variables, which the loader's LOAD sets up
                         \ (elite-loader3.asm): what the handler in bank 5
                         \ (gfx-irq.asm) needs in main RAM
 
  SNDH = RESH%           \ SNDH+1 is non-zero (the sound engine's bank) while a
- SNDHSZ = 16            \ sound plays or has been asked for (NO3 sets it, the
+ SNDHSZ = 24            \ sound plays or has been asked for (NO3 sets it, the
                         \ engine clears it: gfx-sound.asm), else 0, when the
                         \ interrupt does not tick the engine
 
@@ -355,6 +355,11 @@
  IRQM% = RESH% + 8      \ The handler's way on to the MOS's handler: the
                         \ interrupted ROM paged back, and a jump through VEC
                         \ (eight bytes of code)
+
+ IRQP% = RESH% + 16     \ Where the MOS's handler returns to when the handler
+                        \ passes an interrupt on to it: the MOS's copy of the
+                        \ ULA's interrupt enables put back, and RTI (eight
+                        \ bytes of code; IRQP% + 2 is the copy's value)
 
  DL% = &8B              \ The game's DL and LASCT, which the handler writes
  LASCT% = &0346         \ (bank 5's assembly comes before the programs', which
@@ -377,7 +382,7 @@
                         \ that bank 6 can be built against it
 
  PFVA% = GLUE%          \ The circle engine's variables (gfx-merid.asm and
- PFVH% = RESH% + 16     \ gfx-planet7.asm, the flight code's planet surface in
+ PFVH% = RESH% + 24     \ gfx-planet7.asm, the flight code's planet surface in
  PFVS% = BPSLOT_END%    \ a build with _CIRCLES): none in main RAM now (main
                         \ low, at the end of the resident block A, before the
                         \ glue, and main high, after the high resident block,

@@ -335,6 +335,7 @@ struct Server {
 		if(c == "ry") { m.m6502_.set_value_of(R::Y, uint16_t(num(1))); return false; }
 		if(c == "rs") { m.m6502_.set_value_of(R::StackPointer, uint16_t(num(1))); return false; }
 		if(c == "rp") { m.m6502_.set_value_of(R::Flags, uint16_t(num(1))); return false; }
+		if(c == "xirq") { m.set_ext_irq(num(1) != 0); return false; }	// xirq 0/1: an expansion's interrupt line
 		if(c == "m") {			// m SLOT ADDR LEN: SLOT -1 = the CPU's view
 			const int slot = int(num(1)); unsigned ad = unsigned(num(2)); const unsigned n = unsigned(num(3));
 			std::string out(n, '\0');

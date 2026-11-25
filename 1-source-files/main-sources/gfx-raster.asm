@@ -602,9 +602,8 @@ ASSERT HI(SCREEN%) - HI(BUF0) = &28
   RTS
 }
 
-\       Area: bank 5 gap
-
-.rp_div32
+.rp_div32                 \ (in the room before the per-x tables, which leaves
+                          \ the gap's to the interrupt handler)
 {
   LDX #16
 .lp

@@ -47,7 +47,10 @@
 \ clears a clock interrupt left pending (one from the time its interrupt was
 \ off, which would tick a sound that has just started twice). A clock
 \ interrupt that comes in space mode (while a sound plays) is cleared here.
-\ Every other interrupt goes on to the MOS (IRQM%).
+\ Every other interrupt goes on to the MOS (IRQM%), with the display end
+\ hidden from the MOS's handler, which would otherwise take one that came in
+\ the few dozen cycles between this handler's look at the status and its
+\ own (IRQP%; 6-harness/birqrace.mjs).
 \
 \ The ULA's interrupts are cleared by bits 4 to 6 of a write to ROMSEL, which
 \ also pages bits 0 to 3's ROM. The handler clears them with bank 5's own
@@ -151,8 +154,25 @@ ENDIF
 
 .rirq6
 
+ LDA &025B              \ Hide the display end from the MOS's handler: clear
+ STA IRQP% + 2          \ its bit in the MOS's copy of the ULA's interrupt
+ AND #%11111011         \ enables (&025B, which its handler ANDs with the
+ STA &025B              \ status), with the copy's value patched into IRQP% to
+                        \ put it back: a display end that comes after this
+                        \ handler read the status, before the MOS's handler
+                        \ does, stays pending for this handler, where the MOS
+                        \ would take it as its own and clear it (the game's
+                        \ DLY and de written, and no flip for that field)
+
+ LDA #HI(IRQP%)         \ The MOS's handler returns to IRQP% (in main RAM),
+ PHA                    \ which puts the copy back and returns to the
+ LDA #LO(IRQP%)         \ interrupted code: a return frame, with I set as the
+ PHA                    \ flags are here, under the one the MOS's handler
+ PHP                    \ returns through
+
  LDX irqx               \ Restore X, and go on to the MOS's handler through
- JMP IRQM%              \ IRQM%
+ JMP IRQM%              \ IRQM% (A comes back from &FC, where the MOS's entry
+                        \ kept it)
 
 .irqx
 
