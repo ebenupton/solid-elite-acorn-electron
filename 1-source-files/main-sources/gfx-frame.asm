@@ -935,7 +935,7 @@ ENDIF                   \ (gfx-rcheck.asm)
 \ and the sun's discs in zero page (DH_PL, gfx-rws.asm). The bigger of the
 \ sun and the planet (the sun if not smaller) is
 \ the disc layer, kept on each buffer from frame to frame and drawn where it
-\ changed: its spans (f_sunrows, f_plrows: R_NDISCL/R, R_NDT, R_NDB) and the
+\ changed: its spans (f_sunrows, f_plrows: R_MDISCL/R, R_NDT, R_NDB) and the
 \ planet's surface as boundaries (f_bounds: R_NDN, R_NDX0-3, R_NDF, from the
 \ circle engine's PC_ROWS, gfx-merid.asm), made before the wait (f_dprep);
 \ the other, if both are on the screen, is the second disc, behind it,
@@ -1028,67 +1028,123 @@ ENDIF
  STA R_NDB
  JMP f_nobounds
 
-\ f_sunrows / f_plrows: a disc's spans into R_NDISCL/R and R_NDT/R_NDB, from
+\ f_sunrows / f_plrows: a disc's spans into R_MDISCL/R and R_NDT/R_NDB, from
 \ its centre (16-bit screen coordinates) and radius (8-bit), using a cached
 \ half-width table per disc (rebuilt only when the radius changes); the sun
-\ a disc of one colour (R_NDF: f_nobounds)
+\ a disc of one colour (R_NDF: f_nobounds). The rows are made by
+\ f_discspans, the only code that writes R_MDISCL/R (f_lbat and f_dbat make
+\ the painter's rows from them, in R_NDISCL/R), or kept: f_cx, f_cxh, f_cy,
+\ f_r and the table (fpr_ld2's operand) are the last build's, so for the
+\ same disc, centre and radius, in the same window (R_CL to R_CB, as fdk_w
+\ noted) rows R_NDT..R_NDB are still as it made them, and only R_NDT and
+\ R_NDB are put back (fdk_t, fdk_b), once a build of that disc has noted
+\ them (F_DROK; a build of a disc that moved notes nothing). Each value is
+\ compared as it is taken: one that differs, and those after it, are
+\ stored. (The BBC Master port's finding: the planet's position, size and
+\ window are the same in about a quarter of the builds of the gate's run.)
+\ Every exit leaves C set, as f_discspans' do (f_disc2)
 
 .f_sunrows
  JSR f_nobounds
- LDA F_SUX
- STA f_cx
- LDA F_SUX+1
- STA f_cxh
- LDA F_SUY
- STA f_cy
- LDA F_SUY+1
- STA f_cy+1
- LDA F_SUR
- STA f_r
- CMP f_hw2r
- BEQ fsu1
- STA f_hw2r
- LDA #HI(F_HW2)
- STA fhw_st+2
- JSR f_hwbuild
-.fsu1
- LDA #HI(F_HW2)
- STA fpr_ld+2
- STA fkl_ld+2
- STA fkl_ld2+2
- STA fks_ld+2
- STA fks_ld2+2
- STA fpr_ld2+2
- JMP f_discspans
+ LDX #F_SUX - F_PLX     \ the sun's disc and table
+ LDY #HI(F_HW2)
+ BNE f_rows             \ (always)
 
 .f_plrows
- LDA F_PLX
- STA f_cx
- LDA F_PLX+1
+ LDX #0                 \ the planet's disc and table
+ LDY #HI(F_HW)
+
+.f_rows
+ LDA F_PLX,X            \ the centre and the radius, each compared with the
+ CMP f_cx               \ last build's
+ BNE fdk_m0
+ LDA F_PLX+1,X
+ CMP f_cxh
+ BNE fdk_m1
+ LDA F_PLY,X
+ CMP f_cy
+ BNE fdk_m2
+ LDA F_PLY+1,X
+ CMP f_cy+1
+ BNE fdk_m3
+ LDA F_PLR,X
+ CMP f_r
+ BNE fdk_m4
+ CPY fpr_ld2+2          \ the same disc as the last build's, if its table
+ BNE fdk_m5
+ BIT F_DROK             \ its rows noted?
+ BPL fdk_nb
+ LDX #3                 \ and the window
+.fdk1
+ LDA R_CL,X
+ CMP fdk_w,X
+ BNE fdk_nb
+ DEX
+ BPL fdk1
+ LDA fdk_t              \ the rows are as they were made: R_NDT and R_NDB
+ STA R_NDT              \ (C set: the last CMP found them equal)
+ LDA fdk_b
+ STA R_NDB
+ RTS
+.fdk_nb                 \ not moved: the rows made, and noted
+ JSR f_discspans
+ LDX #3
+.fdk2
+ LDA R_CL,X
+ STA fdk_w,X
+ DEX
+ BPL fdk2
+ LDA R_NDT
+ STA fdk_t
+ LDA R_NDB
+ STA fdk_b
+ LDA #&80               \ (C as f_discspans left it)
+ STA F_DROK
+ RTS
+
+.fdk_m0                 \ another disc, or moved: from the first value that
+ STA f_cx               \ differs on, stored
+ LDA F_PLX+1,X
+.fdk_m1
  STA f_cxh
- LDA F_PLY
+ LDA F_PLY,X
+.fdk_m2
  STA f_cy
- LDA F_PLY+1
+ LDA F_PLY+1,X
+.fdk_m3
  STA f_cy+1
- LDA F_PLR
+ LDA F_PLR,X
+.fdk_m4
  STA f_r
+.fdk_m5                 \ (A = r)
+ STX F_DROK             \ no rows kept (X = 0 or 6: bit 7 clear)
+ CPY #HI(F_HW)          \ the disc's half-widths, built for r if not already
+ BNE fdk_s
  CMP f_hwr
- BEQ fpr1
+ BEQ fdk_tp
  STA f_hwr
- LDA #HI(F_HW)
- STA fhw_st+2
+ JMP fdk_hb
+.fdk_s
+ CMP f_hw2r
+ BEQ fdk_tp
+ STA f_hw2r
+.fdk_hb
+ STY fhw_st+2
  JSR f_hwbuild
-.fpr1
- LDA #HI(F_HW)
- STA fpr_ld+2
- STA fkl_ld+2
- STA fkl_ld2+2
- STA fks_ld+2
- STA fks_ld2+2
- STA fpr_ld2+2
- JMP f_discspans
+ LDY fhw_st+2
+.fdk_tp
+ CPY fpr_ld2+2          \ and patched in, if another table was
+ BEQ f_discspans
+ STY fpr_ld+2
+ STY fkl_ld+2
+ STY fkl_ld2+2
+ STY fks_ld+2
+ STY fks_ld2+2
+ STY fpr_ld2+2
+ BNE f_discspans        \ (always: Y is a page's high byte)
  ASSERT LO(F_HW) = 0 AND LO(F_HW2) = 0   \ (page aligned: only the high bytes
                                          \ are patched)
+ ASSERT F_SUX - F_PLX = F_SUON - F_PLON AND F_PLY = F_PLX + 2 AND F_PLR = F_PLX + 4
 
 .fds_none
  LDA #1
@@ -1207,7 +1263,7 @@ ENDIF
 .fpr5
  LDA R_CR
 .fpr6
- STA R_NDISCR,Y
+ STA R_MDISCR,Y
  LDA f_cx               \ left = cx - n: negative: CL; > 255 or > CR: empty;
  SEC                    \ < CL: CL
 .fpr_b2
@@ -1244,10 +1300,10 @@ ENDIF
  BMI fpr3               \ (plus: empty)
 .fpr8
  LDA #0                 \ empty row: R = 0, L = 255
- STA R_NDISCR,Y
+ STA R_MDISCR,Y
  LDA #&FF
 .fpr7
- STA R_NDISCL,Y
+ STA R_MDISCL,Y
 .fpr9
 .fpr_id
  INX                    \ patched: DEX while d < 0; when |d| reaches 0
@@ -1298,11 +1354,11 @@ ENDIF
  LDA F_HW,Y             \ patched: half-width table
 .fdf_cr
  ADC #0                 \ patched: cx (A = cx + n <= cx + r <= 255, so C = 0)
- STA R_NDISCR,X
+ STA R_MDISCR,X
  EOR #&FF
 .fdf_cl
  ADC #0                 \ patched: 2cx + 1 (A = 2cx + 1 + ~(cx + n) = cx - n)
- STA R_NDISCL,X
+ STA R_MDISCL,X
 .fdf_st
  INX                    \ patched: INX (rows below cy) or DEX (rows above cy)
  INY
@@ -1346,14 +1402,14 @@ ENDIF
  STA fsx_x              \ what follows the symmetric loop
  LDA fpr_ld+2           \ the symmetric loop reads n(k) at table + k (page
  STA fsy_ld+2           \ aligned: no page crossing)
- ASSERT LO(R_NDISCR) = 0
+ ASSERT LO(R_MDISCR) = 0
  LDA f_cy               \ X = row cy - k, Y = k, from k = 0; rows cy + k are
- STA fsy_sr+1           \ written at (table + cy) + k (R_NDISCR is page
+ STA fsy_sr+1           \ written at (table + cy) + k (R_MDISCR is page
  TAX                    \ aligned)
  CLC
- ADC #LO(R_NDISCL)
+ ADC #LO(R_MDISCL)
  STA fsy_sl+1
- LDA #HI(R_NDISCL)
+ LDA #HI(R_MDISCL)
  ADC #0                 \ (C = 0 after)
  STA fsy_sl+2
  LDY #0
@@ -1362,15 +1418,15 @@ ENDIF
  LDA F_HW,Y             \ patched: half-width table (high byte)
 .fsy_cr
  ADC #0                 \ patched: cx
- STA R_NDISCR,X
+ STA R_MDISCR,X
 .fsy_sr
- STA R_NDISCR,Y         \ patched: R_NDISCR + cy (low byte)
+ STA R_MDISCR,Y         \ patched: R_MDISCR + cy (low byte)
  EOR #&FF
 .fsy_cl
  ADC #0                 \ patched: 2cx + 1
- STA R_NDISCL,X
+ STA R_MDISCL,X
 .fsy_sl
- STA R_NDISCL,Y         \ patched: R_NDISCL + cy
+ STA R_MDISCL,Y         \ patched: R_MDISCL + cy
  DEX
  INY
 .fsy_cp
@@ -1380,7 +1436,7 @@ ENDIF
  LDX #0                 \ patched: LDX #first tail row, LDA # (no-op) or RTS
  CLC                    \ (Y = k of the first tail row already)
  JMP fdf1
- ASSERT LO(R_NDISCR) + 191 < 256
+ ASSERT LO(R_MDISCR) + 191 < 256
 
 \ fkt: the rows T..B of a disc that crosses the window's side or the
 \ screen's, when r <= 254, each from its half-width n alone, as the
@@ -1462,16 +1518,16 @@ ENDIF
  JMP fkgo
 .fkpr                   \ cy in T..B: rows cy - k and cy + k together for
  STA fz_n               \ k = 0 .. min(a, e) (fz_n = e + 1), X = cy - k, the
- LDA R_NDT              \ second stores at R_NDISCR + cy (page aligned) and
- SEC                    \ R_NDISCL + cy, + k; then the rows left on one side
+ LDA R_NDT              \ second stores at R_MDISCR + cy (page aligned) and
+ SEC                    \ R_MDISCL + cy, + k; then the rows left on one side
  ADC fz_i               \ (cy = T + a)
  TAX
  STA fkl_r2+1
  STA fkl_z2+1
  CLC
- ADC #LO(R_NDISCL)
+ ADC #LO(R_MDISCL)
  STA fkl_l2+1
- LDA #HI(R_NDISCL)
+ LDA #HI(R_MDISCL)
  ADC #0
  STA fkl_l2+2
  LDA fz_i               \ the last k + 1: a + 1 if a <= e, else e + 1
@@ -1521,9 +1577,9 @@ ENDIF
 .fkl_x
  ADC #0                 \ patched: cx (C = 0)
 .fkl_r
- STA R_NDISCR,X
+ STA R_MDISCR,X
 .fkl_r2
- STA R_NDISCR,Y         \ patched: R_NDISCR + cy
+ STA R_MDISCR,Y         \ patched: R_MDISCR + cy
 .fkl_ld2
  LDA F_HW,Y             \ patched: the half-width table (high byte)
 .fkl_m
@@ -1533,9 +1589,9 @@ ENDIF
 .fkl_x1
  ADC #0                 \ patched: cx + 1
 .fkl_l
- STA R_NDISCL,X
+ STA R_MDISCL,X
 .fkl_l2
- STA R_NDISCL,Y         \ patched: R_NDISCL + cy
+ STA R_MDISCL,Y         \ patched: R_MDISCL + cy
  DEX
  INY
 .fkl_cp
@@ -1550,12 +1606,12 @@ ENDIF
  BCS fkl_l
 .fkl_z
  LDA #0                 \ an empty row: R = 0, L = 255
- STA R_NDISCR,X
+ STA R_MDISCR,X
 .fkl_z2
- STA R_NDISCR,Y         \ patched: R_NDISCR + cy
+ STA R_MDISCR,Y         \ patched: R_MDISCR + cy
  LDA #&FF
  BNE fkl_l
- ASSERT LO(R_NDISCR) = 0 \ (the pairs' rows cy + k: in R_NDISCR's page)
+ ASSERT LO(R_MDISCR) = 0 \ (the pairs' rows cy + k: in R_MDISCR's page)
 .fkgo                   \ a run of one side: A = its step (INX or DEX), X its
  STA fks_st             \ first row, Y its first k, fks_cp its last k + 1
  CLC
@@ -1571,7 +1627,7 @@ ENDIF
 .fks_x
  ADC #0                 \ patched: cx (C = 0)
 .fks_r
- STA R_NDISCR,X
+ STA R_MDISCR,X
 .fks_ld2
  LDA F_HW,Y             \ patched: the half-width table (high byte)
 .fks_m
@@ -1581,7 +1637,7 @@ ENDIF
 .fks_x1
  ADC #0                 \ patched: cx + 1
 .fks_l
- STA R_NDISCL,X
+ STA R_MDISCL,X
 .fks_st
  INX                    \ patched: INX (down) or DEX (up)
  INY
@@ -1597,7 +1653,7 @@ ENDIF
  BCS fks_l
 .fks_z
  LDA #0                 \ an empty row: R = 0, L = 255
- STA R_NDISCR,X
+ STA R_MDISCR,X
  LDA #&FF
  BNE fks_l
 
@@ -1640,6 +1696,10 @@ f_cx = fpr_cx + 1       \ (the operand of ADC # in the slow disc loop)
 .f_cxh EQUB 0           \ high byte of cx
 .f_cy  EQUW 0
 .f_r   EQUB 0
+.F_DROK EQUB 0          \ bit 7: R_MDISCL/R hold the rows of f_cx .. f_r in the
+.fdk_w  SKIP 4          \ window fdk_w (R_CL, R_CR, R_CT, R_CB), R_NDT .. R_NDB
+.fdk_t  EQUB 0          \ as fdk_t and fdk_b (f_rows)
+.fdk_b  EQUB 0
 .f_hwr EQUB 0           \ the radius F_HW was built for (0 = none)
 .f_hw2r EQUB 0          \ the radius F_HW2 was built for
 
@@ -2079,8 +2139,8 @@ FC_PLLE = &5F : FC_PLLO = &AF
 
 \ f_lbat: the layer's rows f_dy .. f_dhi (f_dy <= f_dhi) through the painter
 \ (DP_ROWS), which reads them where they are (Port: the painter is in this
-\ bank): first each row is made ready in place, R_NDISCL/R in R_NDT ..
-\ R_NDB (empty outside, and the boundaries none), the span widened to whole
+\ bank): first each row is made ready, R_NDISCL/R from R_MDISCL/R in R_NDT
+\ .. R_NDB (empty outside, and the boundaries none), the span widened to whole
 \ MODE 5 pixels (L even, R odd), with f_d2c bit 7 its count and colour too
 \ (none with bit 6 clear) and with bit 6 its boundaries on pixels' edges
 \ (f_snap); then the painter takes them in batches, each up to the first
@@ -2096,13 +2156,13 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BEQ flb3
  BCS flb4
 .flb3
- LDA R_NDISCL,Y
+ LDA R_MDISCL,Y
  CMP #&FF
  BEQ flb4
  AND #&FE               \ the span on whole pixels
  STA R_NDISCL,Y
  STA f_sl
- LDA R_NDISCR,Y
+ LDA R_MDISCR,Y
  ORA #1
  STA R_NDISCR,Y
  BIT f_d2c
@@ -2272,7 +2332,7 @@ FC_PLLE = &5F : FC_PLLO = &AF
 
 \ f_dbat: the second disc's rows f_dy .. f_dhi (f_dy <= f_dhi) through the
 \ painter (DP_DISC2, with A = its colour change, &FF or 0), 16 at a time,
-\ each batch's rows made ready in place in R_NDISCL/R (R_NDT .. R_NDB, empty
+\ each batch's rows made ready in R_NDISCL/R from R_MDISCL/R (R_NDT .. R_NDB, empty
 \ outside), with what was written on them in the mailbox's slots; with each
 \ batch bank 5 puts what the last one wrote (T_GETW)
 
@@ -2301,12 +2361,12 @@ FC_PLLE = &5F : FC_PLLO = &AF
  BEQ fdb4
  BCS fdb6
 .fdb4
- LDA R_NDISCL,Y         \ the span widened to whole MODE 5 pixels (L even, R
+ LDA R_MDISCL,Y         \ the span widened to whole MODE 5 pixels (L even, R
  CMP #&FF               \ odd)
  BEQ fdb6
  AND #&FE
  STA R_NDISCL,Y
- LDA R_NDISCR,Y
+ LDA R_MDISCR,Y
  ORA #1
  BNE fdb7               \ (always)
 .fdb6
@@ -2464,13 +2524,17 @@ FC_PLLE = &5F : FC_PLLO = &AF
  ASSERT LO(P%) = 0
 .F_HW   SKIP 256        \ the planet's half-widths (f_hwbuild)
 .F_HW2  SKIP 256        \ the sun's
-.R_NDISCR SKIP 192      \ the discs' rows this frame (f_discspans: the layer's,
-.R_NDISCL SKIP 192      \ then the second disc's), spans (L = 255, R = 0 for
+.R_NDISCR SKIP 192      \ the discs' rows this frame, as the painter reads them
+.R_NDISCL SKIP 192      \ (f_lbat, f_dbat: the layer's, then the second disc's),
+                        \ spans on whole pixels (L = 255, R = 0 for
 .R_NDN   SKIP 192       \ none), and the layer's boundaries (PC_ROWS): the
 .R_NDX0  SKIP 192       \ count (bits 0-6) and the colour at the span's left
 .R_NDX1  SKIP 192       \ end (bit 7: colour B), and their x, ascending
 .R_NDX2  SKIP 192
 .R_NDX3  SKIP 192
+.R_MDISCL SKIP 192      \ the discs' rows as f_discspans makes them (only it
+.R_MDISCR SKIP 192      \ writes them, so that they can be kept: f_rows), from
+ ASSERT LO(R_MDISCR) = 0 \ which f_lbat and f_dbat make R_NDISCL/R
 .f_hcb  SKIP PCX_END-MBOX \ f_hrec's: the planet's records kept, for PC_ROWS
 f_hcn = f_hcb + PC_N - MBOX     \ (as the mailbox's &00 to PC_TU's end: how
 f_hci = f_hcb + pc_inv - MBOX   \ many, the base colour, the unclamped

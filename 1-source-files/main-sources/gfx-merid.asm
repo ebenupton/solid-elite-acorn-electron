@@ -10,7 +10,7 @@
 \ pass, with PF_HOOK (gfx-planet7.asm), where the game's quarter squares
 \ are (a build with _CIRCLES: elite-layout-flight.asm); PC_ROWS in the
 \ flight code's bank 7 with the frame layer's disc part, which calls it from
-\ f_bounds and has the rows' arrays (R_NDT, R_NDB, R_NDISCL/R, R_NDN,
+\ f_bounds and has the rows' arrays (R_NDT, R_NDB, R_MDISCL/R, R_NDN,
 \ R_NDX0-3: gfx-frame.asm, elite-layout-flight.asm), and the painter that
 \ reads them; the definitions both use are a pass of their own (defs). The
 \ records (PCB), their count (PC_N) and the base colour (pc_inv) are in the
@@ -64,7 +64,7 @@
 \
 \   * PC_ROWS (the planet's records), in the frame (f_bounds, in the
 \     flight code's bank 7; the Master port's through T_CAPS): the disc
-\     layer's boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR),
+\     layer's boundaries for rows R_NDT..R_NDB (spans R_MDISCL..R_MDISCR),
 \     with its scratch in that bank (PZB).
 \
 \ ******************************************************************************
@@ -1354,7 +1354,7 @@ O_RC = pv_rc - pv
 \
 \ PC_ROWS (the planet's records as the frame's f_hrec has them, in this
 \ bank: f_hcb, slots 0 .. f_hcn - 1, base colour f_hci): the disc layer's
-\ boundaries for rows R_NDT..R_NDB (spans R_NDISCL..R_NDISCR). Every row
+\ boundaries for rows R_NDT..R_NDB (spans R_MDISCL..R_MDISCR). Every row
 \ starts with no boundary and the base colour; then each record in turn: its
 \ left limb's toggles flip the start colour of the rows from T1 or T2 down,
 \ and, unless every row is wholly outside its region, its rows from Yc out,
@@ -1576,10 +1576,10 @@ ENDMACRO
 \ and X+ (the loop's four crossings).
 
 MACRO PR_PUT fl, nx
- CMP R_NDISCL,X
+ CMP R_MDISCL,X
  BCC fl
  BEQ fl
- CMP R_NDISCR,X
+ CMP R_MDISCR,X
  BEQ P%+4
  BCS j9
  LDY R_NDN,X            \ the count (bit 7: the colour)
