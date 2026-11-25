@@ -4,7 +4,7 @@
  EQUB &38, &18, &7F, &19, &F8, &0D, &F8, &F7
  EQUB &00, &40, &C2, &7E, &34, &00, &70, &80
  EQUB &FF, &BF, &7F, &14, &00, &E8, &09, &E8
- EQUB &00, &03, &00, &28, &1C, &C3, &05, &00
+ EQUB &00, &0C, &00, &A0, &70, &0D, &04, &00
  EQUB &DC, &E1, &C3, &03, &DC, &0F, &00, &00
 \ docked: banks 4, 5, 6, 7, then main RAM &04-&2F, a bit a page (1: read-only)
  EQUB &FF, &FE, &BF, &CB, &FF, &FF, &FD, &FF
