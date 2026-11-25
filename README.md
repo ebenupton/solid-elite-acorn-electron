@@ -44,21 +44,21 @@ make
 
 ## Speed
 
-In the gate's flight run (a deterministic pilot's three launches, two dockings and three hyperspace jumps over 10,000 iterations, most of it on the long approaches to big planets), the port runs at **9.05 main-loop iterations per emulated second** (220,884 cycles an iteration), against the original's 11.47 (0.79 of its speed; the original drawing wireframes, with the port's planet half spin and sun parking) and the Model B port's 7.15 (1.27 times its speed). Before the work on main RAM described below it ran at 6.39.
+In the gate's flight run (a deterministic pilot's three launches, two dockings and three hyperspace jumps over 10,000 iterations, most of it on the long approaches to big planets), the port runs at **9.11 main-loop iterations per emulated second** (219,614 cycles an iteration), against the original's 11.47 (0.79 of its speed; the original drawing wireframes, with the port's planet half spin and sun parking) and the Model B port's 9.15 (0.996 times its speed). Before the work on main RAM described below it ran at 6.39.
 
 `6-harness/bbench.mjs` times nine frozen scenes, in cycles per iteration at the 2 MHz clock (fewer is faster):
 
 | Scene | The original (BBC Micro, wireframe) | Model B port | Electron, before | Electron, now |
 |---|---:|---:|---:|---:|
-| Flight | 278,661 | 227,289 | 271,630 | 187,940 |
-| Combat | 132,101 | 118,957 | 140,403 | 104,012 |
-| Beach ball | 286,830 | 266,741 | 315,588 | 210,918 |
-| Sun | 235,743 | 266,224 | 295,817 | 214,823 |
-| Docking | 328,282 | 479,984 | 527,016 | 356,548 |
-| Station's zone | 386,321 | 417,851 | 487,775 | 335,151 |
-| Rear view | 290,628 | 254,519 | 304,347 | 217,513 |
-| Approach | | 255,537 | 284,670 | 211,805 |
-| Departure | | 376,912 | 423,761 | 306,149 |
+| Flight | 278,661 | 164,934 | 271,630 | 177,548 |
+| Combat | 132,101 | 97,764 | 140,403 | 101,681 |
+| Beach ball | 286,830 | 189,199 | 315,588 | 193,526 |
+| Sun | 235,743 | 205,487 | 295,817 | 198,573 |
+| Docking | 328,282 | 372,281 | 527,016 | 327,563 |
+| Station's zone | 386,321 | 316,713 | 487,775 | 315,916 |
+| Rear view | 290,628 | 188,610 | 304,347 | 200,154 |
+| Approach | | 194,862 | 284,670 | 197,852 |
+| Departure | | 280,663 | 423,761 | 284,020 |
 
 **Main RAM is slow.** The Electron runs the same 2 MHz 6502 as the BBC Micro, from sideways RAM, but every access to main RAM costs a 1 MHz cycle, and more while the ULA fetches the screen. A straight port of the Model B layout spent about a quarter of its cycles waiting on main RAM: the zero page, the stack, the trampolines between banks, the mailbox between the game and the renderer, the screen reads of the disc painter. The work since has driven that down: per flight iteration of the gate's run, main-RAM accesses fell from 35,585 to about 11,000, and the cycles they cost from 79,000 to about 24,000 (5.6% of the cycles now lost to them). The code that pages the banks is now in every bank at the same address (the common block), so a call between banks fetches nothing from main RAM; the interrupt handler runs in a bank; the disc layer's rows are made and painted in one bank; the ship projection (LL9), the stardust, the planet's rows, the disc painter and the rasteriser's runs were rewritten to make no calls in their inner loops and to keep their working values in sideways RAM. [ELECTRON-REPORT.md](ELECTRON-REPORT.md) has the measurements, commit by commit, and what main-RAM traffic remains.
 
