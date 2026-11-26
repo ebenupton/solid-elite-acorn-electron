@@ -40,7 +40,8 @@ stars, text, the sights and our laser beams) and checks that:
     draws buffer 1;
   * the frame drew what was recorded: the sun's colour at its centre, every
     ship's centre filled, the last ship's vertices projected where they
-    should be, the text's glyphs, the sights, the explosion's particles;
+    should be, the text's glyphs, the sights, the explosion's particles
+    (with XX19 left by the game at another ship's heap, in another page);
   * a buffer's next frame repairs it exactly: buffer 0 after scene A, then
     scene C is byte for byte buffer 0 after scene C alone (on a fresh
     machine), the text included (the text map, incremental per buffer);
@@ -249,8 +250,9 @@ class Machine:
         a = self.S[name] + off
         self.mem.main[a], self.mem.main[a + 1] = v & 255, (v >> 8) & 255
 
-    def call(self, entry, a=0, y=0, maxcyc=40_000_000, c=0):
-        """LDX #FG_n : JSR GCALL : (stop) from main RAM, the home bank paged"""
+    def call(self, entry, a=0, y=0, maxcyc=40_000_000, c=0, watch=None):
+        """LDX #FG_n : JSR GCALL : (stop) from main RAM, the home bank paged
+        (watch: a bank 6 address, whose runs are counted in self.watched)"""
         n = (self.S['FJT%'] & 255) + 3 * FG.index(entry)   # (FG_n: elite-map.asm)
         mpu, mem = self.mpu, self.mem
         g = self.S['GCALL']
@@ -265,8 +267,11 @@ class Machine:
         n0 = mem.nmain
         step = mpu.step
         end = STUB + 5
+        self.watched = 0
         while mpu.pc != end:
             step()
+            if mpu.pc == watch and mem.sel == FBANK:
+                self.watched += 1
             if mpu.processorCycles - c0 > maxcyc:
                 raise RuntimeError('runaway in %s at &%04X' % (entry, mpu.pc))
         cyc = mpu.processorCycles - c0
@@ -512,7 +517,13 @@ def scene(m, k):
             look['ships'].append((int(128 + 256 * pos[0] / pos[2]), int(96 - 256 * pos[1] / pos[2]), ty))
         else:
             look['cloud'] = (int(128 + 256 * pos[0] / pos[2]), int(96 - 256 * pos[1] / pos[2]))
+            look['cslot'] = slot + 2
     look['last'] = min(ships_rec, key=lambda s: s[1][2])[:3]
+    if k == 0:                                   # XX19 as the main loop leaves it: the
+        m.poke(S['XX19'] + 1, HEAP >> 8)         # heap of a later ship, in another page than
+                                                 # the cloud's (&0A40, slot 1's, unused): the
+                                                 # frame takes the cloud's heap, both bytes,
+                                                 # from its data block (finding E1, 2026-11-26)
     m['X1'], m['Y1'], m['X2'], m['Y2'] = 20, 20, 120, 90     # an enemy laser
     m.call('F_LINE')
     m['TYPE'] = 11                               # a distant ship
@@ -547,7 +558,7 @@ def scene(m, k):
 def frame(m, png_dir=None, name=None):
     m.vsync()
     back = m['GFRONT'] ^ 1 if m['GMODE'] & 0x80 else 0
-    cyc = m.call('F_FRAME', y=0x99)
+    cyc = m.call('F_FRAME', y=0x99, watch=m.S['F_PDOT'])
     check(m['GFLIP'] == 0xFF and m['GPEND'] == back, 'the frame queued the flip to buffer %d' % back)
     if png_dir:
         png(m.buffer(back), os.path.join(png_dir, name))
@@ -1119,6 +1130,12 @@ def main():
             buf0[addr(255, y)] & 0x11 == b1_before[addr(255, y)] & 0x11 for y in range(192))
     check(border_ok, "buffer 1's border copied to buffer 0")
     check(buf1 == b1_before, "buffer 1 (TTX66's) left as it was")
+    g = m.mem.main                               # the cloud's particles: the vertices
+    inf = m.F['K%'] + look['cslot'] * S['NI%']   # (4n + 6 in its heap's byte #2) times
+    hp = g[inf + 33] | g[inf + 34] << 8          # the particles per vertex (PTCLS's U + 1),
+    cnt = g[hp + 1] ^ (0xFF if g[hp + 1] & 0x80 else 0)   # less those off the screen
+    want = (g[hp + 2] - 6) // 4 * ((cnt >> 3 | 1) + 1)
+    check(m.watched >= want // 2, "the explosion cloud drawn from its own heap (%d particles of %d)" % (m.watched, want))
     cx, cy = look['cloud']
     check(sum(pixel(buf0, x, y) == 3 for x in range(max(cx - 24, 2), min(cx + 24, 253))
               for y in range(max(cy - 24, 1), min(cy + 24, 191))) >= 8, "the explosion's particles drawn")

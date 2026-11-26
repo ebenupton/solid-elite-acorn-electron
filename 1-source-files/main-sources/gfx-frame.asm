@@ -3341,6 +3341,7 @@ ASSERT LT_HL1 = LT_HL0 + 9 AND LT_HL2 = LT_HL0 + 18 AND LT_HL3 = LT_HL0 + 27
  INY
 .fdc3
  LDA &FFFF,Y
+ STA XX19+1
  JSR f_gcloud           \ PTCLS's drawing, in the game's bank 4
  JSR f_clip             \ (the clip window back)
  JMP fdo4               \ (NMOS: for BRA)
